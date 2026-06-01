@@ -6,6 +6,13 @@ This repo contains the product spec, design system, research, planning-grade moc
 
 ## Key Files
 
+- `AGENTS.md` - durable repo guidance for agents/developers
+- `docs/codex-handoff.md` - catch-up summary for new Codex/developer instances
+- `docs/agent-log.md` - required shared work log for all agents
+- `docs/roadmap.md` - current milestones and next steps
+- `docs/decisions.md` - durable product/engineering/design decisions
+- `docs/open-questions.md` - unresolved questions, risks, and deferred decisions
+- `docs/setup.md` - local setup, build, test, and visual QA commands
 - `docs/specs/wander-ios-product-spec.md` - product spec and current decisions
 - `docs/plans/2026-06-01-wander-ios-eng-plan.md` - implementation plan and sequencing
 - `docs/plans/2026-06-01-wander-m1-5-contract-lock.md` - schema/RLS/sync/UI contract lock

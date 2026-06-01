@@ -1,0 +1,110 @@
+# Agent Log
+
+This is the shared work log for all agents and developers working in this repo.
+
+Rules:
+
+- Add an entry before non-trivial work starts.
+- Add checkpoints during long work or when direction changes.
+- Add a completion/handoff entry with tests, commits, known issues, and next steps.
+- Mention dirty worktree changes you did not make. Do not revert them without explicit instruction.
+- Keep entries concrete enough that another agent can resume without reading the whole chat.
+
+## 2026-06-01 - Codex - Morning Reset, M2 Local Loop, Handoff Docs
+
+Agent: Codex
+Branch: `main`
+Status at start of this log entry: local `main` matched `origin/main` at `962efce`, with one uncommitted Xcode project signing/team diff in `Wander.xcodeproj/project.pbxproj`.
+
+### What Happened
+
+- Joe asked to audit/reset earlier low-pass implementation work and redo from a stronger plan.
+- Low-pass native implementation was reset in commit `c3ac87f`.
+- Audited plan/docs were locked in:
+  - `7f12630 docs: lock reset audit contract`
+  - `7edbea2 docs: complete m2 design gate`
+- Rebuilt the native foundation and M2 local product loop:
+  - `3b109ad feat: rebuild audited ios foundation`
+  - `962efce feat: build local m2 product loop`
+- Pushed `962efce` to GitHub `main`.
+- Verified with `xcodebuild test`; latest successful run had 18 tests and 0 failures.
+
+### M2 Implementation Summary
+
+Built locally with deterministic fixtures:
+
+- Four tabs: Map, Add, Discover, Profile.
+- Settings from Profile gear only.
+- MapKit map with seeded own/social pins and filters.
+- Add flow with current-location/manual save, visibility picker, contextual questions, and honest link/photo unresolved drafts.
+- Discover with smart filters, username/profile lookup, contacts-shaped UI, and social save.
+- Profile/settings with follow/unfollow/block, followers/following lists, default visibility, blocked users, drafts, and local sync hints.
+- `WanderStore` manages seeded local state, visibility filtering, follow/block behavior, discover parsing, drafts, and saves.
+
+### Tests Run
+
+Known successful command:
+
+```bash
+xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO
+```
+
+Result:
+
+```text
+18 tests, 0 failures
+```
+
+Coverage includes token values, tab navigation, visibility policy, sync state transitions, deterministic Discover parser, save merge behavior, drafts, profile search, block behavior, current-location metadata, and graph edge lists.
+
+### Current Known Issue
+
+Joe shared a simulator screenshot showing the M2 Map screen looks bad:
+
+- App content is undersized/letterboxed inside the iPhone simulator.
+- Map does not fill and orient naturally to the device screen.
+- Search, chips, selected place sheet, and tab bar are too large/crowded.
+- Bottom sheet and tab bar compete for vertical space.
+
+Next implementation task: fix root/Map layout sizing and safe areas first, then sweep Add/Discover/Profile/Settings.
+
+### Dirty Worktree Caveat
+
+There is an uncommitted generated Xcode project diff:
+
+- `Wander.xcodeproj/project.pbxproj`
+
+Observed contents look like local Xcode signing/team churn, including `DEVELOPMENT_TEAM = Y7TVK75RZ8` and an `explicitFileType` change for `Wander.app`.
+
+Do not include this in docs or UI commits unless Joe explicitly wants local signing settings committed.
+
+### Token/Usage Sketch For The Morning
+
+Exact token/billing usage is not visible inside the repo or terminal. Qualitatively, the morning spent a lot of context on:
+
+- Reconstructing product decisions from the long thread.
+- Running plan/design/engineering review workflows and writing durable specs.
+- Rebuilding the native SwiftUI app foundation.
+- Implementing the M2 local product loop across Map, Add, Discover, Profile, Settings, models, services, and tests.
+- Iterating through Xcode build/test failures and long compiler logs.
+- Verifying GitHub `main` and pushing commits.
+- Diagnosing the simulator screenshot and creating this catch-up/handoff package.
+
+The highest-token sinks were likely long repository/document reads, Swift/Xcode build output, multi-file diffs, and the large planning/spec context.
+
+### Disk Space Note
+
+While creating this handoff, the machine had only about 100 MB free on `/System/Volumes/Data`. Clearing generated Xcode build artifacts freed enough space:
+
+- Removed repo-local `DerivedData`.
+- Cleared global Xcode DerivedData cache under `/Users/joelipshutz/Library/Developer/Xcode/DerivedData`.
+
+These were generated build caches, not source files.
+
+### Next Steps
+
+1. Commit the handoff docs and agent log rules.
+2. Fix M2 native UI sizing/layout, starting with Map/root safe-area behavior.
+3. Run build/tests.
+4. Capture simulator screenshots if possible.
+5. Commit and push the visual fix.
