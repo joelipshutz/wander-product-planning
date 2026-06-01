@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		03461155119042D6739D7619 /* WanderEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = 038D4985674B1D969110954F /* WanderEnums.swift */; };
 		13E38F0F2359AD89CE1F8C7D /* VisibilityPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1AFBD6D06D23BC0C007F77C /* VisibilityPolicyTests.swift */; };
+		13E758A98CE1235F8E35D5C9 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A090198414BF253FB326D960 /* SettingsScreen.swift */; };
 		1892B85AE93D8064CAA26A43 /* WanderRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12893CD9516BC58FD7D3BE43 /* WanderRootView.swift */; };
 		1B7020D5DE060F6868A92ED9 /* DiscoverModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAA1872AD66E4F03247D987 /* DiscoverModels.swift */; };
 		215968B73A77EB7B82911732 /* InMemoryWanderStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D115CB39D276BC3EB0F96F3D /* InMemoryWanderStoreTests.swift */; };
@@ -49,6 +50,7 @@
 		40CDC86101BD77B063BDB5D1 /* LLMFilterParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMFilterParserTests.swift; sourceTree = "<group>"; };
 		5A4CBE5F7AC41BC3C52B6337 /* ProfileScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileScreen.swift; sourceTree = "<group>"; };
 		7A02BE0AE86E482916C8F103 /* Wander.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Wander.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A090198414BF253FB326D960 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
 		AB7720F9AA05786E6D66C6D1 /* AddScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddScreen.swift; sourceTree = "<group>"; };
 		C00EA2E6F128127B2CED014D /* WanderFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WanderFixtures.swift; sourceTree = "<group>"; };
 		C1AFBD6D06D23BC0C007F77C /* VisibilityPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisibilityPolicyTests.swift; sourceTree = "<group>"; };
@@ -104,6 +106,7 @@
 				15834F66DEF41606BB0DC1EC /* Discover */,
 				3E0DF1BF4F5C9F3DB4574EC9 /* Map */,
 				4A1457E24C108BFE5085D9F7 /* Profile */,
+				D655C90336D6F1F9476C0577 /* Settings */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -162,6 +165,14 @@
 				FD75AD4E98CEDD964846DCA0 /* Services */,
 			);
 			path = Wander;
+			sourceTree = "<group>";
+		};
+		D655C90336D6F1F9476C0577 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				A090198414BF253FB326D960 /* SettingsScreen.swift */,
+			);
+			path = Settings;
 			sourceTree = "<group>";
 		};
 		E8C412A5051CD9CCBE4E8249 /* Models */ = {
@@ -280,6 +291,7 @@
 				BC07AB3F1E3B95100DB6F3F0 /* MapScreen.swift in Sources */,
 				C212DC4C46E67610E6FE2A94 /* ProfileScreen.swift in Sources */,
 				A586AFE40AEFCE74B711BAA5 /* RepositoryProtocols.swift in Sources */,
+				13E758A98CE1235F8E35D5C9 /* SettingsScreen.swift in Sources */,
 				D659F5CBC1EEB692D6216008 /* VisibilityPolicy.swift in Sources */,
 				E675767BE5C249B99B816B74 /* WanderApp.swift in Sources */,
 				03461155119042D6739D7619 /* WanderEnums.swift in Sources */,

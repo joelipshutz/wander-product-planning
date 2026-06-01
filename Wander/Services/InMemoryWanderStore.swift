@@ -37,6 +37,34 @@ final class InMemoryWanderStore: ObservableObject {
         profiles.first { $0.id == id }
     }
 
+    func contactsMatchingAppUsers() -> [ContactMatch] {
+        contactProvider.seededMatches.filter { match in
+            guard let userID = match.userID else { return true }
+            return !isBlockedBetweenCurrentUserAnd(userID)
+        }
+    }
+
+    func followingProfiles() -> [LocalProfile] {
+        let followedIDs = Set(follows.filter { $0.followerUserID == currentUser.id }.map(\.followedUserID))
+        return profiles.filter { followedIDs.contains($0.id) && !isBlockedBetweenCurrentUserAnd($0.id) }
+    }
+
+    func followerProfiles() -> [LocalProfile] {
+        let followerIDs = Set(follows.filter { $0.followedUserID == currentUser.id }.map(\.followerUserID))
+        return profiles.filter { followerIDs.contains($0.id) && !isBlockedBetweenCurrentUserAnd($0.id) }
+    }
+
+    func blockedProfiles() -> [LocalProfile] {
+        let blockedIDs = Set(blocks.filter { $0.blockerUserID == currentUser.id }.map(\.blockedUserID))
+        return profiles.filter { blockedIDs.contains($0.id) }
+    }
+
+    func userPlaceCount(for status: PlaceStatus, userID: String? = nil) -> Int {
+        userPlaces.filter {
+            $0.status == status && (userID == nil || $0.userID == userID)
+        }.count
+    }
+
     func visiblePlaces(for filters: DiscoverFilters = DiscoverFilters(query: "")) -> [VisiblePlace] {
         userPlaces.compactMap { userPlace in
             guard let place = place(for: userPlace.placeID),

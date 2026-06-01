@@ -21,6 +21,10 @@ struct WanderRootView: View {
             ProfileScreen()
                 .tabItem { Label("Profile", systemImage: "person.crop.circle") }
                 .tag(WanderTab.profile)
+
+            SettingsScreen()
+                .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+                .tag(WanderTab.settings)
         }
         .tint(WanderTheme.terracotta)
         .environmentObject(store)
@@ -32,4 +36,5 @@ enum WanderTab: Hashable {
     case add
     case discover
     case profile
+    case settings
 }
