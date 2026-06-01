@@ -31,10 +31,6 @@ Date: 2026-05-29
   - Why: locked product/design decisions need a build sequence before code starts.
   - Result: `docs/plans/2026-06-01-wander-ios-eng-plan.md` defines milestones, modules, schema, RLS, sync, LLM parser, analytics, extraction jobs, and tests.
 
-- Start M0/M1 iOS implementation foundation. In progress 2026-06-01.
-  - Why: app shell, local models, service boundaries, fakes, and tests unblock the product loop.
-  - Result: generated Xcode project with SwiftUI four-tab shell, token layer, SwiftData model skeleton, repository/service protocols, fake fixtures, visibility policy, Discover parser, and initial tests.
-
 ## P2
 
 - Decide backend/auth stack. Done 2026-06-01.
