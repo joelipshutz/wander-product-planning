@@ -44,3 +44,59 @@ enum ViewerRelationship: String, Codable, Equatable {
     case follower
     case nonFollower = "non_follower"
 }
+
+enum AddSourceType: String, Codable, CaseIterable, Equatable {
+    case currentLocation = "current_location"
+    case link
+    case manual
+    case photo
+    case socialSave = "social_save"
+
+    var title: String {
+        switch self {
+        case .currentLocation: "I'm here right now"
+        case .link: "Paste a link"
+        case .manual: "Add manually"
+        case .photo: "From a photo"
+        case .socialSave: "Save from someone"
+        }
+    }
+}
+
+extension PlaceVisibility {
+    var displayTitle: String {
+        switch self {
+        case .followers: "Everyone"
+        case .mutuals: "Friends"
+        case .selfOnly: "Self"
+        }
+    }
+
+    var helperCopy: String {
+        switch self {
+        case .followers: "People who follow you can see this."
+        case .mutuals: "Only mutual follows can see this."
+        case .selfOnly: "Only you can see this."
+        }
+    }
+}
+
+extension PlaceStatus {
+    var displayTitle: String {
+        switch self {
+        case .been: "been"
+        case .wannaGo: "wanna go"
+        }
+    }
+}
+
+extension ViewerRelationship {
+    var displayTitle: String {
+        switch self {
+        case .owner: "you"
+        case .mutual: "friend"
+        case .follower: "following"
+        case .nonFollower: "not following"
+        }
+    }
+}

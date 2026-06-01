@@ -1,7 +1,13 @@
 import SwiftUI
 
+@MainActor
 struct WanderRootView: View {
     @State private var selectedTab: WanderTab = .map
+    @StateObject private var store: WanderStore
+
+    init() {
+        _store = StateObject(wrappedValue: WanderStore(fixtures: WanderFixtures.seed()))
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -22,6 +28,7 @@ struct WanderRootView: View {
                 .tag(WanderTab.profile)
         }
         .tint(WanderTheme.terracotta.color)
+        .environmentObject(store)
     }
 }
 

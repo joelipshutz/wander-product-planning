@@ -106,15 +106,74 @@ extension View {
 struct WanderChip: View {
     let title: String
     var isSelected = false
+    var systemImage: String?
 
     var body: some View {
-        Text(title)
-            .font(.system(size: 13, weight: .semibold))
-            .padding(.horizontal, WanderTheme.spacing4)
-            .frame(minHeight: WanderTheme.tapMinimum)
-            .background(isSelected ? WanderTheme.textInk.color : WanderTheme.surfaceSand.color)
-            .foregroundStyle(isSelected ? WanderTheme.textOnAction.color : WanderTheme.textInk.color)
+        HStack(spacing: WanderTheme.spacing1) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.system(size: 12, weight: .bold))
+            }
+            Text(title)
+        }
+        .font(.system(size: 13, weight: .semibold))
+        .padding(.horizontal, WanderTheme.spacing4)
+        .frame(minHeight: WanderTheme.tapMinimum)
+        .background(isSelected ? WanderTheme.textInk.color : WanderTheme.surfaceSand.color)
+        .foregroundStyle(isSelected ? WanderTheme.textOnAction.color : WanderTheme.textInk.color)
+        .clipShape(Capsule())
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+struct WanderPrimaryButton: View {
+    let title: String
+    var systemImage: String?
+    var isDisabled = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                if let systemImage {
+                    Image(systemName: systemImage)
+                }
+                Text(title)
+            }
+            .font(.system(size: 16, weight: .bold))
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .background(isDisabled ? WanderTheme.borderStrong.color : WanderTheme.terracotta.color)
+            .foregroundStyle(WanderTheme.textOnAction.color)
             .clipShape(Capsule())
-            .accessibilityAddTraits(isSelected ? .isSelected : [])
+        }
+        .disabled(isDisabled)
+    }
+}
+
+struct WanderAvatar: View {
+    let initials: String
+    var size: CGFloat = 44
+    var color = WanderTheme.terracotta.color
+
+    var body: some View {
+        Text(initials)
+            .font(.system(size: max(12, size * 0.34), weight: .black))
+            .foregroundStyle(WanderTheme.textOnAction.color)
+            .frame(width: size, height: size)
+            .background(color)
+            .clipShape(Circle())
+            .overlay(Circle().stroke(WanderTheme.surfaceRaised.color, lineWidth: 2))
+    }
+}
+
+extension LocalProfile {
+    var initials: String {
+        displayName
+            .split(separator: " ")
+            .prefix(2)
+            .compactMap(\.first)
+            .map(String.init)
+            .joined()
+            .uppercased()
     }
 }

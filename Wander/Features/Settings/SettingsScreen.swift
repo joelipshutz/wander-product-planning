@@ -1,34 +1,138 @@
 import SwiftUI
 
 struct SettingsScreen: View {
+    @EnvironmentObject private var store: WanderStore
+
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
-                Text("Settings")
-                    .font(.system(size: 28, weight: .bold))
-
-                SettingsRow(title: "Profile and account")
-                SettingsRow(title: "Default place visibility")
-                SettingsRow(title: "Blocked users")
-                SettingsRow(title: "Contacts")
-                SettingsRow(title: "Notifications")
-                SettingsRow(title: "Data and sync")
-
-                Spacer()
+            ScrollView {
+                VStack(alignment: .leading, spacing: WanderTheme.spacing6) {
+                    header
+                    visibilitySection
+                    blockedSection
+                    groupedRows
+                }
+                .padding(WanderTheme.spacing4)
+                .padding(.bottom, WanderTheme.spacing8)
             }
-            .padding(WanderTheme.spacing6)
             .wanderScreen()
         }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
+            Text("SETTINGS")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(WanderTheme.textMuted.color)
+            Text("keep your map yours")
+                .font(.system(size: 28, weight: .black))
+            Text("Account, visibility, contacts, blocked users, and sync status live here - not in a fifth tab.")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(WanderTheme.textMuted.color)
+        }
+    }
+
+    private var visibilitySection: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
+            SettingsSectionTitle("default place visibility")
+
+            HStack(spacing: WanderTheme.spacing2) {
+                ForEach(PlaceVisibility.allCases, id: \.rawValue) { visibility in
+                    Button {
+                        store.defaultVisibility = visibility
+                    } label: {
+                        WanderChip(title: visibility.displayTitle, isSelected: store.defaultVisibility == visibility)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Text(store.defaultVisibility.helperCopy)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(WanderTheme.textMuted.color)
+        }
+        .padding(WanderTheme.spacing4)
+        .background(WanderTheme.surfaceBone.color)
+        .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+    }
+
+    private var blockedSection: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
+            SettingsSectionTitle("blocked users")
+            let blocked = store.blockedProfiles()
+            if blocked.isEmpty {
+                Text("No one blocked.")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(WanderTheme.textMuted.color)
+            } else {
+                ForEach(blocked) { profile in
+                    HStack {
+                        WanderAvatar(initials: String(profile.displayName.prefix(2)).uppercased(), size: 36, color: WanderTheme.stateError.color)
+                        VStack(alignment: .leading) {
+                            Text(profile.displayName)
+                                .font(.system(size: 15, weight: .bold))
+                            Text("@\(profile.handle)")
+                                .font(.system(size: 13))
+                                .foregroundStyle(WanderTheme.textMuted.color)
+                        }
+                        Spacer()
+                        Button("unblock") {
+                            store.unblock(userID: profile.id)
+                        }
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(WanderTheme.terracotta.color)
+                    }
+                }
+            }
+        }
+        .padding(WanderTheme.spacing4)
+        .background(WanderTheme.surfaceBone.color)
+        .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+    }
+
+    private var groupedRows: some View {
+        VStack(spacing: WanderTheme.spacing3) {
+            SettingsRow(title: "Profile and account", subtitle: "@\(store.currentUser.handle)", systemImage: "person.crop.circle")
+            SettingsRow(title: "Contacts", subtitle: "planned native permission later", systemImage: "person.crop.rectangle.stack")
+            SettingsRow(title: "Notifications", subtitle: "after first save", systemImage: "bell")
+            SettingsRow(title: "Data and sync", subtitle: "\(store.pendingSyncCount) pending local item\(store.pendingSyncCount == 1 ? "" : "s")", systemImage: "arrow.triangle.2.circlepath")
+        }
+    }
+}
+
+private struct SettingsSectionTitle: View {
+    let title: String
+
+    init(_ title: String) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .font(.system(size: 16, weight: .black))
     }
 }
 
 private struct SettingsRow: View {
     let title: String
+    let subtitle: String
+    let systemImage: String
 
     var body: some View {
-        HStack {
-            Text(title)
-                .font(.headline)
+        HStack(spacing: WanderTheme.spacing3) {
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(WanderTheme.terracotta.color)
+                .frame(width: 40, height: 40)
+                .background(WanderTheme.terracottaTint.color)
+                .clipShape(Circle())
+            VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
+                Text(title)
+                    .font(.system(size: 16, weight: .bold))
+                Text(subtitle)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(WanderTheme.textMuted.color)
+            }
             Spacer()
             Image(systemName: "chevron.right")
                 .foregroundStyle(WanderTheme.textFaint.color)
