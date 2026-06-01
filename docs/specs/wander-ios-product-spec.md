@@ -92,37 +92,33 @@ Use Slate's native iOS stack as the baseline:
 - App Group/share extension patterns if we add share-sheet capture
 - AI extraction service pattern from Slate, revised for Wander
 
-Wander differs from Slate because social is core. The spec should assume a backend sync layer, but defer the final Supabase vs Firebase call until after the product and data contracts are stable.
+Wander differs from Slate because social is core. The spec assumes a backend sync layer from the start.
 
 ## Backend Decision
 
-Decision: defer Supabase vs Firebase.
+Decision locked 2026-06-01: use Clerk + Supabase.
 
-The v0.1 spec should define backend-neutral contracts:
-- Auth identity
-- Follow graph
-- Places
-- Visits/saves
-- Visibility policies
-- Extraction jobs
-- Sync queue
-- Observability events
+Responsibilities:
 
-Then the eng plan review can compare Supabase and Firebase against those contracts.
+- Clerk owns identity, sessions, sign-in/sign-up, and account management.
+- Supabase owns Postgres data, RLS, PostGIS map queries, storage, functions/RPCs, and realtime if needed.
+- SwiftData owns local cache, guest-local drafts/saves, and the app-owned sync queue.
+- Clerk users must be mirrored into Supabase `profiles` via webhook or equivalent backend process. Supabase RLS policies should key ownership and visibility to the Clerk user id from the session token.
 
-### Decision Criteria For Backend Review
+Rejected alternatives:
 
-Use these criteria later:
+- Supabase Auth + Supabase: simpler vendor surface, but Joe selected Clerk for identity/account polish and future web parity.
+- Firebase Auth + Firestore: strong offline ergonomics, but more denormalization and Cloud Function work for follow graph, visibility, and map queries.
+- Backend-neutral planning: no longer useful; schema, RLS tests, and sync contracts need a real target.
 
-| Criterion | Why It Matters |
-|---|---|
-| Follow graph queries | Discover depends on "people I follow who have been or saved this place" and "mutual follows/friends." |
-| Geo queries | Map viewport and nearby search are core. |
-| Offline sync | Native app should still feel useful with bad connection. |
-| Privacy rules | User A must not access user B's private places. |
-| Realtime needs | Follow/visibility changes and shared places may benefit from realtime, but live location is not in scope. |
-| Developer speed | This is greenfield; lower operational drag matters. |
-| Migration path | If the first backend choice is wrong, data export should be possible. |
+Implementation contracts:
+
+- All social reads must pass through Supabase RLS policies, SQL views, or RPCs that enforce visibility and block rules.
+- Client ViewModels should not call Clerk or Supabase directly; use repository/protocol boundaries so fake data and UI tests can run without network.
+- Guest-local records cannot appear in social surfaces until a Clerk user signs in and the sync queue claims/migrates those records.
+- Supabase profile rows should store handle, display name, avatar, bio, default visibility, and search fields derived from Clerk/user settings.
+- v0.1 sync conflicts should use simple `updated_at`/server-wins handling plus a local retry queue. Multi-device field-level merge is out of scope.
+- Analytics should be implemented behind a vendor-neutral interface so event names are stable before the provider is chosen.
 
 ## Scope
 
@@ -139,8 +135,10 @@ Use these criteria later:
 - User profiles with followers/following lists and block controls.
 - Privacy-first sharing defaults.
 - Follow-based discovery and smart filters.
-- Backend-neutral social data model.
+- LLM-assisted Discover query parsing into structured filters.
+- Clerk + Supabase social data model.
 - Extraction architecture based on Slate, with explicit improvements.
+- Vendor-neutral analytics event interface.
 
 ### Not In Scope
 
@@ -152,9 +150,14 @@ Use these criteria later:
 - Fully customizable question-schema builder.
 - Full trip itinerary generation.
 - Payment or subscription model.
-- Final Supabase vs Firebase decision.
+- Share extension in v0.1; track as a later TODO after the in-app add/map/social loop works.
+- Native Contacts permission in v0.1; planned later after the core graph loop, backend matching, privacy copy, and App Store disclosure are ready.
+- Private profiles or follow requests in v0.1.
+- iPad-specific layouts beyond phone-compatible behavior.
+- Additional design variant generation as a blocker to engineering.
 - Final production onboarding implementation; the planning research flow is in `research/screensdesign/2026-05-30-social-map-onboarding/`.
 - Following someone who is not yet on Wander.
+- Sending friend graph, place data, or private user context to the LLM Discover parser.
 
 ## Information Architecture
 
@@ -250,7 +253,7 @@ Rules:
 
 ```text
 User
-  id
+  id (Clerk user id / subject)
   display_name
   handle
   avatar
@@ -260,6 +263,12 @@ User
   created_at
   updated_at
 ```
+
+Rules:
+- Handle is required at auth/profile creation.
+- Handle is unique case-insensitive.
+- Handle can be edited later, but handle history and redirects are out of scope for v0.1.
+- Username/handle search should be exact or near-exact, not broad global people discovery.
 
 ### Follow
 
@@ -372,7 +381,13 @@ SourceArtifact
   local_asset_ref optional
   remote_asset_ref optional
   created_at
+  deleted_at optional
 ```
+
+Retention rules:
+- If the user deletes a saved place, remove the active `UserPlace`, related active source artifacts, and social visibility from product surfaces.
+- Keep only a minimal server tombstone if needed for sync conflict resolution.
+- Do not retain raw source artifacts solely for extraction debugging unless the user still has an active draft/place that uses them.
 
 ### ExtractionJob
 
@@ -427,6 +442,8 @@ Not in v0.1:
 
 Contacts should be treated as a matching source, not as the graph itself.
 
+Decision locked 2026-06-01: native Contacts is planned, but not in v0.1. v0.1 should build the contacts-first UI against `FakeContactProvider` plus username search, then add native Contacts behind the same provider contract once backend hash matching, privacy copy, App Store disclosure, and contact-import QA are ready.
+
 ```text
 ContactProvider
   -> returns local contacts with display name + phone/email hashes
@@ -444,7 +461,7 @@ Rules:
 - Contacts import should not be required to complete onboarding or use the map.
 - Contact match does not auto-follow or expose anyone's map.
 - Inviting/following a non-user is deferred. If shown, it must be a clearly disabled/future state or a plain share action, not a fake follow.
-- Prototype can ship with `FakeContactProvider` plus username search. A real social beta should add native Contacts once backend hash matching, privacy copy, and App Store disclosure language are ready.
+- v0.1 ships with `FakeContactProvider` plus username search. A later planned release should add native Contacts once backend hash matching, privacy copy, and App Store disclosure language are ready.
 
 ### Testing Follow Graph Before Native Contacts Ships
 
@@ -729,7 +746,15 @@ Smart filter examples:
 - Weekend getaways
 - Work-friendly cafes
 
-Search interpretation can start as structured filters, not an LLM-heavy agent. Natural language search can map onto the same filter model later.
+Decision locked 2026-06-01: ship lightweight LLM-assisted Discover parsing up front, but keep execution constrained to the structured filter model above.
+
+Rules:
+- The LLM turns natural language into filter JSON; it does not directly query user data or create freeform recommendations.
+- The LLM receives only the raw search phrase and filter schema. Do not send friend graph, saved places, private notes, contact data, or user profile data.
+- Use a cheap/swappable model path first. If using Anthropic, prefer a low-cost model for parse attempts and reserve Sonnet-class fallback only if quality requires it.
+- Cache repeated parsed queries and cap tokens tightly.
+- Every parsed query should render as visible editable chips, so users understand what the app searched for.
+- If parsing fails, fall back to the existing smart filter chips.
 
 ## Privacy And Trust
 
@@ -751,9 +776,11 @@ Sensitive categories:
 
 Block/remove behavior:
 - Blocking removes profile discoverability.
+- Blocking removes or prevents follow edges in both directions.
+- Blocking hides profiles, places, followers/following list entries, username search results, Contacts results, and Discover content in both directions.
 - Unfollowing revokes the viewer's future access to follower-visible content.
 - Losing mutual follow status revokes future access to mutual-only content.
-- Deleted places should disappear from social views.
+- Deleted places and active source artifacts should disappear from product/social views, with only minimal sync tombstones retained if needed.
 
 ## UX And Visual Direction
 
@@ -993,18 +1020,18 @@ Accessibility:
 - Map filters need selected/unselected state labels.
 - Reduce Motion should disable decorative motion and keep state changes clear.
 
-### Unresolved Design Decisions
+### Resolved Design Decisions
 
 Rating: 5/10 -> 7/10
 
-These should be resolved before final implementation:
+These have been resolved for eng planning:
 
 | Decision Needed | Recommendation | If Deferred |
 |---|---|---|
 | First-run onboarding shape | Use the onboarding research flow: map promise -> location -> notifications -> category preferences -> add first place -> auth gate at save intent | Engineers may bolt onboarding onto the side instead of making it the activation path |
 | Default visibility | Resolved: use `followers`, `mutuals`, and `self`; helper copy must clarify that Everyone means followers | Users may not understand who sees new places |
 | Share extension in v0.1 | Defer unless link capture is the top activation bet | Add flow scope may expand before core map works |
-| Contact import | Contacts-first UI with invite-link and handle-search fallbacks; use fake contact provider to test before native Contacts ships | Privacy review and App Store copy become larger |
+| Contact import | Contacts-first UI with invite-link and handle-search fallbacks; native Contacts planned later behind `FakeContactProvider` | Privacy review and App Store copy become larger if native Contacts ships immediately |
 | iPad behavior | Phone-first unless explicitly prioritized | Tablet layout may become a stretched phone screen |
 | Remaining visual states | Extend the current handoff style to Discover, other-user profiles, followers/following, settings details, and onboarding | Engineers may infer missing states inconsistently |
 
@@ -1014,7 +1041,7 @@ The plan is design-complete enough for the next planning step, with the handoff 
 
 ## System Architecture
 
-Backend-neutral shape:
+Clerk + Supabase shape:
 
 ```text
 iOS App
@@ -1026,8 +1053,11 @@ iOS App
   |-- Share/Photo Inputs
   |
   v
-Backend API
-  |-- Auth
+Clerk
+  |-- Auth/session/account
+  |
+  v
+Supabase Backend
   |-- Follow Graph
   |-- Profiles / Blocks
   |-- Place Canonicalization
@@ -1204,7 +1234,7 @@ Phase 0: Spec and design
 - Integrate onboarding research from `research/screensdesign/2026-05-30-social-map-onboarding/`.
 - Run office-hours.
 - Run plan-design-review.
-- Run plan-eng-review.
+- Run plan-eng-review. Done 2026-06-01.
 
 Phase 1: Native prototype with local + mocked backend
 - Map, add flow, contextual questions, local SwiftData.
@@ -1212,35 +1242,33 @@ Phase 1: Native prototype with local + mocked backend
 - Extraction prototype using improved local adapters.
 
 Phase 2: Real backend social alpha
-- Auth.
+- Clerk auth.
 - Follow graph.
 - Profiles.
 - Block list.
 - Contact matching contract.
-- Native Contacts integration only after backend hash matching, privacy copy, and App Store disclosure language are ready.
+- Native Contacts planned later; keep `FakeContactProvider` and username search while backend matching/privacy copy mature.
 - UserPlace sync.
 - Visibility enforcement.
 - Social save flow.
 
 Phase 3: Extraction hardening
+- Backend extraction jobs for alpha.
 - Source-specific extraction metrics.
 - Instagram fallback UX.
 - Place candidate confidence.
-- Backend enrichment jobs if needed.
+- Detailed job architecture and provider pipeline.
 
 ## Open Questions
 
-- Final backend choice: Supabase vs Firebase.
-- Whether to include share extension in v0.1 or wait until after manual/link capture works.
-- Whether to add private profiles/follow requests later.
-- Whether to use a third-party Places provider beyond MapKit.
+- None blocking. Native Contacts is planned later, after v0.1 fake-contact/username social loop validation.
 
 ## CEO Review Notes
 
 Mode selected: Scope Expansion.
 
 Accepted direction:
-- Backend-first social spec with backend-neutral contracts.
+- Backend-first social spec with Clerk + Supabase contracts.
 - Follow graph with mutual follows as friends.
 - Privacy-first follower/friend/self visibility.
 - "Been / wanna go" as self-report with optional nearby confirmation.

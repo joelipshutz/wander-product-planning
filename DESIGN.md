@@ -378,7 +378,7 @@ Starter categories:
 
 ### Visibility Pill
 
-Provisional pending plan-eng-review.
+Locked by plan-eng-review.
 
 Recommended states:
 
@@ -504,18 +504,16 @@ Required partial states:
 - Permission skips and secondary paths are accessible.
 - Visibility controls must have explicit labels, not icon-only meaning.
 
-## Provisional Areas For plan-eng-review
+## Remaining Architecture-Sensitive Areas
 
-These design areas are intentionally provisional until architecture review locks the data and sync behavior:
+Plan-eng-review locked the backend/auth, visibility, block, share-extension, places, username, delete, and high-level extraction direction. These areas still need implementation-detail validation:
 
-- Backend-sensitive visibility states.
-- Profile, follow, and block policy states.
 - Sync/offline states.
 - Contacts and follow matching states.
-- Auth gate mechanics.
-- Extraction confidence states.
+- Clerk auth gate mechanics.
+- Extraction confidence states and backend job details.
 - Paywall trigger configuration.
-- Share extension scope.
+- Analytics instrumentation surfaces.
 
 ## Do Not Do
 
@@ -535,6 +533,12 @@ These design areas are intentionally provisional until architecture review locks
 | 2026-06-01 | iPhone-first v0.1 | The mocks, onboarding, and native map interactions are phone-centered. iPad can run phone-compatible unless explicitly prioritized. |
 | 2026-06-01 | Use Strava-style follow graph | Following is one-way; friends are mutual follows; profiles, followers/following lists, and blocking are required surfaces. |
 | 2026-06-01 | Use Everyone/Friends/Self visibility | Everyone means followers can see it, Friends means mutual follows, Self means only me. Helper copy must prevent global-public confusion. |
-| 2026-06-01 | Contacts-first lookup, native Contacts deferred | People can be found through contacts or username; build against `ContactProvider` with fake contacts and username search, then add native Contacts later behind the same adapter. |
+| 2026-06-01 | Contacts-first lookup, native Contacts planned later | People can be found through contacts or username; v0.1 uses `FakeContactProvider` and username search, with native Contacts planned behind the same provider contract after the core graph loop is validated. |
 | 2026-06-01 | Adopt design handoff package as visual source of truth | `preview/follow-profile-settings-mocks/tokens.css` owns tokens; `index.html` and `screens.html` are the SwiftUI recreation references. |
 | 2026-06-01 | Collapse `you` into Profile and keep four tabs | Current nav is `map`, `add (+)`, `discover`, `profile`; settings opens from Profile and there are no grouping labels. |
+| 2026-06-01 | Use Clerk + Supabase | Clerk owns identity/account surfaces; Supabase owns social data, RLS, PostGIS, functions, and storage. |
+| 2026-06-01 | Defer share extension | In-app add, map, and social loop ship first; share extension is a later TODO. |
+| 2026-06-01 | Ship lightweight LLM Discover parsing | Natural-language Discover parses into visible structured filter chips using a cheap/swappable model path; it is not a broad agent. |
+| 2026-06-01 | Defer private profiles, iPad-specific layouts, and extra design variants | Open follow plus hard block, phone-first compatibility, and current handoff source of truth are enough for eng planning. |
+| 2026-06-01 | Use simple v0.1 sync conflict handling | Local retry queue plus `updated_at`/server-wins behavior is enough for v0.1; no field-level multi-device merge. |
+| 2026-06-01 | Keep analytics vendor-neutral | Define event names now behind an interface, choose provider later. |

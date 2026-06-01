@@ -7,6 +7,7 @@ This repo contains the product spec, design system, research, and planning-grade
 ## Key Files
 
 - `docs/specs/wander-ios-product-spec.md` - product spec and current decisions
+- `docs/plans/2026-06-01-wander-ios-eng-plan.md` - implementation plan and sequencing
 - `DESIGN.md` - design system and UI guardrails
 - `preview/follow-profile-settings-mocks/` - current design handoff source of truth
 - `preview/follow-profile-settings-mocks/tokens.css` - canonical visual tokens for SwiftUI implementation
