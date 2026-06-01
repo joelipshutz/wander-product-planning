@@ -1,19 +1,19 @@
 import SwiftUI
 
 struct ProfileScreen: View {
-    let fixtures: WanderFixtures
+    @EnvironmentObject private var store: InMemoryWanderStore
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(fixtures.currentUser.displayName)
+                        Text(store.currentUser.displayName)
                             .font(.largeTitle.weight(.bold))
-                        Text("@\(fixtures.currentUser.handle)")
+                        Text("@\(store.currentUser.handle)")
                             .font(.headline)
                             .foregroundStyle(WanderTheme.espresso.opacity(0.72))
-                        if let bio = fixtures.currentUser.bio {
+                        if let bio = store.currentUser.bio {
                             Text(bio)
                                 .font(.body)
                         }
@@ -32,8 +32,8 @@ struct ProfileScreen: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Saved")
                         .font(.headline)
-                    ForEach(fixtures.userPlaces.filter { $0.userID == fixtures.currentUser.id }) { userPlace in
-                        if let place = fixtures.places.first(where: { $0.id == userPlace.placeID }) {
+                    ForEach(store.userPlaces.filter { $0.userID == store.currentUser.id }) { userPlace in
+                        if let place = store.place(for: userPlace.placeID) {
                             Text(place.canonicalName)
                                 .font(.headline)
                                 .frame(maxWidth: .infinity, alignment: .leading)

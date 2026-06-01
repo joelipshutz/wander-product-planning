@@ -1,9 +1,10 @@
 import SwiftUI
 
 struct AddScreen: View {
-    let fixtures: WanderFixtures
+    @EnvironmentObject private var store: InMemoryWanderStore
     @State private var visibility: PlaceVisibility = .followers
     @State private var status: PlaceStatus = .been
+    @State private var didSave = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -40,10 +41,39 @@ struct AddScreen: View {
                 AddModeButton(title: "Use a photo", systemImage: "photo")
             }
 
+            Button {
+                Task { await saveSeedPlace() }
+            } label: {
+                Text(didSave ? "Saved on this phone" : "Save test place")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(16)
+                    .background(WanderTheme.terracotta)
+                    .foregroundStyle(WanderTheme.cream)
+                    .clipShape(RoundedRectangle(cornerRadius: WanderTheme.cornerRadius))
+            }
+            .buttonStyle(.plain)
+
             Spacer()
         }
         .padding(20)
         .wanderScreen()
+    }
+
+    private func saveSeedPlace() async {
+        guard let place = store.places.first else { return }
+        let userPlace = LocalUserPlace(
+            id: "up_\(store.currentUser.id)_\(place.id)_local",
+            userID: store.currentUser.id,
+            placeID: place.id,
+            status: status,
+            visibility: visibility,
+            note: "Saved from the local M1 flow.",
+            sourceType: "manual",
+            syncState: .pendingCreate
+        )
+        try? await store.save(userPlace)
+        didSave = true
     }
 }
 

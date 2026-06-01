@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct MapScreen: View {
-    let fixtures: WanderFixtures
+    @EnvironmentObject private var store: InMemoryWanderStore
 
     var body: some View {
         ScrollView {
@@ -20,10 +20,8 @@ struct MapScreen: View {
                 }
 
                 VStack(spacing: 12) {
-                    ForEach(fixtures.userPlaces) { userPlace in
-                        if let place = fixtures.places.first(where: { $0.id == userPlace.placeID }) {
-                            PlaceRow(place: place, userPlace: userPlace)
-                        }
+                    ForEach(store.visiblePlaces()) { visiblePlace in
+                        PlaceRow(visiblePlace: visiblePlace)
                     }
                 }
             }
@@ -34,23 +32,22 @@ struct MapScreen: View {
 }
 
 private struct PlaceRow: View {
-    let place: LocalPlace
-    let userPlace: LocalUserPlace
+    let visiblePlace: VisiblePlace
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Circle()
-                .fill(userPlace.userID == "user_joe" ? WanderTheme.terracotta : WanderTheme.sky)
+                .fill(visiblePlace.owner.id == "user_joe" ? WanderTheme.terracotta : WanderTheme.sky)
                 .frame(width: 14, height: 14)
                 .padding(.top, 5)
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(place.canonicalName)
+                Text(visiblePlace.place.canonicalName)
                     .font(.headline)
-                Text("\(place.category) · \(userPlace.status.rawValue.replacingOccurrences(of: "_", with: " "))")
+                Text("\(visiblePlace.place.category) · \(visiblePlace.userPlace.status.rawValue.replacingOccurrences(of: "_", with: " ")) · @\(visiblePlace.owner.handle)")
                     .font(.subheadline)
                     .foregroundStyle(WanderTheme.espresso.opacity(0.72))
-                if let note = userPlace.note {
+                if let note = visiblePlace.userPlace.note {
                     Text(note)
                         .font(.footnote)
                 }

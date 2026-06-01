@@ -2,27 +2,28 @@ import SwiftUI
 
 struct WanderRootView: View {
     @State private var selection: WanderTab = .map
-    private let fixtures = WanderFixtures.seed
+    @StateObject private var store = InMemoryWanderStore()
 
     var body: some View {
         TabView(selection: $selection) {
-            MapScreen(fixtures: fixtures)
+            MapScreen()
                 .tabItem { Label("Map", systemImage: "map") }
                 .tag(WanderTab.map)
 
-            AddScreen(fixtures: fixtures)
+            AddScreen()
                 .tabItem { Label("Add", systemImage: "plus.circle.fill") }
                 .tag(WanderTab.add)
 
-            DiscoverScreen(fixtures: fixtures)
+            DiscoverScreen()
                 .tabItem { Label("Discover", systemImage: "sparkle.magnifyingglass") }
                 .tag(WanderTab.discover)
 
-            ProfileScreen(fixtures: fixtures)
+            ProfileScreen()
                 .tabItem { Label("Profile", systemImage: "person.crop.circle") }
                 .tag(WanderTab.profile)
         }
         .tint(WanderTheme.terracotta)
+        .environmentObject(store)
     }
 }
 
