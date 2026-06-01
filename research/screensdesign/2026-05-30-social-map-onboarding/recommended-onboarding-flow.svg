@@ -1,0 +1,254 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1420" viewBox="0 0 1500 1420">
+  <defs>
+    <style>
+      .canvas { fill: #f5eddf; }
+      .ink { fill: #261a14; font-family: Arial, Helvetica, sans-serif; }
+      .muted { fill: #75685c; font-family: Arial, Helvetica, sans-serif; }
+      .phone { fill: #181614; }
+      .screen { fill: #fff8ed; }
+      .panel { fill: #fffdf7; stroke: #e3d6c3; stroke-width: 1.2; }
+      .soft { fill: #efe3d0; }
+      .mapA { fill: #dfe6d1; }
+      .mapB { fill: #d4e5df; }
+      .grid { stroke: #cbd3bf; stroke-width: 1; opacity: .7; }
+      .road { stroke: #fffaf0; stroke-width: 5; stroke-linecap: round; }
+      .title { font-size: 38px; font-weight: 900; letter-spacing: 0; }
+      .subtitle { font-size: 17px; letter-spacing: 0; }
+      .kicker { font-size: 10px; font-weight: 800; letter-spacing: .8px; }
+      .h { font-size: 26px; font-weight: 900; letter-spacing: 0; }
+      .body { font-size: 14px; letter-spacing: 0; }
+      .small { font-size: 12px; letter-spacing: 0; }
+      .tiny { font-size: 10px; letter-spacing: 0; }
+      .cta { fill: #e45735; }
+      .ctaText { fill: #fffaf4; font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 800; }
+      .secondary { fill: #75685c; font-family: Arial, Helvetica, sans-serif; font-size: 12px; }
+      .chip { fill: #fffdf7; stroke: #ded1bd; stroke-width: 1.1; }
+      .chipOn { fill: #382215; }
+      .chipText { fill: #261a14; font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 800; }
+      .chipTextOn { fill: #fffaf4; font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 800; }
+      .red { fill: #e45735; }
+      .sage { fill: #91a884; }
+      .sky { fill: #6aaece; }
+      .gold { fill: #e7c459; }
+      .brown { fill: #382215; }
+      .line { stroke: #382215; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+      .whiteLine { stroke: #fffaf4; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+    </style>
+  </defs>
+
+  <rect class="canvas" width="1500" height="1420"/>
+  <text class="ink title" x="52" y="58">recommended Wander onboarding</text>
+  <text class="muted subtitle" x="54" y="88">map-first, guest-first, location early, auth on save, notifications after value, paywall after 20 saves</text>
+
+  <g transform="translate(52,124)">
+    <rect class="panel" x="0" y="0" width="1396" height="70" rx="18"/>
+    <text class="ink body" x="24" y="28" font-weight="800">Recommended order</text>
+    <text class="muted body" x="24" y="52">First-run: promise -> location -> taste -> add-place education. Triggered later: auth when saving, notifications after first save, paywall at save #21.</text>
+  </g>
+
+  <!-- Phone 1 -->
+  <g transform="translate(50,240)">
+    <rect class="phone" width="248" height="532" rx="44"/>
+    <rect class="screen" x="13" y="13" width="222" height="506" rx="34"/>
+    <rect x="87" y="25" width="74" height="22" rx="11" fill="#181614"/>
+    <text class="tiny ink" x="33" y="42" font-weight="800">9:41</text>
+    <g transform="translate(31,66)">
+      <rect class="mapA" width="186" height="206" rx="24"/>
+      <rect class="mapB" x="106" width="80" height="206" rx="24"/>
+      <line class="grid" x1="0" y1="68" x2="186" y2="68"/>
+      <line class="grid" x1="0" y1="136" x2="186" y2="136"/>
+      <line class="grid" x1="65" y1="0" x2="65" y2="206"/>
+      <line class="grid" x1="129" y1="0" x2="129" y2="206"/>
+      <path class="road" d="M0,129 C44,111 74,125 113,111 C142,101 159,88 186,82"/>
+      <path class="road" d="M100,0 C101,61 101,123 94,206"/>
+      <circle class="red" cx="54" cy="96" r="17"/>
+      <circle class="sky" cx="107" cy="128" r="6"/>
+      <circle class="sage" cx="146" cy="61" r="16"/>
+      <circle class="gold" cx="157" cy="158" r="16"/>
+    </g>
+    <text class="muted kicker" x="31" y="304">1 / PROMISE</text>
+    <text class="ink h" x="31" y="342">Your places,</text>
+    <text class="ink h" x="31" y="372">on a map.</text>
+    <text class="muted body" x="31" y="404">Save spots you have been,</text>
+    <text class="muted body" x="31" y="424">want to try, or got from friends.</text>
+    <rect class="cta" x="31" y="456" width="186" height="40" rx="12"/>
+    <text class="ctaText" x="74" y="481">Start with the map</text>
+  </g>
+
+  <!-- Phone 2 -->
+  <g transform="translate(392,240)">
+    <rect class="phone" width="248" height="532" rx="44"/>
+    <rect class="screen" x="13" y="13" width="222" height="506" rx="34"/>
+    <rect x="87" y="25" width="74" height="22" rx="11" fill="#181614"/>
+    <text class="tiny ink" x="33" y="42" font-weight="800">9:41</text>
+    <circle class="red" cx="124" cy="104" r="38"/>
+    <circle fill="#fff8ed" cx="124" cy="96" r="10"/>
+    <path class="whiteLine" d="M124 106 L124 134"/>
+    <text class="muted kicker" x="31" y="180">2 / LOCATION</text>
+    <text class="ink h" x="31" y="218">Make it</text>
+    <text class="ink h" x="31" y="248">local.</text>
+    <text class="muted body" x="31" y="282">Detect where you are</text>
+    <text class="muted body" x="31" y="302">and sort nearby recs.</text>
+    <rect class="panel" x="31" y="332" width="186" height="94" rx="16"/>
+    <line class="grid" x1="45" y1="365" x2="203" y2="365"/>
+    <line class="grid" x1="96" y1="332" x2="96" y2="426"/>
+    <circle class="red" cx="74" cy="362" r="12"/>
+    <circle class="sky" cx="112" cy="383" r="7"/>
+    <circle class="sage" cx="163" cy="398" r="12"/>
+    <rect class="cta" x="31" y="456" width="186" height="40" rx="12"/>
+    <text class="ctaText" x="82" y="481">Allow location</text>
+    <text class="secondary" x="104" y="514">Not now</text>
+  </g>
+
+  <!-- Phone 3 -->
+  <g transform="translate(734,240)">
+    <rect class="phone" width="248" height="532" rx="44"/>
+    <rect class="screen" x="13" y="13" width="222" height="506" rx="34"/>
+    <rect x="87" y="25" width="74" height="22" rx="11" fill="#181614"/>
+    <text class="tiny ink" x="33" y="42" font-weight="800">9:41</text>
+    <text class="muted kicker" x="31" y="86">3 / TASTE</text>
+    <text class="ink h" x="31" y="124">Tune</text>
+    <text class="ink h" x="31" y="154">Discover.</text>
+    <text class="muted body" x="31" y="188">Pick what you actually save.</text>
+    <g transform="translate(31,231)">
+      <rect class="chipOn" x="0" y="0" width="75" height="33" rx="17"/>
+      <circle fill="#fffaf4" cx="17" cy="16" r="5"/><text class="chipTextOn" x="29" y="21">coffee</text>
+      <rect class="chip" x="84" y="0" width="99" height="33" rx="17"/>
+      <circle class="red" cx="101" cy="16" r="5"/><text class="chipText" x="113" y="21">restaurants</text>
+      <rect class="chipOn" x="0" y="47" width="68" height="33" rx="17"/>
+      <circle fill="#fffaf4" cx="17" cy="16" r="5"/><text class="chipTextOn" x="29" y="68">hikes</text>
+      <rect class="chip" x="77" y="47" width="62" height="33" rx="17"/>
+      <circle class="gold" cx="94" cy="63" r="5"/><text class="chipText" x="106" y="68">bars</text>
+      <rect class="chip" x="0" y="94" width="66" height="33" rx="17"/>
+      <circle class="sage" cx="17" cy="110" r="5"/><text class="chipText" x="29" y="115">parks</text>
+      <rect class="chipOn" x="75" y="94" width="105" height="33" rx="17"/>
+      <circle fill="#fffaf4" cx="92" cy="110" r="5"/><text class="chipTextOn" x="104" y="115">work cafes</text>
+      <rect class="chip" x="0" y="141" width="87" height="33" rx="17"/>
+      <circle class="sky" cx="17" cy="157" r="5"/><text class="chipText" x="29" y="162">wellness</text>
+      <rect class="chip" x="96" y="141" width="75" height="33" rx="17"/>
+      <circle class="sage" cx="113" cy="157" r="5"/><text class="chipText" x="125" y="162">nature</text>
+    </g>
+    <rect class="cta" x="31" y="456" width="186" height="40" rx="12"/>
+    <text class="ctaText" x="96" y="481">Continue</text>
+  </g>
+
+  <!-- Phone 4 -->
+  <g transform="translate(1076,240)">
+    <rect class="phone" width="248" height="532" rx="44"/>
+    <rect class="screen" x="13" y="13" width="222" height="506" rx="34"/>
+    <rect x="87" y="25" width="74" height="22" rx="11" fill="#181614"/>
+    <text class="tiny ink" x="33" y="42" font-weight="800">9:41</text>
+    <text class="muted kicker" x="31" y="86">4 / ADD PLACE</text>
+    <text class="ink h" x="31" y="124">Add a</text>
+    <text class="ink h" x="31" y="154">place.</text>
+    <text class="muted body" x="31" y="188">Start from where you are,</text>
+    <text class="muted body" x="31" y="208">a link, manual search, or photo.</text>
+    <g transform="translate(31,244)">
+      <rect class="cta" x="0" y="0" width="186" height="54" rx="16"/>
+      <circle fill="#fff8ed" cx="26" cy="27" r="9"/><path class="whiteLine" d="M26 36 L26 43"/>
+      <text class="ctaText" x="51" y="25">I am here now</text><text x="51" y="43" fill="#ffe1d6" font-family="Arial" font-size="11">Maru Coffee detected</text>
+      <rect class="panel" x="0" y="68" width="186" height="47" rx="15"/>
+      <path class="line" d="M23 92 C18 87 18 81 23 76 C28 71 35 72 39 77 M31 100 C36 105 43 104 47 99 C52 94 51 87 46 83 M28 95 L42 81"/>
+      <text class="ink body" x="55" y="98" font-weight="800">Paste a link</text>
+      <rect class="panel" x="0" y="129" width="186" height="47" rx="15"/>
+      <path class="line" d="M21 157 L35 143 L43 151 L29 165 L20 166 Z"/>
+      <text class="ink body" x="55" y="159" font-weight="800">Add manually</text>
+      <rect class="panel" x="0" y="190" width="186" height="47" rx="15"/>
+      <rect class="brown" x="17" y="207" width="28" height="20" rx="3"/>
+      <circle fill="#fff8ed" cx="31" cy="217" r="5"/>
+      <text class="ink body" x="55" y="220" font-weight="800">From a photo</text>
+    </g>
+    <text class="secondary" x="91" y="514">Explore first</text>
+  </g>
+
+  <!-- Phone 5 -->
+  <g transform="translate(222,840)">
+    <rect class="phone" width="248" height="532" rx="44"/>
+    <rect class="screen" x="13" y="13" width="222" height="506" rx="34"/>
+    <rect x="87" y="25" width="74" height="22" rx="11" fill="#181614"/>
+    <text class="tiny ink" x="33" y="42" font-weight="800">9:41</text>
+    <text class="muted kicker" x="31" y="86">5 / SAVE GATE</text>
+    <text class="ink h" x="31" y="124">Save Maru</text>
+    <text class="ink h" x="31" y="154">Coffee?</text>
+    <rect class="panel" x="31" y="185" width="186" height="76" rx="18"/>
+    <circle class="soft" cx="65" cy="223" r="24"/>
+    <circle class="red" cx="65" cy="223" r="10"/>
+    <text class="ink body" x="99" y="216" font-weight="900">Maru Coffee</text>
+    <text class="muted small" x="99" y="237">arts district / coffee</text>
+    <text class="muted body" x="31" y="294">Create a free account to</text>
+    <text class="muted body" x="31" y="314">keep it synced and share recs.</text>
+    <rect class="panel" x="31" y="350" width="186" height="39" rx="12"/>
+    <text class="ink body" x="75" y="375" font-weight="800">Continue with Apple</text>
+    <rect class="panel" x="31" y="400" width="186" height="39" rx="12"/>
+    <text class="ink body" x="73" y="425" font-weight="800">Continue with Google</text>
+    <rect class="panel" x="31" y="450" width="186" height="39" rx="12"/>
+    <text class="ink body" x="78" y="475" font-weight="800">Continue with email</text>
+    <text class="secondary" x="85" y="514">Keep browsing</text>
+  </g>
+
+  <!-- Phone 6 -->
+  <g transform="translate(564,840)">
+    <rect class="phone" width="248" height="532" rx="44"/>
+    <rect class="screen" x="13" y="13" width="222" height="506" rx="34"/>
+    <rect x="87" y="25" width="74" height="22" rx="11" fill="#181614"/>
+    <text class="tiny ink" x="33" y="42" font-weight="800">9:41</text>
+    <circle class="sky" cx="124" cy="103" r="38"/>
+    <path d="M112 114 H136 C131 109 132 98 132 93 C132 87 128 83 124 83 C120 83 116 87 116 93 C116 98 117 109 112 114 Z" fill="#fffaf4"/>
+    <circle fill="#fffaf4" cx="124" cy="119" r="4"/>
+    <text class="muted kicker" x="31" y="180">6 / AFTER FIRST SAVE</text>
+    <text class="ink h" x="31" y="218">Want useful</text>
+    <text class="ink h" x="31" y="248">pings?</text>
+    <text class="muted body" x="31" y="282">Reminders for saved spots</text>
+    <text class="muted body" x="31" y="302">and friend recs nearby.</text>
+    <rect class="panel" x="31" y="335" width="186" height="40" rx="12"/>
+    <circle class="red" cx="52" cy="355" r="8"/>
+    <text class="ink small" x="68" y="359">You are near Maru Coffee</text>
+    <rect class="panel" x="31" y="386" width="186" height="40" rx="12"/>
+    <circle class="gold" cx="52" cy="406" r="8"/>
+    <text class="ink small" x="68" y="410">Ryan saved nearby</text>
+    <rect class="cta" x="31" y="456" width="186" height="40" rx="12"/>
+    <text class="ctaText" x="68" y="481">Turn on notifications</text>
+    <text class="secondary" x="97" y="514">Maybe later</text>
+  </g>
+
+  <!-- Phone 7 -->
+  <g transform="translate(906,840)">
+    <rect class="phone" width="248" height="532" rx="44"/>
+    <rect class="screen" x="13" y="13" width="222" height="506" rx="34"/>
+    <rect x="87" y="25" width="74" height="22" rx="11" fill="#181614"/>
+    <text class="tiny ink" x="33" y="42" font-weight="800">9:41</text>
+    <text class="muted kicker" x="31" y="86">7 / SAVE #21</text>
+    <text class="ink h" x="31" y="124">Your map is</text>
+    <text class="ink h" x="31" y="154">filling up.</text>
+    <text class="muted body" x="31" y="188">20 places are free.</text>
+    <text class="muted body" x="31" y="208">Go unlimited when Wander</text>
+    <text class="muted body" x="31" y="228">becomes your real map.</text>
+    <rect class="soft" x="31" y="262" width="186" height="12" rx="6"/>
+    <rect class="red" x="31" y="262" width="186" height="12" rx="6"/>
+    <text class="muted small" x="81" y="296">20/20 free saves used</text>
+    <g transform="translate(38,330)">
+      <circle class="red" cx="6" cy="0" r="5"/>
+      <text class="ink body" x="21" y="5">Unlimited saves</text>
+      <circle class="red" cx="6" cy="35" r="5"/>
+      <text class="ink body" x="21" y="40">Unlimited link imports</text>
+      <circle class="red" cx="6" cy="70" r="5"/>
+      <text class="ink body" x="21" y="75">Private friend circles</text>
+      <circle class="red" cx="6" cy="105" r="5"/>
+      <text class="ink body" x="21" y="110">Backup and export</text>
+    </g>
+    <rect class="cta" x="31" y="456" width="186" height="40" rx="12"/>
+    <text class="ctaText" x="86" y="481">Go unlimited</text>
+    <text class="secondary" x="103" y="514">Not now</text>
+  </g>
+
+  <g transform="translate(1222,880)">
+    <rect class="panel" width="222" height="250" rx="20"/>
+    <text class="muted kicker" x="22" y="34">WHY THIS WINS</text>
+    <text class="ink body" x="22" y="70" font-weight="900">No cold account wall.</text>
+    <text class="muted small" x="22" y="91">Login maps to save intent.</text>
+    <text class="ink body" x="22" y="128" font-weight="900">No cold notif ask.</text>
+    <text class="muted small" x="22" y="149">Prompt after a saved place.</text>
+    <text class="ink body" x="22" y="186" font-weight="900">No early paywall.</text>
+    <text class="muted small" x="22" y="207">Gate after free map value.</text>
+  </g>
+</svg>

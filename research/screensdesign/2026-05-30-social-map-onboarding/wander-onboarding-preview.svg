@@ -1,0 +1,222 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1360" viewBox="0 0 1500 1360">
+  <defs>
+    <style>
+      .bg { fill: #f5eddf; }
+      .ink { fill: #261a14; font-family: Arial, Helvetica, sans-serif; }
+      .muted { fill: #766b60; font-family: Arial, Helvetica, sans-serif; }
+      .tiny { font-size: 11px; letter-spacing: 0; }
+      .small { font-size: 13px; letter-spacing: 0; }
+      .body { font-size: 15px; letter-spacing: 0; }
+      .h { font-size: 26px; font-weight: 800; letter-spacing: 0; }
+      .phone { fill: #181614; }
+      .screen { fill: #fff8ed; }
+      .panel { fill: #fffdf7; stroke: #e3d8c7; stroke-width: 1.2; }
+      .map { fill: #dfe5d0; }
+      .map2 { fill: #d3e3dc; }
+      .road { stroke: #fffef7; stroke-width: 4; opacity: .9; }
+      .grid { stroke: #c9d0bc; stroke-width: 1; opacity: .55; }
+      .cta { fill: #e45735; }
+      .ctaText { fill: #fffaf4; font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: 700; }
+      .ghostBtn { fill: #fffdf7; stroke: #e2d5c2; stroke-width: 1.2; }
+      .chip { fill: #fffdf7; stroke: #ded1bd; stroke-width: 1.1; }
+      .chipOn { fill: #382215; }
+      .chipText { fill: #261a14; font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 700; }
+      .chipTextOn { fill: #fffaf4; font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 700; }
+      .terracotta { fill: #e45735; }
+      .sage { fill: #a9b69f; }
+      .sky { fill: #70afd0; }
+      .gold { fill: #e7c459; }
+      .espresso { fill: #382215; }
+      .soft { fill: #efe4d2; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1500" height="1360"/>
+  <text class="ink" x="48" y="56" font-size="38" font-weight="900">wander onboarding preview</text>
+  <text class="muted" x="50" y="86" font-size="17">guest-first flow: location + notifications, no login until save intent, freemium after 20 saved places</text>
+
+  <!-- Phone 1 -->
+  <g transform="translate(45,125)">
+    <rect class="phone" x="0" y="0" width="250" height="540" rx="44"/>
+    <rect class="screen" x="13" y="13" width="224" height="514" rx="34"/>
+    <rect x="88" y="25" width="74" height="22" rx="11" fill="#181614"/>
+    <text class="tiny ink" x="34" y="42" font-weight="700">9:41</text>
+    <g transform="translate(23,67)">
+      <rect class="map" x="0" y="0" width="204" height="248" rx="24"/>
+      <rect class="map2" x="112" y="0" width="92" height="248" rx="24"/>
+      <line class="grid" x1="0" y1="62" x2="204" y2="62"/>
+      <line class="grid" x1="0" y1="126" x2="204" y2="126"/>
+      <line class="grid" x1="68" y1="0" x2="68" y2="248"/>
+      <line class="grid" x1="138" y1="0" x2="138" y2="248"/>
+      <path class="road" d="M0,155 C45,138 80,148 124,137 C158,128 181,111 204,105"/>
+      <path class="road" d="M108,0 C104,54 111,105 104,162 C101,194 100,222 103,248"/>
+      <circle class="terracotta" cx="54" cy="102" r="18"/>
+      <text x="46" y="108" font-size="17">☕</text>
+      <circle class="sage" cx="139" cy="66" r="18"/>
+      <text x="132" y="72" font-size="16">🌲</text>
+      <circle class="gold" cx="151" cy="174" r="18"/>
+      <text x="145" y="180" font-size="15">🍜</text>
+      <circle class="sky" cx="98" cy="139" r="6"/>
+    </g>
+    <text class="tiny muted" x="24" y="346" font-weight="800">WELCOME</text>
+    <text class="h ink" x="24" y="381">Keep your places</text>
+    <text class="h ink" x="24" y="412">worth revisiting.</text>
+    <text class="body muted" x="24" y="441">Save recs from people</text>
+    <text class="body muted" x="24" y="462">you actually trust.</text>
+    <rect class="cta" x="24" y="480" width="202" height="42" rx="12"/>
+    <text class="ctaText" x="72" y="506">Start with the map</text>
+  </g>
+
+  <!-- Phone 2 -->
+  <g transform="translate(390,125)">
+    <rect class="phone" x="0" y="0" width="250" height="540" rx="44"/>
+    <rect class="screen" x="13" y="13" width="224" height="514" rx="34"/>
+    <rect x="88" y="25" width="74" height="22" rx="11" fill="#181614"/>
+    <text class="tiny ink" x="34" y="42" font-weight="700">9:41</text>
+    <circle class="terracotta" cx="125" cy="113" r="38"/>
+    <text x="111" y="125" font-size="33">📍</text>
+    <text class="h ink" x="36" y="190">Find what is</text>
+    <text class="h ink" x="36" y="221">nearby.</text>
+    <text class="body muted" x="36" y="253">Use location to detect</text>
+    <text class="body muted" x="36" y="274">where you are adding,</text>
+    <text class="body muted" x="36" y="295">then sort recs around you.</text>
+    <rect class="panel" x="35" y="322" width="180" height="92" rx="16"/>
+    <line class="grid" x1="50" y1="354" x2="200" y2="354"/>
+    <line class="grid" x1="97" y1="322" x2="97" y2="414"/>
+    <circle class="sky" cx="114" cy="371" r="7"/>
+    <circle class="terracotta" cx="76" cy="352" r="12"/>
+    <circle class="sage" cx="160" cy="386" r="12"/>
+    <rect class="cta" x="24" y="445" width="202" height="42" rx="12"/>
+    <text class="ctaText" x="80" y="471">Allow location</text>
+    <text class="small muted" x="103" y="506">Not now</text>
+  </g>
+
+  <!-- Phone 3 -->
+  <g transform="translate(735,125)">
+    <rect class="phone" x="0" y="0" width="250" height="540" rx="44"/>
+    <rect class="screen" x="13" y="13" width="224" height="514" rx="34"/>
+    <rect x="88" y="25" width="74" height="22" rx="11" fill="#181614"/>
+    <text class="tiny ink" x="34" y="42" font-weight="700">9:41</text>
+    <circle class="sky" cx="125" cy="102" r="38"/>
+    <text x="111" y="115" font-size="32">🔔</text>
+    <text class="h ink" x="34" y="180">Only the useful</text>
+    <text class="h ink" x="34" y="211">pings.</text>
+    <text class="body muted" x="34" y="243">Saved-place reminders,</text>
+    <text class="body muted" x="34" y="264">friend recs near you, and</text>
+    <text class="body muted" x="34" y="285">trip ideas you asked for.</text>
+    <rect class="panel" x="28" y="315" width="194" height="43" rx="12"/>
+    <circle class="terracotta" cx="50" cy="336" r="10"/><text class="small ink" x="68" y="341">Ryan saved nearby</text>
+    <rect class="panel" x="28" y="367" width="194" height="43" rx="12"/>
+    <circle class="gold" cx="50" cy="389" r="10"/><text class="small ink" x="68" y="394">Croatia trip idea</text>
+    <rect class="cta" x="24" y="445" width="202" height="42" rx="12"/>
+    <text class="ctaText" x="65" y="471">Turn on notifications</text>
+    <text class="small muted" x="94" y="506">Maybe later</text>
+  </g>
+
+  <!-- Phone 4 -->
+  <g transform="translate(1080,125)">
+    <rect class="phone" x="0" y="0" width="250" height="540" rx="44"/>
+    <rect class="screen" x="13" y="13" width="224" height="514" rx="34"/>
+    <rect x="88" y="25" width="74" height="22" rx="11" fill="#181614"/>
+    <text class="tiny ink" x="34" y="42" font-weight="700">9:41</text>
+    <text class="tiny muted" x="28" y="83" font-weight="800">MAKE DISCOVER YOURS</text>
+    <text class="h ink" x="28" y="130">What do you</text>
+    <text class="h ink" x="28" y="161">save most?</text>
+    <text class="body muted" x="28" y="193">Pick a few. We will tune</text>
+    <text class="body muted" x="28" y="214">Discover and plus questions.</text>
+    <g transform="translate(28,250)">
+      <rect class="chipOn" x="0" y="0" width="86" height="34" rx="17"/><text class="chipTextOn" x="13" y="22">☕ coffee</text>
+      <rect class="chip" x="96" y="0" width="100" height="34" rx="17"/><text class="chipText" x="110" y="22">🍜 restaurants</text>
+      <rect class="chipOn" x="0" y="46" width="74" height="34" rx="17"/><text class="chipTextOn" x="13" y="68">🥾 hikes</text>
+      <rect class="chip" x="84" y="46" width="70" height="34" rx="17"/><text class="chipText" x="100" y="68">🍸 bars</text>
+      <rect class="chip" x="0" y="92" width="78" height="34" rx="17"/><text class="chipText" x="14" y="114">🌳 parks</text>
+      <rect class="chipOn" x="88" y="92" width="112" height="34" rx="17"/><text class="chipTextOn" x="101" y="114">💻 work cafes</text>
+      <rect class="chip" x="0" y="138" width="96" height="34" rx="17"/><text class="chipText" x="13" y="160">🧘 wellness</text>
+      <rect class="chip" x="106" y="138" width="82" height="34" rx="17"/><text class="chipText" x="120" y="160">💦 nature</text>
+    </g>
+    <rect class="cta" x="24" y="445" width="202" height="42" rx="12"/>
+    <text class="ctaText" x="94" y="471">Continue</text>
+  </g>
+
+  <!-- Phone 5 -->
+  <g transform="translate(220,750)">
+    <rect class="phone" x="0" y="0" width="250" height="540" rx="44"/>
+    <rect class="screen" x="13" y="13" width="224" height="514" rx="34"/>
+    <rect x="88" y="25" width="74" height="22" rx="11" fill="#181614"/>
+    <text class="tiny ink" x="34" y="42" font-weight="700">9:41</text>
+    <text class="tiny muted" x="28" y="82" font-weight="800">ADD A PLACE</text>
+    <text class="h ink" x="28" y="127">Where is it</text>
+    <text class="h ink" x="28" y="158">from?</text>
+    <text class="body muted" x="28" y="190">Pick a source. We will fill</text>
+    <text class="body muted" x="28" y="211">in what we can.</text>
+    <g transform="translate(26,250)">
+      <rect class="cta" x="0" y="0" width="198" height="58" rx="16"/>
+      <text x="17" y="36" font-size="24">📍</text><text class="ctaText" x="52" y="25">I'm here right now</text><text x="52" y="45" fill="#ffe3d8" font-size="11" font-family="Arial">Maru Coffee detected</text>
+      <rect class="panel" x="0" y="72" width="198" height="52" rx="16"/>
+      <text x="17" y="105" font-size="23">🔗</text><text class="body ink" x="52" y="101" font-weight="800">Paste a link</text>
+      <rect class="panel" x="0" y="138" width="198" height="52" rx="16"/>
+      <text x="17" y="171" font-size="23">✍️</text><text class="body ink" x="52" y="167" font-weight="800">Add manually</text>
+      <rect class="panel" x="0" y="204" width="198" height="52" rx="16"/>
+      <text x="17" y="237" font-size="23">📷</text><text class="body ink" x="52" y="233" font-weight="800">From a photo</text>
+    </g>
+  </g>
+
+  <!-- Phone 6 -->
+  <g transform="translate(565,750)">
+    <rect class="phone" x="0" y="0" width="250" height="540" rx="44"/>
+    <rect class="screen" x="13" y="13" width="224" height="514" rx="34"/>
+    <rect x="88" y="25" width="74" height="22" rx="11" fill="#181614"/>
+    <text class="tiny ink" x="34" y="42" font-weight="700">9:41</text>
+    <text class="tiny muted" x="28" y="82" font-weight="800">SAVE GATE</text>
+    <text class="h ink" x="28" y="126">Save Maru</text>
+    <text class="h ink" x="28" y="157">Coffee?</text>
+    <rect class="panel" x="28" y="187" width="194" height="78" rx="18"/>
+    <circle class="soft" cx="62" cy="226" r="25"/>
+    <text x="52" y="234" font-size="24">☕</text>
+    <text class="body ink" x="96" y="219" font-weight="800">Maru Coffee</text>
+    <text class="small muted" x="96" y="241">arts district · coffee</text>
+    <text class="body muted" x="28" y="301">Create a free account to</text>
+    <text class="body muted" x="28" y="322">keep places synced and</text>
+    <text class="body muted" x="28" y="343">share recs with friends.</text>
+    <rect class="ghostBtn" x="28" y="374" width="194" height="42" rx="12"/><text class="body ink" x="73" y="400" font-weight="800">Continue with Apple</text>
+    <rect class="ghostBtn" x="28" y="426" width="194" height="42" rx="12"/><text class="body ink" x="73" y="452" font-weight="800">Continue with email</text>
+    <text class="small muted" x="84" y="502">Keep browsing</text>
+  </g>
+
+  <!-- Phone 7 -->
+  <g transform="translate(910,750)">
+    <rect class="phone" x="0" y="0" width="250" height="540" rx="44"/>
+    <rect class="screen" x="13" y="13" width="224" height="514" rx="34"/>
+    <rect x="88" y="25" width="74" height="22" rx="11" fill="#181614"/>
+    <text class="tiny ink" x="34" y="42" font-weight="700">9:41</text>
+    <text class="tiny muted" x="28" y="82" font-weight="800">AFTER SAVE #21</text>
+    <text class="h ink" x="28" y="126">Your map is</text>
+    <text class="h ink" x="28" y="157">filling up.</text>
+    <text class="body muted" x="28" y="189">20 places are free. Go</text>
+    <text class="body muted" x="28" y="210">unlimited when Wander</text>
+    <text class="body muted" x="28" y="231">becomes your real map.</text>
+    <rect class="soft" x="28" y="260" width="194" height="12" rx="6"/>
+    <rect class="terracotta" x="28" y="260" width="194" height="12" rx="6"/>
+    <text class="small muted" x="81" y="292">20/20 free saves used</text>
+    <g transform="translate(35,322)">
+      <circle class="terracotta" cx="7" cy="0" r="5"/><text class="body ink" x="22" y="5">Unlimited saves</text>
+      <circle class="terracotta" cx="7" cy="34" r="5"/><text class="body ink" x="22" y="39">Unlimited link imports</text>
+      <circle class="terracotta" cx="7" cy="68" r="5"/><text class="body ink" x="22" y="73">Private friend circles</text>
+      <circle class="terracotta" cx="7" cy="102" r="5"/><text class="body ink" x="22" y="107">Trip packs + backup</text>
+    </g>
+    <rect class="cta" x="24" y="462" width="202" height="42" rx="12"/>
+    <text class="ctaText" x="86" y="488">Go unlimited</text>
+    <text class="small muted" x="101" y="518">Not now</text>
+  </g>
+
+  <g transform="translate(1225,790)">
+    <rect class="panel" x="0" y="0" width="220" height="280" rx="20"/>
+    <text class="tiny muted" x="20" y="34" font-weight="800">FLOW PRINCIPLES</text>
+    <text class="body ink" x="20" y="68" font-weight="800">1. Show the map first.</text>
+    <text class="body ink" x="20" y="104" font-weight="800">2. Explain permissions.</text>
+    <text class="body ink" x="20" y="140" font-weight="800">3. Tune Discover lightly.</text>
+    <text class="body ink" x="20" y="176" font-weight="800">4. Gate auth on save.</text>
+    <text class="body ink" x="20" y="212" font-weight="800">5. Paywall after value.</text>
+    <text class="small muted" x="20" y="248">Keep copy useful, not cute.</text>
+  </g>
+</svg>
