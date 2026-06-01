@@ -811,6 +811,12 @@ Skill: `plan-design-review`
 Initial design completeness: 6/10
 Final design completeness after this pass: 8/10
 
+Refresh date: 2026-06-01
+Reviewed commit: 3b109ad
+Refreshed design completeness: 8/10 -> 9/10
+
+The refreshed design review keeps `preview/follow-profile-settings-mocks/` as the approved visual baseline and closes the M2 gaps that were not fully mocked: Discover, other-user profiles, followers/following lists, Settings details, auth gates, block states, and stale access-changed states. The detailed review artifact is `docs/reviews/2026-06-01-plan-design-review.md`.
+
 Handoff update: `preview/follow-profile-settings-mocks/` now supersedes the earlier local storyboard and the Lovable PDF as the implementation visual reference. Use `tokens.css` as the literal token source, `index.html` for the component system, and `screens.html` for annotated Map/Add/Profile mocks. The original Lovable PDF remains background reference for breadth only.
 
 ### Design System Status
@@ -1038,6 +1044,8 @@ These have been resolved for eng planning:
 ### Design Review Result
 
 The plan is design-complete enough for the next planning step, with the handoff package as the approved visual reference for tokens and core screens. It is not implementation-complete until the remaining visual states and backend/eng review confirm feasibility.
+
+2026-06-01 update: the missing M2 social/settings states are now specified in `DESIGN.md`, so M2 can proceed against the handoff style. Run simulator visual QA after implementation.
 
 ## System Architecture
 

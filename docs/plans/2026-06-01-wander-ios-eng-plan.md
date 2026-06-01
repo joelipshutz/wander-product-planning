@@ -165,8 +165,16 @@ Visibility read
 Exit criteria:
 - Schema/RLS contract reviewed and represented in tests or test stubs before implementation.
 - Sync state machine covers create/update/delete/retry/tombstone/auth-claim/server-denied/blocked-stale cases.
-- Design review is run against the handoff plus missing states before M2 polish.
+- Design review is run against the handoff plus missing states before M2 polish. Completed 2026-06-01 in `docs/reviews/2026-06-01-plan-design-review.md`.
 - No M2 UI code starts until M1.5 contracts are committed.
+
+Design gate result:
+- Use `preview/follow-profile-settings-mocks/` as the approved visual baseline; do not generate a competing direction for M2.
+- Discover: search, people row, big smart-filter pills, follow-attributed results, parser fallback chips, no global people directory.
+- Other-user profiles: shared Profile shell, relationship state, follow/unfollow, role-gated places, followers/following, overflow block.
+- Followers/following: segmented lists with profile rows, inline relationship actions, and block overflow.
+- Settings: Profile gear surface only, with account, default visibility, blocked users, contacts, notifications, and data/sync rows.
+- Block/access changed/auth gates: required states before social polish is complete.
 
 ### M2: Core Local Product Loop
 
@@ -420,3 +428,16 @@ Before coding beyond M0/M1, complete M1.5:
 - Real link/photo extraction. Backend extraction jobs own this before social alpha.
 - Full onboarding. Only auth gates needed by save/sync/follow are in scope before onboarding implementation.
 - Private profiles/follow requests. Open follow plus hard block remains v0.1.
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 1 | clean | 0 critical gaps |
+| Codex Review | `/codex review` | Independent 2nd opinion | 0 | - | Not run |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | clean | Reset audit completed; M1.5 contract lock added |
+| Design Review | `/plan-design-review` | UI/UX gaps | 2 | clean | score: 8/10 -> 9/10, 8 decisions |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | - | Not run |
+
+- **UNRESOLVED:** 0 across the current eng/design plan gates.
+- **VERDICT:** CEO + ENG + DESIGN CLEARED for M2 implementation.

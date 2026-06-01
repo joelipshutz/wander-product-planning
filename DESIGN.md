@@ -454,6 +454,129 @@ Examples:
 - "Nothing from your people yet." + Find people.
 - "This link needs a little help." + Add manually.
 
+## M2 Social And State Surface Specs
+
+These specs close the surfaces not fully mocked in `screens.html`. They must extend the handoff style rather than introduce a new visual direction.
+
+### Discover
+
+Hierarchy:
+
+1. Search field with active query/filter summary.
+2. People row for contact matches, exact/near-exact username matches, and visible profile links.
+3. Big smart-filter pills, not curation cards.
+4. Follow-attributed result rows/cards with visible social proof and one save-to-my-map action.
+5. Parser fallback/editable filter chips.
+
+Rules:
+
+- No global people directory.
+- People results appear only through contacts, exact/near-exact username search, or visible profile links.
+- Smart filters use casual query labels like "hikes in LA", "coffee to work from", "patio bars", and "friends liked".
+- Result cards must earn card treatment by containing a place, trusted attribution, useful attributes, and a direct save action.
+- Parser failure falls back to static smart filters and keeps the raw query visible.
+- Blocked or unavailable profiles are hidden, not shown as broken rows.
+
+States:
+
+- Loading: inline spinner in the search field plus quiet placeholder rows.
+- Empty: "Nothing from your people yet" with Find people or broaden filters.
+- Error: "Search hit a snag" with Retry.
+- Partial/offline: cached results are labeled as saved earlier; no stale social claim should look fresh.
+
+### Other-User Profile
+
+Hierarchy:
+
+1. Identity shell: avatar, display name, handle/city, bio, counts.
+2. Relationship row: Follow, Following, Follows you, Friend, or Blocked.
+3. Visible places section filtered by status/category/area.
+4. Followers/following entry points.
+5. Overflow actions, including Block.
+
+Role-based views:
+
+- Non-follower: profile shell and counts only; primary action is Follow.
+- One-way follower: follower-visible places plus Following state.
+- Follows-you: shell plus follow-back affordance.
+- Mutual/friend: follower-visible and friend-visible places.
+- Blocked/unavailable: no place data; quiet explanation and unblock only where owner initiated block.
+
+Rules:
+
+- The owner Profile and other-user Profile share the same visual shell. Owner-only edit/settings controls are replaced by relationship and safety actions.
+- Long names and handles truncate before they collide with the follow button.
+- Block is available from overflow and never hidden behind Settings.
+
+### Followers And Following Lists
+
+Hierarchy:
+
+1. Segmented Followers / Following control.
+2. Search within the current list.
+3. Profile rows with avatar, display name, handle, relationship badge, and inline follow/unfollow.
+4. Overflow block action.
+
+Rules:
+
+- Rows use the Profile avatar row vocabulary, not a new card style.
+- Blocked users disappear from both users' visible graph lists.
+- Empty Followers: "No followers yet" with profile-sharing or Find people CTA.
+- Empty Following: "Not following anyone yet" with Find people CTA.
+
+### Settings
+
+Entry: Profile gear only.
+
+Hierarchy:
+
+1. Profile/account basics.
+2. Default place visibility with Everyone/Friends/Self pills and helper copy.
+3. Blocked users.
+4. Contacts status and planned native Contacts affordance.
+5. Notifications.
+6. Data/sync.
+7. Sign out / account deletion later.
+
+Rules:
+
+- Use grouped rows on canvas/surface tokens; do not add a fifth bottom tab.
+- Default visibility copy must say what Everyone means: "People who follow you can see this."
+- Contacts can show a planned/disabled state in v0.1, but it must not trigger a native permission prompt until native Contacts work is actually implemented.
+- Data/sync shows pending, failed, retrying, and synced states without exposing backend jargon.
+
+### Block And Access-Changed States
+
+Block confirmation:
+
+- Title: "Block this person?"
+- Body: "You won't see each other's profiles, places, or search results."
+- Primary destructive action: Block.
+- Secondary action: Cancel.
+
+After block:
+
+- Profile/search/list entries disappear where possible.
+- If the user is already on a stale profile/place sheet, show a quiet access-changed state with a single close/back action.
+- Blocking deletes follow edges both ways in the product model.
+
+Access changed:
+
+- If unfollow or block revokes access while a detail is open, do not leave private place details visible.
+- Show "This place isn't available anymore" and return to Map/Profile.
+
+### Auth Gates
+
+Shown only at save/sync/follow/social-save moments.
+
+Rules:
+
+- Guest first save can remain local.
+- Sync, follow, social save, and cross-device access require sign-in.
+- The sheet must name the user's current action, for example "Sign in to follow Ryan" or "Sign in to sync this place."
+- For local save flows, include a secondary "Keep it on this phone" path when technically valid.
+- Do not force account creation during first-run browsing or before save intent.
+
 ## Onboarding Rules
 
 Flow:
@@ -542,3 +665,4 @@ Plan-eng-review locked the backend/auth, visibility, block, share-extension, pla
 | 2026-06-01 | Defer private profiles, iPad-specific layouts, and extra design variants | Open follow plus hard block, phone-first compatibility, and current handoff source of truth are enough for eng planning. |
 | 2026-06-01 | Use simple v0.1 sync conflict handling | Local retry queue plus `updated_at`/server-wins behavior is enough for v0.1; no field-level multi-device merge. |
 | 2026-06-01 | Keep analytics vendor-neutral | Define event names now behind an interface, choose provider later. |
+| 2026-06-01 | Complete refreshed design review gate for M2 | Missing Discover, other-user profile, followers/following, Settings, auth gate, block, and access-changed states are now specified in the handoff style. |

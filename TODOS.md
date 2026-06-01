@@ -20,7 +20,8 @@ Date: 2026-05-29
 - Refresh design review / mocks for follow graph, profiles, and settings. Updated 2026-06-01 from `wander.zip` design handoff.
   - Why: the original mocks cover map, discover, and add flow, but the 2026-06-01 graph change adds profile pages, followers/following lists, block controls, settings, and a three-tier visibility picker.
   - Result: `preview/follow-profile-settings-mocks/` now holds the design handoff package. `tokens.css` is the literal source of truth; `index.html` and `screens.html` cover the core design system, Map, Add, saved, and merged Profile surfaces.
-  - Follow-up: run design review against the handoff plus the missing visual states: Discover, other-user profiles, followers/following, settings details, onboarding, and block/access-change states.
+  - Result: refreshed plan-design-review completed 2026-06-01 in `docs/reviews/2026-06-01-plan-design-review.md`.
+  - Follow-up: run simulator visual QA after M2 screens exist.
 
 - Run plan-eng-review. Done 2026-06-01.
   - Why: backend, sync, privacy rules, extraction, and data model need architecture review before implementation.

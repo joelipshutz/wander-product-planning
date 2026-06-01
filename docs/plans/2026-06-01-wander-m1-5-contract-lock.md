@@ -526,16 +526,20 @@ Hostile tests:
 
 ## Design Review Gate
 
-Run plan/design review after this contract, before M2 polish, focused on:
-- other-user profile states
-- followers/following lists
-- username/contact search results
-- Discover smart filters/result cards
-- block confirmation/blocked profile/blocked settings
-- settings detail rows
-- non-follower profile shell
-- auth gates at save/sync/follow
-- social place detail when access changes mid-flow
+Completed 2026-06-01 in `docs/reviews/2026-06-01-plan-design-review.md`.
+
+The handoff package remains the approved visual baseline. No competing generated mock direction was added.
+
+Locked M2 design decisions:
+- Discover uses search, people row, big smart-filter pills, follow-attributed results, and parser fallback chips. It is not a global people directory or curation-card grid.
+- Other-user profiles reuse the Profile shell with relationship controls, role-gated places, followers/following entry points, and overflow block.
+- Followers/following lists use segmented tabs, profile rows, inline relationship actions, and overflow block.
+- Settings stays behind the Profile gear with account, default visibility, blocked users, contacts, notifications, and data/sync rows.
+- Block confirmation, blocked profile, blocked settings, and stale access-changed states are required before social UI polish is considered complete.
+- Auth gates appear at save/sync/follow/social-save intent and preserve local guest save where valid.
+- Native implementation swaps mock emoji chrome for SF Symbols or custom glyphs; category marks remain accessible labels, not decorative meaning.
+
+Remaining visual QA moves to implementation review after M2 screens exist.
 
 ## Parallelization
 
