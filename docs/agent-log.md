@@ -145,3 +145,46 @@ xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=
   - `DerivedData/wander-map-after-final-iphone16e.png`
 - Visual result: the iOS letterboxing/undersized app frame is fixed on both targets. Map now fills the screen. Search, chips, pins, and selected-place sheet are materially more compact. On smaller phones the filter chips remain horizontally scrollable by design.
 - Remaining local caveat: `Wander.xcodeproj/project.pbxproj` still has an unstaged local signing/team diff that was not part of this work and should remain uncommitted unless Joe explicitly wants it.
+
+## 2026-06-01 - Codex - M2.1 Visual QA Sweep
+
+Agent: Codex
+Branch: `main`
+Starting commit: `32e3edc`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` has the same unstaged local signing/team diff and should remain untouched.
+
+Goal: sweep the remaining M2 native screens after the Map letterboxing fix. Capture/navigate Add, Discover, Profile, Settings, and related profile/list/draft states where practical; patch obvious sizing, safe-area, truncation, and density issues; run tests; commit and push.
+
+Expected files to inspect/touch:
+
+- `Wander/App/WanderRootView.swift`
+- `Wander/Features/Add/AddScreen.swift`
+- `Wander/Features/Discover/DiscoverScreen.swift`
+- `Wander/Features/Profile/ProfileScreen.swift`
+- `Wander/Features/Settings/SettingsScreen.swift`
+- `Wander/DesignSystem/WanderTheme.swift`
+- `docs/agent-log.md`
+
+Completion checkpoint, 2026-06-01 15:28 PDT:
+
+- Added QA launch arguments in `WanderRootView`:
+  - `-WanderInitialTab add|discover|profile`
+  - `-WanderOpenSettings`
+- Compact visual sweep:
+  - Add: reduced row/card height, icon size, header/subtitle scale, and draft/saved state bulk.
+  - Discover: reduced header/search density, people card height, smart-filter height, and place-row padding.
+  - Profile: reduced owner card, stat tiles, month card, empty rows, and recent rows.
+  - Settings: reduced row/card density and fixed visibility/blocked cards shrinking to content width.
+- Captured screenshots under `DerivedData/visual-sweep/`:
+  - iPhone 16 Plus: Add, Discover, Profile, Settings.
+  - iPhone 16e: Add, Discover, Profile, Settings.
+- Visual result: no iOS letterboxing, no obvious clipping, no tab-bar overlap on reviewed first-view screens. Discover remains the densest screen but now shows the first result fully and the second result partially on iPhone 16e.
+- Ran full test suite:
+
+```bash
+xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO
+```
+
+- Result: 20 tests, 0 failures.
+- Latest passing result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.01_15-29-13--0700.xcresult`.
+- Remaining local caveat: `Wander.xcodeproj/project.pbxproj` still has the unrelated unstaged local signing/team diff and should remain uncommitted unless Joe asks.

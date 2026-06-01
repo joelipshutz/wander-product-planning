@@ -23,7 +23,7 @@ struct AddScreen: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: WanderTheme.spacing6) {
+                VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
                     header
 
                     switch step {
@@ -52,18 +52,18 @@ struct AddScreen: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
             Text(step.kicker)
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(WanderTheme.textMuted.color)
             Text(step.title)
-                .font(.system(size: 30, weight: .black))
+                .font(.system(size: 28, weight: .black))
             Text(step.subtitle)
-                .font(.system(size: 15, weight: .medium))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(WanderTheme.textMuted.color)
         }
     }
 
     private var sourcePicker: some View {
-        VStack(spacing: WanderTheme.spacing3) {
+        VStack(spacing: WanderTheme.spacing2) {
             SourceRow(title: AddSourceType.currentLocation.title, subtitle: "use nearby places · not live location", systemImage: "location.fill", isPrimary: true) {
                 selectedSource = .currentLocation
                 candidates = store.currentLocationCandidates()
@@ -85,7 +85,7 @@ struct AddScreen: View {
             }
 
             Text("location is used to find nearby places · not to broadcast you")
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(WanderTheme.textMuted.color)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.top, WanderTheme.spacing2)
@@ -93,7 +93,7 @@ struct AddScreen: View {
     }
 
     private var manualForm: some View {
-        VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
             LabeledField(label: "place name", placeholder: "Maru Coffee", text: $manualName)
             LabeledField(label: "area", placeholder: "arts district", text: $manualArea)
 
@@ -125,8 +125,8 @@ struct AddScreen: View {
     }
 
     private var confirmPlace: some View {
-        VStack(alignment: .leading, spacing: WanderTheme.spacing6) {
-            VStack(spacing: WanderTheme.spacing3) {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
+            VStack(spacing: WanderTheme.spacing2) {
                 ForEach(candidates) { candidate in
                     CandidateRow(candidate: candidate, isSelected: selectedCandidate?.id == candidate.id) {
                         selectedCandidateID = candidate.id
@@ -163,7 +163,7 @@ struct AddScreen: View {
     }
 
     private var detailsForm: some View {
-        VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
             if let selectedCandidate {
                 HStack {
                     CategoryIcon(category: selectedCandidate.category)
@@ -208,7 +208,7 @@ struct AddScreen: View {
                 TextField("best table, what to order, who told you...", text: $note, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(3, reservesSpace: true)
-                    .padding(WanderTheme.spacing4)
+                    .padding(WanderTheme.spacing3)
                     .background(WanderTheme.surfaceRaised.color)
                     .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
             }
@@ -228,17 +228,17 @@ struct AddScreen: View {
     }
 
     private var savedView: some View {
-        VStack(spacing: WanderTheme.spacing6) {
+        VStack(spacing: WanderTheme.spacing4) {
             Image(systemName: selectedStatus == .been ? "mappin.circle.fill" : "mappin.circle")
-                .font(.system(size: 76, weight: .black))
+                .font(.system(size: 64, weight: .black))
                 .foregroundStyle(WanderTheme.terracotta.color)
                 .accessibilityHidden(true)
 
             VStack(spacing: WanderTheme.spacing2) {
                 Text("it's on your map")
-                    .font(.system(size: 30, weight: .black))
+                    .font(.system(size: 26, weight: .black))
                 Text("saved as \(selectedStatus.displayTitle), visible to \(selectedVisibility.displayTitle.lowercased()).")
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(WanderTheme.textMuted.color)
                     .multilineTextAlignment(.center)
             }
@@ -257,28 +257,28 @@ struct AddScreen: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, WanderTheme.spacing12)
+        .padding(.top, WanderTheme.spacing8)
     }
 
     private var draftView: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
             Image(systemName: "tray.and.arrow.down.fill")
-                .font(.system(size: 44, weight: .bold))
+                .font(.system(size: 38, weight: .bold))
                 .foregroundStyle(WanderTheme.terracotta.color)
 
             Text(draft?.title ?? "Draft saved.")
-                .font(.system(size: 24, weight: .bold))
+                .font(.system(size: 22, weight: .bold))
             Text(draft?.message ?? "You can finish this manually.")
-                .font(.system(size: 15, weight: .medium))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(WanderTheme.textMuted.color)
 
             WanderPrimaryButton(title: "add manually instead", systemImage: "square.and.pencil") {
                 step = .manual
             }
         }
-        .padding(WanderTheme.spacing6)
+        .padding(WanderTheme.spacing4)
         .background(WanderTheme.surfaceBone.color)
-        .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusSheet))
+        .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
     }
 
     private func reset() {
@@ -349,24 +349,25 @@ private struct SourceRow: View {
         Button(action: action) {
             HStack(spacing: WanderTheme.spacing3) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 19, weight: .bold))
-                    .frame(width: 44, height: 44)
+                    .font(.system(size: 17, weight: .bold))
+                    .frame(width: 40, height: 40)
                     .background(isPrimary ? WanderTheme.terracottaDark.color.opacity(0.18) : WanderTheme.surfaceSand.color)
                     .clipShape(Circle())
                 VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
                     Text(title)
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 16, weight: .bold))
                     Text(subtitle)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(isPrimary ? WanderTheme.textOnAction.color.opacity(0.82) : WanderTheme.textMuted.color)
+                        .lineLimit(2)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .foregroundStyle(isPrimary ? WanderTheme.textOnAction.color : WanderTheme.textFaint.color)
             }
             .foregroundStyle(isPrimary ? WanderTheme.textOnAction.color : WanderTheme.textInk.color)
-            .frame(minHeight: 72)
-            .padding(WanderTheme.spacing4)
+            .frame(minHeight: 62)
+            .padding(WanderTheme.spacing3)
             .background(isPrimary ? WanderTheme.terracotta.color : WanderTheme.surfaceBone.color)
             .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
         }
@@ -385,16 +386,16 @@ private struct CandidateRow: View {
                 CategoryIcon(category: candidate.category)
                 VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
                     Text(candidate.name)
-                        .font(.system(size: 17, weight: .bold))
+                        .font(.system(size: 16, weight: .bold))
                     Text("\(candidate.category) · confidence \(Int(candidate.confidence * 100))%")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(WanderTheme.textMuted.color)
                 }
                 Spacer()
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isSelected ? WanderTheme.terracotta.color : WanderTheme.borderStrong.color)
             }
-            .padding(WanderTheme.spacing4)
+            .padding(WanderTheme.spacing3)
             .background(WanderTheme.surfaceBone.color)
             .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
             .overlay(
@@ -418,9 +419,9 @@ private struct LabeledField: View {
                 .foregroundStyle(WanderTheme.textMuted.color)
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
-                .padding(WanderTheme.spacing4)
+                .padding(WanderTheme.spacing3)
                 .background(WanderTheme.surfaceRaised.color)
-                .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+                .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusMedium))
         }
     }
 }
@@ -447,9 +448,9 @@ private struct ChoicePill: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 14, weight: .bold))
+                .font(.system(size: 13, weight: .bold))
                 .frame(minHeight: WanderTheme.tapMinimum)
-                .padding(.horizontal, WanderTheme.spacing4)
+                .padding(.horizontal, WanderTheme.spacing3)
                 .background(isSelected ? WanderTheme.textInk.color : WanderTheme.surfaceRaised.color)
                 .foregroundStyle(isSelected ? WanderTheme.textOnAction.color : WanderTheme.textInk.color)
                 .clipShape(Capsule())
@@ -465,10 +466,10 @@ private struct QuestionBlock<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
             HStack {
                 Text(title)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
                 Spacer()
                 Text(tag)
                     .font(.system(size: 11, weight: .bold))
@@ -476,7 +477,7 @@ private struct QuestionBlock<Content: View>: View {
             }
             content
         }
-        .padding(WanderTheme.spacing4)
+        .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceBone.color)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
     }
@@ -499,9 +500,9 @@ private struct CategoryIcon: View {
 
     var body: some View {
         Image(systemName: imageName)
-            .font(.system(size: 20, weight: .bold))
+            .font(.system(size: 18, weight: .bold))
             .foregroundStyle(WanderTheme.terracotta.color)
-            .frame(width: 44, height: 44)
+            .frame(width: 40, height: 40)
             .background(WanderTheme.terracottaTint.color)
             .clipShape(Circle())
     }

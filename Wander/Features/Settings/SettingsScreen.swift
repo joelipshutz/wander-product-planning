@@ -6,7 +6,7 @@ struct SettingsScreen: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: WanderTheme.spacing6) {
+                VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
                     header
                     visibilitySection
                     blockedSection
@@ -22,12 +22,12 @@ struct SettingsScreen: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
             Text("SETTINGS")
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(WanderTheme.textMuted.color)
             Text("keep your map yours")
-                .font(.system(size: 28, weight: .black))
+                .font(.system(size: 26, weight: .black))
             Text("Account, visibility, contacts, blocked users, and sync status live here - not in a fifth tab.")
-                .font(.system(size: 15, weight: .medium))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(WanderTheme.textMuted.color)
         }
     }
@@ -48,10 +48,11 @@ struct SettingsScreen: View {
             }
 
             Text(store.defaultVisibility.helperCopy)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(WanderTheme.textMuted.color)
         }
-        .padding(WanderTheme.spacing4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceBone.color)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
     }
@@ -62,17 +63,17 @@ struct SettingsScreen: View {
             let blocked = store.blockedProfiles()
             if blocked.isEmpty {
                 Text("No one blocked.")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(WanderTheme.textMuted.color)
             } else {
                 ForEach(blocked) { profile in
                     HStack {
-                        WanderAvatar(initials: String(profile.displayName.prefix(2)).uppercased(), size: 36, color: WanderTheme.stateError.color)
+                        WanderAvatar(initials: String(profile.displayName.prefix(2)).uppercased(), size: 34, color: WanderTheme.stateError.color)
                         VStack(alignment: .leading) {
                             Text(profile.displayName)
-                                .font(.system(size: 15, weight: .bold))
+                                .font(.system(size: 14, weight: .bold))
                             Text("@\(profile.handle)")
-                                .font(.system(size: 13))
+                                .font(.system(size: 12))
                                 .foregroundStyle(WanderTheme.textMuted.color)
                         }
                         Spacer()
@@ -85,7 +86,8 @@ struct SettingsScreen: View {
                 }
             }
         }
-        .padding(WanderTheme.spacing4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceBone.color)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
     }
@@ -109,7 +111,7 @@ private struct SettingsSectionTitle: View {
 
     var body: some View {
         Text(title)
-            .font(.system(size: 16, weight: .black))
+            .font(.system(size: 15, weight: .black))
     }
 }
 
@@ -121,24 +123,25 @@ private struct SettingsRow: View {
     var body: some View {
         HStack(spacing: WanderTheme.spacing3) {
             Image(systemName: systemImage)
-                .font(.system(size: 17, weight: .bold))
+                .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(WanderTheme.terracotta.color)
-                .frame(width: 40, height: 40)
+                .frame(width: 38, height: 38)
                 .background(WanderTheme.terracottaTint.color)
                 .clipShape(Circle())
             VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
                 Text(title)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
                 Text(subtitle)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(WanderTheme.textMuted.color)
+                    .lineLimit(1)
             }
             Spacer()
             Image(systemName: "chevron.right")
                 .foregroundStyle(WanderTheme.textFaint.color)
         }
         .frame(minHeight: WanderTheme.tapMinimum)
-        .padding(WanderTheme.spacing4)
+        .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceBone.color)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
     }

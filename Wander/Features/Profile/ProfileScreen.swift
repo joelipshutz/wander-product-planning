@@ -8,7 +8,7 @@ struct ProfileScreen: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: WanderTheme.spacing6) {
+                VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
                     ownerHeader
                     statsGrid
                     monthCard
@@ -33,13 +33,13 @@ struct ProfileScreen: View {
     private var ownerHeader: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
             HStack(alignment: .top) {
-                WanderAvatar(initials: store.currentUser.initials, size: 64, color: WanderTheme.terracotta.color)
+                WanderAvatar(initials: store.currentUser.initials, size: 56, color: WanderTheme.terracotta.color)
 
                 VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
                     Text(store.currentUser.displayName)
-                        .font(.system(size: 28, weight: .black))
+                        .font(.system(size: 24, weight: .black))
                     Text("@\(store.currentUser.handle) · \(store.currentUser.homeArea ?? "Los Angeles")")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(WanderTheme.textMuted.color)
                 }
 
@@ -49,8 +49,8 @@ struct ProfileScreen: View {
                     showsSettings = true
                 } label: {
                     Image(systemName: "gearshape.fill")
-                        .font(.system(size: 20, weight: .bold))
-                        .frame(width: 44, height: 44)
+                        .font(.system(size: 18, weight: .bold))
+                        .frame(width: 40, height: 40)
                         .background(WanderTheme.surfaceSand.color)
                         .clipShape(Circle())
                 }
@@ -58,11 +58,11 @@ struct ProfileScreen: View {
             }
 
             Text(store.currentUser.bio ?? "always down for a detour")
-                .font(.system(size: 16))
+                .font(.system(size: 15))
                 .italic()
                 .foregroundStyle(WanderTheme.textMuted.color)
         }
-        .padding(WanderTheme.spacing4)
+        .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceBone.color)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
     }
@@ -84,7 +84,7 @@ struct ProfileScreen: View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
             HStack {
                 Text("this month")
-                    .font(.system(size: 18, weight: .black))
+                    .font(.system(size: 17, weight: .black))
                 Spacer()
                 Text("JUN '26")
                     .font(.system(size: 12, weight: .bold))
@@ -93,14 +93,14 @@ struct ProfileScreen: View {
 
             HStack(alignment: .center, spacing: WanderTheme.spacing4) {
                 Text("\(store.currentUserVisiblePlaces.count)")
-                    .font(.system(size: 44, weight: .black))
+                    .font(.system(size: 38, weight: .black))
                     .foregroundStyle(WanderTheme.terracotta.color)
                 Text("saved places so far. mostly coffee + a couple from friends' tips.")
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(WanderTheme.textMuted.color)
                 Spacer()
             }
-            .padding(WanderTheme.spacing4)
+            .padding(WanderTheme.spacing3)
             .background(WanderTheme.surfaceBone.color)
             .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
         }
@@ -109,7 +109,7 @@ struct ProfileScreen: View {
     private var draftsSection: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
             Text("drafts")
-                .font(.system(size: 18, weight: .black))
+                .font(.system(size: 17, weight: .black))
 
             if store.unresolvedDrafts.isEmpty {
                 SmallEmptyRow(title: "No unresolved drafts", subtitle: "link and photo shells land here")
@@ -122,13 +122,13 @@ struct ProfileScreen: View {
                             Text(draft.title)
                                 .font(.system(size: 15, weight: .bold))
                             Text(draft.message)
-                                .font(.system(size: 13, weight: .medium))
+                                .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(WanderTheme.textMuted.color)
                                 .lineLimit(1)
                         }
                         Spacer()
                     }
-                    .padding(WanderTheme.spacing4)
+                    .padding(WanderTheme.spacing3)
                     .background(WanderTheme.surfaceBone.color)
                     .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
                 }
@@ -140,7 +140,7 @@ struct ProfileScreen: View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
             HStack {
                 Text("recent")
-                    .font(.system(size: 18, weight: .black))
+                    .font(.system(size: 17, weight: .black))
                 Spacer()
                 Button("following") {
                     listMode = .following
@@ -169,7 +169,7 @@ struct ProfileDetailView: View {
         NavigationStack {
             ScrollView {
                 if let state {
-                    VStack(alignment: .leading, spacing: WanderTheme.spacing6) {
+                    VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
                         profileHeader(state: state)
 
                         if state.isBlocked {
@@ -182,7 +182,7 @@ struct ProfileDetailView: View {
                             }
                         }
                     }
-                    .padding(WanderTheme.spacing4)
+                    .padding(WanderTheme.spacing3)
                 }
             }
             .wanderScreen()
@@ -202,14 +202,14 @@ struct ProfileDetailView: View {
     private func profileHeader(state: ProfileViewState) -> some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
             HStack(alignment: .top) {
-                WanderAvatar(initials: initials(for: state.shell.displayName), size: 64, color: WanderTheme.pinSocial.color)
+                WanderAvatar(initials: initials(for: state.shell.displayName), size: 56, color: WanderTheme.pinSocial.color)
 
                 VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
                     Text(state.shell.displayName)
-                        .font(.system(size: 26, weight: .black))
+                        .font(.system(size: 23, weight: .black))
                         .lineLimit(1)
                     Text("@\(state.shell.handle) · \(state.shell.relationship.displayTitle)")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(WanderTheme.textMuted.color)
                 }
 
@@ -221,8 +221,8 @@ struct ProfileDetailView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis")
-                        .font(.system(size: 18, weight: .bold))
-                        .frame(width: 44, height: 44)
+                        .font(.system(size: 17, weight: .bold))
+                        .frame(width: 40, height: 40)
                         .background(WanderTheme.surfaceSand.color)
                         .clipShape(Circle())
                 }
@@ -230,7 +230,7 @@ struct ProfileDetailView: View {
 
             if let bio = state.shell.bio {
                 Text(bio)
-                    .font(.system(size: 15))
+                    .font(.system(size: 14))
                     .italic()
                     .foregroundStyle(WanderTheme.textMuted.color)
             }
@@ -246,7 +246,7 @@ struct ProfileDetailView: View {
                     } label: {
                         Text(state.shell.relationship == .mutual ? "friend" : "following")
                             .font(.system(size: 15, weight: .bold))
-                            .frame(maxWidth: .infinity, minHeight: 48)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                             .background(WanderTheme.surfaceSand.color)
                             .foregroundStyle(WanderTheme.textInk.color)
                             .clipShape(Capsule())
@@ -255,7 +255,7 @@ struct ProfileDetailView: View {
                 }
             }
         }
-        .padding(WanderTheme.spacing4)
+        .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceBone.color)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
     }
@@ -329,13 +329,13 @@ private struct StatTile: View {
     var body: some View {
         VStack(spacing: WanderTheme.spacing1) {
             Text(value)
-                .font(.system(size: 30, weight: .black))
+                .font(.system(size: 26, weight: .black))
                 .foregroundStyle(color)
             Text(label)
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(WanderTheme.textMuted.color)
         }
-        .frame(maxWidth: .infinity, minHeight: 82)
+        .frame(maxWidth: .infinity, minHeight: 72)
         .background(fill)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
     }
@@ -347,24 +347,25 @@ private struct ProfilePlaceRow: View {
     var body: some View {
         HStack(spacing: WanderTheme.spacing3) {
             Image(systemName: icon)
-                .font(.system(size: 18, weight: .bold))
+                .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(WanderTheme.terracotta.color)
-                .frame(width: 44, height: 44)
+                .frame(width: 40, height: 40)
                 .background(WanderTheme.terracottaTint.color)
                 .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusSmall))
             VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
                 Text(visiblePlace.place.canonicalName)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
+                    .lineLimit(1)
                 Text("\(visiblePlace.place.locality ?? "Los Angeles") · \(visiblePlace.userPlace.status.displayTitle)")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(WanderTheme.textMuted.color)
             }
             Spacer()
             Text(visiblePlace.userPlace.visibility.displayTitle)
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(WanderTheme.textMuted.color)
         }
-        .padding(WanderTheme.spacing4)
+        .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceBone.color)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
     }
@@ -388,11 +389,11 @@ private struct SmallEmptyRow: View {
             Text(title)
                 .font(.system(size: 15, weight: .bold))
             Text(subtitle)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(WanderTheme.textMuted.color)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(WanderTheme.spacing4)
+        .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceBone.color)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
     }
@@ -405,13 +406,13 @@ private struct AccessChangedPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
             Text(title)
-                .font(.system(size: 18, weight: .bold))
+                .font(.system(size: 17, weight: .bold))
             Text(subtitle)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(WanderTheme.textMuted.color)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(WanderTheme.spacing4)
+        .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceSand.color)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
     }

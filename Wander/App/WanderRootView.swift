@@ -2,10 +2,13 @@ import SwiftUI
 
 @MainActor
 struct WanderRootView: View {
-    @State private var selectedTab: WanderTab = .map
+    @State private var selectedTab: WanderTab
+    @State private var initialPresentation: WanderInitialPresentation?
     @StateObject private var store: WanderStore
 
-    init() {
+    init(initialTab: WanderTab? = nil, initialPresentation: WanderInitialPresentation? = nil) {
+        _selectedTab = State(initialValue: initialTab ?? Self.resolvedInitialTab())
+        _initialPresentation = State(initialValue: initialPresentation ?? Self.resolvedInitialPresentation())
         _store = StateObject(wrappedValue: WanderStore(fixtures: WanderFixtures.seed()))
     }
 
@@ -29,7 +32,37 @@ struct WanderRootView: View {
         }
         .tint(WanderTheme.terracotta.color)
         .environmentObject(store)
+        .sheet(item: $initialPresentation) { presentation in
+            switch presentation {
+            case .settings:
+                SettingsScreen()
+                    .environmentObject(store)
+            }
+        }
     }
+
+    static func resolvedInitialTab(from arguments: [String] = ProcessInfo.processInfo.arguments) -> WanderTab {
+        guard let flagIndex = arguments.firstIndex(of: "-WanderInitialTab") else {
+            return .map
+        }
+
+        let valueIndex = arguments.index(after: flagIndex)
+        guard arguments.indices.contains(valueIndex) else {
+            return .map
+        }
+
+        return WanderTab(rawValue: arguments[valueIndex]) ?? .map
+    }
+
+    static func resolvedInitialPresentation(from arguments: [String] = ProcessInfo.processInfo.arguments) -> WanderInitialPresentation? {
+        arguments.contains("-WanderOpenSettings") ? .settings : nil
+    }
+}
+
+enum WanderInitialPresentation: String, Identifiable {
+    case settings
+
+    var id: String { rawValue }
 }
 
 enum WanderTab: String, CaseIterable, Hashable {

@@ -11,7 +11,7 @@ struct DiscoverScreen: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: WanderTheme.spacing6) {
+                VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
                     header
                     searchField
                     peopleSection
@@ -44,12 +44,13 @@ struct DiscoverScreen: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
             Text("DISCOVER")
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(WanderTheme.textMuted.color)
             Text("ask your people's map")
-                .font(.system(size: 30, weight: .black))
+                .font(.system(size: 27, weight: .black))
+                .lineLimit(2)
             Text("Search places, vibes, contacts, or exact usernames. No global people directory.")
-                .font(.system(size: 15, weight: .medium))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(WanderTheme.textMuted.color)
         }
     }
@@ -59,6 +60,7 @@ struct DiscoverScreen: View {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(WanderTheme.textMuted.color)
             TextField("hikes in LA, @maya, coffee...", text: $query)
+                .font(.system(size: 15, weight: .medium))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             if !query.isEmpty {
@@ -70,7 +72,8 @@ struct DiscoverScreen: View {
                 }
             }
         }
-        .padding(WanderTheme.spacing4)
+        .padding(.horizontal, WanderTheme.spacing3)
+        .frame(minHeight: 50)
         .background(WanderTheme.surfaceRaised.color)
         .clipShape(Capsule())
         .overlay(Capsule().stroke(WanderTheme.borderHairline.color))
@@ -122,9 +125,10 @@ struct DiscoverScreen: View {
                         query = filter.query
                     } label: {
                         Text(filter.title)
-                            .font(.system(size: 16, weight: .bold))
-                            .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
-                            .padding(.horizontal, WanderTheme.spacing4)
+                            .font(.system(size: 14, weight: .bold))
+                            .lineLimit(2)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .padding(.horizontal, WanderTheme.spacing3)
                             .background(query == filter.query ? WanderTheme.textInk.color : WanderTheme.surfaceBone.color)
                             .foregroundStyle(query == filter.query ? WanderTheme.textOnAction.color : WanderTheme.textInk.color)
                             .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
@@ -172,7 +176,7 @@ private struct SectionTitle: View {
 
     var body: some View {
         Text(title)
-            .font(.system(size: 17, weight: .black))
+            .font(.system(size: 16, weight: .black))
     }
 }
 
@@ -203,14 +207,14 @@ private struct ContactCard: View {
     let follow: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
-            WanderAvatar(initials: initials, size: 48, color: contact.isMatchedUser ? WanderTheme.avatarRyan.color : WanderTheme.borderStrong.color)
+        VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
+            WanderAvatar(initials: initials, size: 36, color: contact.isMatchedUser ? WanderTheme.avatarRyan.color : WanderTheme.borderStrong.color)
             VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
                 Text(contact.displayName)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 14, weight: .bold))
                     .lineLimit(1)
                 Text(contact.handle.map { "@\($0)" } ?? "not on Wander yet")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(WanderTheme.textMuted.color)
                     .lineLimit(1)
             }
@@ -227,7 +231,7 @@ private struct ContactCard: View {
                     .foregroundStyle(WanderTheme.textFaint.color)
             }
         }
-        .frame(width: 138, height: 154, alignment: .leading)
+        .frame(width: 122, height: 116, alignment: .leading)
         .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceBone.color)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
@@ -253,13 +257,15 @@ private struct ProfileMiniCard: View {
     let follow: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
-            WanderAvatar(initials: String(profile.displayName.prefix(2)).uppercased(), size: 48, color: WanderTheme.pinSocial.color)
+        VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
+            WanderAvatar(initials: String(profile.displayName.prefix(2)).uppercased(), size: 36, color: WanderTheme.pinSocial.color)
             Text(profile.displayName)
-                .font(.system(size: 16, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
+                .lineLimit(1)
             Text("@\(profile.handle) · \(profile.relationship.displayTitle)")
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(WanderTheme.textMuted.color)
+                .lineLimit(1)
             Spacer()
             Button(profile.relationship == .nonFollower ? "follow" : "view") {
                 profile.relationship == .nonFollower ? follow() : open()
@@ -267,7 +273,7 @@ private struct ProfileMiniCard: View {
             .font(.system(size: 13, weight: .bold))
             .foregroundStyle(WanderTheme.terracotta.color)
         }
-        .frame(width: 138, height: 154, alignment: .leading)
+        .frame(width: 122, height: 116, alignment: .leading)
         .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceBone.color)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
@@ -283,26 +289,26 @@ private struct DiscoverPlaceRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: WanderTheme.spacing3) {
             Image(systemName: icon)
-                .font(.system(size: 20, weight: .bold))
+                .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(WanderTheme.terracotta.color)
-                .frame(width: 46, height: 46)
+                .frame(width: 42, height: 42)
                 .background(WanderTheme.terracottaTint.color)
                 .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
                 Text(visiblePlace.place.canonicalName)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
                     .lineLimit(1)
                 Button(action: openProfile) {
                     Text("saved from \(visiblePlace.owner.displayName) · \(visiblePlace.userPlace.status.displayTitle)")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(WanderTheme.textMuted.color)
                         .lineLimit(1)
                 }
                 .buttonStyle(.plain)
                 if let note = visiblePlace.userPlace.note {
                     Text(note)
-                        .font(.system(size: 13))
+                        .font(.system(size: 12))
                         .foregroundStyle(WanderTheme.textMuted.color)
                         .lineLimit(1)
                 }
@@ -312,15 +318,15 @@ private struct DiscoverPlaceRow: View {
 
             Button(action: save) {
                 Image(systemName: "plus")
-                    .font(.system(size: 17, weight: .black))
-                    .frame(width: 40, height: 40)
+                    .font(.system(size: 16, weight: .black))
+                    .frame(width: 38, height: 38)
                     .background(WanderTheme.terracotta.color)
                     .foregroundStyle(WanderTheme.textOnAction.color)
                     .clipShape(Circle())
             }
             .accessibilityLabel("Save \(visiblePlace.place.canonicalName) to my map")
         }
-        .padding(WanderTheme.spacing4)
+        .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceBone.color)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
     }
