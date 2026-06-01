@@ -26,3 +26,23 @@ This repo contains the product spec, design system, research, and planning-grade
 - Settings as a gear from Profile
 - Contacts and username search for finding people
 - Contextual add flows by category
+
+## Development
+
+Generate the Xcode project:
+
+```bash
+xcodegen generate
+```
+
+Build the app:
+
+```bash
+xcodebuild build -project Wander.xcodeproj -scheme Wander -destination 'generic/platform=iOS Simulator' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO
+```
+
+Run tests:
+
+```bash
+xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO
+```
