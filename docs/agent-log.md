@@ -108,3 +108,40 @@ These were generated build caches, not source files.
 3. Run build/tests.
 4. Capture simulator screenshots if possible.
 5. Commit and push the visual fix.
+
+## 2026-06-01 - Codex - M2 Native UI Sizing Fix
+
+Agent: Codex
+Branch: `main`
+Starting commit: `c452297`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` has an unstaged local signing/team diff that should remain untouched unless Joe asks.
+
+Goal: fix the simulator screenshot failure where the M2 Map UI is letterboxed/undersized and controls are crowded. Start by inspecting app/root launch configuration, safe-area handling, and Map screen layout. Then patch the smallest stable surface, run tests, capture screenshots if possible, commit, and push.
+
+Expected files to inspect/touch:
+
+- `Wander/Resources/Info.plist`
+- `Wander/App/WanderRootView.swift`
+- `Wander/Features/Map/MapScreen.swift`
+- `Wander/DesignSystem/WanderTheme.swift`
+- `docs/agent-log.md`
+
+Checkpoint:
+
+- `Wander/Resources/Info.plist` had no launch-screen declaration. Added `UILaunchScreen` and portrait orientation, which should remove iOS compatibility letterboxing on modern simulators.
+- `Wander/Features/Map/MapScreen.swift` was tightened for native scale: full-screen map ignores safe areas, smaller search bar, smaller map filter chips, smaller pins, and a more compact selected place sheet.
+
+Completion checkpoint, 2026-06-01 11:28 PDT:
+
+- Ran the full test suite after the sizing patch:
+
+```bash
+xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO
+```
+
+- Result: 18 tests, 0 failures.
+- Captured simulator screenshots:
+  - `DerivedData/wander-map-after-final-iphone16plus.png`
+  - `DerivedData/wander-map-after-final-iphone16e.png`
+- Visual result: the iOS letterboxing/undersized app frame is fixed on both targets. Map now fills the screen. Search, chips, pins, and selected-place sheet are materially more compact. On smaller phones the filter chips remain horizontally scrollable by design.
+- Remaining local caveat: `Wander.xcodeproj/project.pbxproj` still has an unstaged local signing/team diff that was not part of this work and should remain uncommitted unless Joe explicitly wants it.

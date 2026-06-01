@@ -56,26 +56,26 @@ struct MapScreen: View {
                 }
             }
             .mapStyle(.standard(elevation: .flat, emphasis: .muted))
-            .ignoresSafeArea(edges: .top)
+            .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                VStack(spacing: WanderTheme.spacing3) {
+                VStack(spacing: WanderTheme.spacing2) {
                     SearchBar(title: "search a place, vibe, or username...")
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: WanderTheme.spacing2) {
+                        HStack(spacing: WanderTheme.spacing1) {
                             ForEach(MapFilter.allCases) { filter in
                                 Button {
                                     toggle(filter)
                                 } label: {
-                                    WanderChip(title: filter.title, isSelected: selectedFilters.contains(filter), systemImage: filter.systemImage)
+                                    MapFilterChip(title: filter.title, systemImage: filter.systemImage, isSelected: selectedFilters.contains(filter))
                                 }
                                 .buttonStyle(.plain)
                             }
                         }
-                        .padding(.horizontal, WanderTheme.spacing4)
+                        .padding(.horizontal, WanderTheme.spacing3)
                     }
                 }
-                .padding(.top, WanderTheme.spacing3)
+                .padding(.top, WanderTheme.spacing2)
 
                 Spacer()
 
@@ -83,8 +83,8 @@ struct MapScreen: View {
                     PlaceSheet(visiblePlace: selectedPlace) {
                         _ = store.saveVisiblePlace(selectedPlace)
                     }
-                    .padding(.horizontal, WanderTheme.spacing4)
-                    .padding(.bottom, WanderTheme.spacing3)
+                    .padding(.horizontal, WanderTheme.spacing3)
+                    .padding(.bottom, WanderTheme.spacing2)
                 }
             }
         }
@@ -120,7 +120,7 @@ private enum MapFilter: String, CaseIterable, Identifiable {
         case .social: "social"
         case .friends: "friends"
         case .been: "been"
-        case .wanna: "wanna go"
+        case .wanna: "wanna"
         }
     }
 
@@ -143,18 +143,42 @@ private struct SearchBar: View {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(WanderTheme.textMuted.color)
             Text(title)
-                .font(.system(size: 15, weight: .medium))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(WanderTheme.textFaint.color)
+                .lineLimit(1)
             Spacer()
-            WanderAvatar(initials: "JL", size: 32, color: WanderTheme.avatarSofia.color)
+            WanderAvatar(initials: "JL", size: 28, color: WanderTheme.avatarSofia.color)
         }
-        .padding(.horizontal, WanderTheme.spacing4)
-        .frame(height: 52)
+        .padding(.horizontal, WanderTheme.spacing3)
+        .frame(height: 46)
         .background(WanderTheme.surfaceRaised.color)
         .clipShape(Capsule())
         .overlay(Capsule().stroke(WanderTheme.borderHairline.color))
-        .shadow(color: WanderTheme.textInk.color.opacity(0.08), radius: 12, x: 0, y: 6)
-        .padding(.horizontal, WanderTheme.spacing4)
+        .shadow(color: WanderTheme.textInk.color.opacity(0.08), radius: 10, x: 0, y: 5)
+        .padding(.horizontal, WanderTheme.spacing3)
+    }
+}
+
+private struct MapFilterChip: View {
+    let title: String
+    let systemImage: String
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: WanderTheme.spacing1) {
+            Image(systemName: systemImage)
+                .font(.system(size: 11, weight: .bold))
+            Text(title)
+                .lineLimit(1)
+        }
+        .font(.system(size: 12, weight: .bold))
+        .padding(.horizontal, WanderTheme.spacing3)
+        .frame(height: 38)
+        .background(isSelected ? WanderTheme.textInk.color : WanderTheme.surfaceSand.color)
+        .foregroundStyle(isSelected ? WanderTheme.textOnAction.color : WanderTheme.textInk.color)
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(WanderTheme.surfaceRaised.color.opacity(isSelected ? 0 : 0.55), lineWidth: 1))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
@@ -168,8 +192,8 @@ private struct WanderMapPin: View {
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: 18, weight: .bold))
-            .frame(width: 42, height: 42)
+            .font(.system(size: 16, weight: .bold))
+            .frame(width: 38, height: 38)
             .background(WanderTheme.surfaceRaised.color)
             .clipShape(Circle())
             .overlay(
@@ -203,10 +227,10 @@ private struct PlaceSheet: View {
     let onSave: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
             Capsule()
                 .fill(WanderTheme.borderStrong.color)
-                .frame(width: 44, height: 5)
+                .frame(width: 40, height: 5)
                 .frame(maxWidth: .infinity)
 
             HStack(alignment: .center, spacing: WanderTheme.spacing3) {
@@ -215,17 +239,17 @@ private struct PlaceSheet: View {
                 VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
                     HStack {
                         Text(visiblePlace.place.canonicalName)
-                            .font(.system(size: 22, weight: .bold))
+                            .font(.system(size: 20, weight: .bold))
                             .lineLimit(1)
                         StatusBadge(status: visiblePlace.userPlace.status)
                     }
                     Text("\(visiblePlace.place.locality ?? "Los Angeles") · \(visiblePlace.place.category) · saved by \(visiblePlace.owner.displayName)")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(WanderTheme.textMuted.color)
                         .lineLimit(1)
                     if let note = visiblePlace.userPlace.note {
                         Text("\"\(note)\"")
-                            .font(.system(size: 14))
+                            .font(.system(size: 13))
                             .italic()
                             .foregroundStyle(WanderTheme.textMuted.color)
                             .lineLimit(2)
@@ -236,8 +260,8 @@ private struct PlaceSheet: View {
 
                 Button(action: onSave) {
                     Image(systemName: "plus")
-                        .font(.system(size: 22, weight: .black))
-                        .frame(width: 48, height: 48)
+                        .font(.system(size: 21, weight: .black))
+                        .frame(width: 46, height: 46)
                         .background(WanderTheme.terracotta.color)
                         .foregroundStyle(WanderTheme.textOnAction.color)
                         .clipShape(Circle())
@@ -246,7 +270,7 @@ private struct PlaceSheet: View {
             }
 
             HStack(spacing: WanderTheme.spacing2) {
-                WanderAvatar(initials: visiblePlace.owner.initials, size: 28, color: visiblePlace.owner.id == visiblePlace.userPlace.userID ? WanderTheme.pinSocial.color : WanderTheme.terracotta.color)
+                WanderAvatar(initials: visiblePlace.owner.initials, size: 26, color: visiblePlace.owner.id == visiblePlace.userPlace.userID ? WanderTheme.pinSocial.color : WanderTheme.terracotta.color)
                 Text(visiblePlace.owner.id == visiblePlace.userPlace.userID ? "\(visiblePlace.owner.displayName)'s tip" : "on your map")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(WanderTheme.textMuted.color)
@@ -259,10 +283,10 @@ private struct PlaceSheet: View {
                     .clipShape(Capsule())
             }
         }
-        .padding(WanderTheme.spacing4)
+        .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceBone.color)
-        .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusSheet))
-        .shadow(color: WanderTheme.textInk.color.opacity(0.16), radius: 24, x: 0, y: 12)
+        .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+        .shadow(color: WanderTheme.textInk.color.opacity(0.14), radius: 20, x: 0, y: 10)
     }
 }
 
@@ -271,9 +295,9 @@ private struct CategoryThumb: View {
 
     var body: some View {
         Image(systemName: imageName)
-            .font(.system(size: 22, weight: .bold))
+            .font(.system(size: 19, weight: .bold))
             .foregroundStyle(WanderTheme.terracotta.color)
-            .frame(width: 50, height: 50)
+            .frame(width: 46, height: 46)
             .background(WanderTheme.terracottaTint.color)
             .clipShape(Circle())
     }
