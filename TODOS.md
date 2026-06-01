@@ -26,10 +26,17 @@ Date: 2026-05-29
   - Why: backend, sync, privacy rules, extraction, and data model need architecture review before implementation.
   - Result: `docs/reviews/2026-06-01-plan-eng-review.md` captures Clerk + Supabase, guest-local save, followers-only public visibility, backend extraction jobs, deferred share extension, MapKit-only places, hard block, username rules, and delete/source retention.
   - Result: native Contacts is planned later; v0.1 uses fake contacts and username search.
+  - Reset audit: low-pass Swift/Xcode implementation was removed on 2026-06-01. Rebuild now requires M1.5 Contract Lock before M2.
 
 - Create iOS engineering implementation plan. Done 2026-06-01.
   - Why: locked product/design decisions need a build sequence before code starts.
   - Result: `docs/plans/2026-06-01-wander-ios-eng-plan.md` defines milestones, modules, schema, RLS, sync, LLM parser, analytics, extraction jobs, and tests.
+  - Reset audit result: plan now adds M1.5 Contract Lock, four-tab-only navigation, 1:1 token promotion, XcodeGen source-of-truth, schema/RLS before Clerk UI, real MapKit seeded M2, and milestone test gates.
+
+- Complete M1.5 Contract Lock before rebuilding M2.
+  - Why: prevent fixture UI from accidentally becoming architecture again.
+  - Depends on: current eng plan, product spec, design handoff.
+  - Scope: Supabase schema/RLS matrix, SwiftData parity, repository protocols, sync state machine, deterministic fakes, parser interface, analytics interface, and design review of missing follow/settings/profile states.
 
 ## P2
 

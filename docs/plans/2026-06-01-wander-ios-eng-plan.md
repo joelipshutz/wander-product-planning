@@ -1,11 +1,12 @@
 # Wander iOS Engineering Plan
 
 Date: 2026-06-01
-Status: Draft for implementation review
+Status: Audited for reset implementation
 Inputs:
 - Product spec: `docs/specs/wander-ios-product-spec.md`
 - Design system: `DESIGN.md`
 - Eng review: `docs/reviews/2026-06-01-plan-eng-review.md`
+- Contract lock: `docs/plans/2026-06-01-wander-m1-5-contract-lock.md`
 - Handoff source: `preview/follow-profile-settings-mocks/`
 - Slate reference: `/Users/joelipshutz/Developer/Slate`
 
@@ -13,17 +14,44 @@ Inputs:
 
 - Build the implementation in this repo unless a later repo split is explicitly needed.
 - Native iOS app: SwiftUI, SwiftData, MapKit/CoreLocation, PhotosUI, iOS 17+.
+- XcodeGen `project.yml` is the project source of truth. Generated Xcode files may be committed only when useful for local opening/review, but `project.yml` owns target/file membership.
 - Backend: Clerk identity + Supabase Postgres/RLS/PostGIS/storage/functions.
 - Local-first UX: SwiftData cache, guest-local saves, explicit sync queue.
 - v0.1 social graph: one-way follows; friends are mutual follows; no private profiles/follow requests.
 - Visibility: `followers`, `mutuals`, `self`; UI copy can say Everyone/Friends/Self, but Everyone means followers only.
 - People discovery: username search + `FakeContactProvider`; native Contacts is planned later behind the same provider contract.
 - Places: MapKit-only v0.1 with provider-extensible IDs.
-- Extraction: backend jobs for alpha; prototype can reuse local Slate-style adapters.
-- Discover: lightweight LLM parser up front, constrained to filter JSON. Send only raw search phrase + filter schema, never friend graph/place/contact/user data.
+- Extraction: backend jobs for alpha; in M2 only current-location/manual are real, while link/photo are honest shells until backend extraction jobs exist.
+- Discover: define parser interface and deterministic fixture parser early; add real cheap LLM parsing in M5. Send only raw search phrase + filter schema, never friend graph/place/contact/user data.
 - Share extension: deferred until in-app add/map/social loop works.
-- Sync conflicts: simple `updated_at`/server-wins style handling plus local retry queue for v0.1.
+- Sync conflicts: define the state machine in M1.5; implement full sync engine in M4. Use simple `updated_at`/server-wins style handling plus local retry queue for v0.1.
 - Analytics: define event names now behind a vendor-neutral interface.
+- Navigation is four bottom tabs only: Map, Add, Discover, Profile. Settings opens from Profile gear, not a fifth bottom tab.
+- Design tokens from `preview/follow-profile-settings-mocks/tokens.css` must be promoted 1:1 into SwiftUI tokens before visual polish.
+- Fonts are tokenized now using system fonts with matching metrics; add Funnel font assets only after packaging/licensing is clean.
+- Full onboarding is deferred; auth gates still appear where flows need them: save/sync/follow/social personalization.
+
+## Reset Audit Decisions
+
+Low-pass implementation commits were reset on 2026-06-01. Rebuild from this plan only after the following audit decisions:
+
+| ID | Decision |
+|---|---|
+| D1 | Revert low-pass Swift/Xcode implementation and redo from audited plan. |
+| D2 | Add M1.5 Contract Lock before M2. |
+| D3 | Settings is Profile gear only, no fifth tab. |
+| D4 | Promote `tokens.css` 1:1 into SwiftUI tokens. |
+| D5 | Use XcodeGen `project.yml` as source of truth. |
+| D6 | Lock Supabase schema/RLS contract before Clerk iOS wiring. |
+| D7 | Local models mirror backend domain schema plus local sync metadata. |
+| D8 | Define sync state machine in M1.5; implement sync engine in M4. |
+| D9 | Parser interface + deterministic parser early; real cheap LLM parser in M5. |
+| D10 | M2 has real current-location/manual add; link/photo stay shells until backend jobs. |
+| D11 | M2 uses real MapKit seeded map, not a list pretending to be a map. |
+| D12 | Run design review after M1.5 before M2 polish. |
+| D13 | Every milestone lands with matching tests. |
+| D14 | Defer full onboarding but implement auth gates at save/sync/follow moments. |
+| D15 | Tokenized system fonts now; Funnel assets later if packaged/licensed cleanly. |
 
 ## Milestones
 
@@ -32,14 +60,16 @@ Inputs:
 Goal: create a runnable iOS app foundation without real backend dependency.
 
 Deliverables:
-- Xcode project or Swift Package layout inside this repo.
+- XcodeGen `project.yml` plus generated Xcode project if needed for local opening.
 - SwiftUI app shell with four tabs: Map, Add, Discover, Profile.
-- Token layer recreated from `preview/follow-profile-settings-mocks/tokens.css`.
+- Settings is reachable from the Profile gear, not bottom navigation.
+- Token layer recreated 1:1 from `preview/follow-profile-settings-mocks/tokens.css`.
 - Shared components: buttons, pills, chips, bottom tab bar, profile header, place sheet, visibility picker.
 - Preview/test fixture data for users, follows, blocks, places, user places, and fake contacts.
 
 Exit criteria:
 - App runs locally with seeded data.
+- Tests pass for token values, tab shape, and fixture loading.
 - Screens match the handoff direction closely enough for implementation, even if secondary visual states continue in parallel design polish.
 
 ### M1: Local Data And Repository Contracts
@@ -71,7 +101,7 @@ Repository protocols:
 Policy/services:
 - `VisibilityPolicy`
 - `FollowGraphService`
-- `SyncEngine`
+- `SyncStateMachine`
 - `ContactProvider`
 - `LLMFilterParser`
 - `ExtractionCoordinator`
@@ -80,24 +110,78 @@ Rules:
 - Views do not call Clerk/Supabase directly.
 - Views do not compute social visibility.
 - App-side visibility policy is for UI state only; Supabase RLS is authoritative.
-- Mutations write locally first when guest/offline, enqueue sync when authenticated.
+- Mutations write locally first when guest/offline. Sync queue behavior is defined in M1.5 and implemented in M4.
+- Local models mirror backend domain fields and add only local sync metadata: local id, server id, sync state, local/server timestamps, retry/error fields.
 
 Exit criteria:
-- Unit tests cover local CRUD, fake graph, visibility matrix, and basic sync state transitions.
+- Unit tests cover local CRUD, fake graph, visibility matrix, deterministic Discover parser, and basic sync state transitions.
+
+### M1.5: Contract Lock
+
+Goal: freeze contracts that M2 can build against without accidentally inventing architecture in fixture UI.
+
+Supabase contract:
+- Table definitions for profiles, follows, blocks, places, user places, place attributes, source artifacts, extraction jobs, sync tombstones, and optional analytics events.
+- RLS matrix for owner, follower, mutual, non-follower, blocked, logged-out/profile-shell, and deleted/tombstoned rows.
+- RPC/view signatures for viewport visible places, profile search, profile visible places, follow/unfollow/block, social save, and guest record claim.
+- Clerk claim mapping: which Clerk session claim maps to Supabase owner fields and how profile mirroring happens.
+
+Local contract:
+- SwiftData models mirror backend fields plus local sync metadata.
+- Sync state machine diagram and transition table.
+- Repository protocols with async signatures and typed errors.
+- Deterministic fake repositories for UI tests.
+
+Product/UI contract:
+- Four-tab shell only; Profile gear opens Settings.
+- Real MapKit seeded map for M2.
+- Current-location/manual add are real in M2; link/photo remain clearly marked shells until backend extraction jobs.
+- Discover parser interface and deterministic local parser; real cheap LLM parser waits until M5.
+- Analytics event names and typed interface.
+- Visual state inventory for follow, block, visibility, auth gate, offline, parser failure, extraction shell, empty, loading, and error states.
+
+Required diagrams:
+
+```text
+Save flow
+  guest/local input
+    -> SwiftData draft/UserPlace
+    -> optional auth gate at sync/social intent
+    -> sync queue claim/upsert
+    -> Supabase RLS/RPC
+    -> synced or visible retry/error
+```
+
+```text
+Visibility read
+  viewer
+    -> block check both directions
+    -> owner? yes: all rows
+    -> follows owner? yes: followers rows
+    -> mutual? yes: followers + mutuals rows
+    -> self rows: owner only
+```
+
+Exit criteria:
+- Schema/RLS contract reviewed and represented in tests or test stubs before implementation.
+- Sync state machine covers create/update/delete/retry/tombstone/auth-claim/server-denied/blocked-stale cases.
+- Design review is run against the handoff plus missing states before M2 polish.
+- No M2 UI code starts until M1.5 contracts are committed.
 
 ### M2: Core Local Product Loop
 
 Goal: validate the app loop before real backend.
 
 Build:
-- Map surface with own/social filters, been/wanna status, and seeded social pins.
-- Add flow for current location, manual entry, link, and photo shell.
+- Real MapKit surface with own/social filters, been/wanna status, and seeded social pins.
+- Add flow with real current-location and manual entry.
+- Link and photo entry points as honest shells that create unresolved drafts or explain backend extraction is not connected yet.
 - Candidate confirmation with high/medium/low/none confidence states.
 - Visibility picker on confirmation before save.
 - Contextual question templates for starter categories.
 - Profile with saved places, unresolved drafts, followers/following, settings gear.
-- Settings shell with account, privacy, blocked users, notifications, and data controls.
-- Discover smart filters and username/profile lookup against fixtures.
+- Settings shell opened from Profile with account, privacy, blocked users, notifications, and data controls.
+- Discover smart filters, contacts results, and username/profile lookup against fixtures. Do not show a global people directory.
 - `FakeContactProvider` for contacts-first UI without native permission.
 
 Exit criteria:
@@ -105,6 +189,7 @@ Exit criteria:
 - User can follow/unfollow/block seeded users.
 - Visibility changes affect visible seeded social content.
 - Add flow supports unresolved drafts and manual rescue.
+- UI tests cover guest first save, follow/unfollow/block, visibility effect, fake contacts matched/unmatched, and parser chips.
 
 ### M3: Clerk + Supabase Foundation
 
@@ -123,6 +208,7 @@ Supabase tables:
 - `analytics_events` optional if provider-neutral server event sink is useful
 
 Clerk/Supabase integration:
+- Implement Supabase schema, indexes, RLS policies, and policy tests before wiring the iOS Clerk UI.
 - Configure Clerk as Supabase third-party auth provider.
 - Mirror Clerk users into `profiles` through webhook or backend job.
 - Store Clerk user id as profile/user owner key.
@@ -148,7 +234,7 @@ RPC/query shapes:
 - `claim_guest_records(local_records)`
 
 Exit criteria:
-- RLS policy tests pass for owner/follower/mutual/non-follower/blocked.
+- RLS policy tests pass for owner/follower/mutual/non-follower/blocked/logged-out/profile-shell/delete cases.
 - App can sign in, mirror profile, sync a local saved place, and fetch visible social pins.
 
 ### M4: Sync And Offline
@@ -298,28 +384,39 @@ Recommended order:
 
 1. M0 app shell + token layer.
 2. M1 models/repositories/policies/fakes.
-3. M2 local product loop.
-4. M3 Clerk + Supabase schema/RLS.
-5. M4 sync/offline.
-6. M5 Discover parser + analytics.
-7. M6 backend extraction jobs.
+3. M1.5 contract lock.
+4. M2 local product loop.
+5. M3 Clerk + Supabase schema/RLS/auth foundation.
+6. M4 sync/offline.
+7. M5 Discover parser + analytics.
+8. M6 backend extraction jobs.
 
-Parallelizable after M1:
-- Backend schema/RLS and local UI can proceed in parallel if repository contracts are frozen.
-- Visual polish can proceed against current handoff style.
+Parallelizable after M1.5:
+- Backend schema/RLS and local UI can proceed in parallel if repository contracts are frozen and tests target the same contract.
+- Visual polish can proceed against current handoff style after design review catches missing states.
 - LLM parser can proceed as a pure service with fixtures.
 - Extraction job design can proceed once source artifact schema is fixed.
 
-Do not parallelize before M1:
+Do not parallelize before M1.5:
 - Capture/Profile/Discover implementations all depend on shared model and policy boundaries.
 - Backend policy tests should be written with schema, not after UI.
 
 ## Implementation Review Gate
 
-Before coding beyond M0/M1, review:
+Before coding beyond M0/M1, complete M1.5:
 - Supabase schema and RLS test matrix.
 - SwiftData model fields and sync states.
 - Repository protocols.
 - LLM parser schema.
 - Analytics event names.
 - Visual state follow-ups that may affect core navigation.
+
+## NOT In Scope For Reset Rebuild
+
+- Fifth Settings tab. Settings is a Profile gear surface.
+- Global people directory. Discovery is contacts, username, and visible profile links only.
+- Native Contacts permission. Build `FakeContactProvider` and username search first.
+- Share extension. Revisit after in-app add/map/social loop works.
+- Real link/photo extraction. Backend extraction jobs own this before social alpha.
+- Full onboarding. Only auth gates needed by save/sync/follow are in scope before onboarding implementation.
+- Private profiles/follow requests. Open follow plus hard block remains v0.1.

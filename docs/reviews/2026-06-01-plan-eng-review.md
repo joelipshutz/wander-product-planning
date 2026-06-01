@@ -2,14 +2,15 @@
 
 Date: 2026-06-01
 Skill: plan-eng-review
-Status: DECISIONS_LOCKED
-Reviewed commit: 6e3a65a
+Status: RESET_AUDITED
+Reviewed commit: c3ac87f
 
 ## Inputs
 
 - Product spec: `docs/specs/wander-ios-product-spec.md`
 - Design system: `DESIGN.md`
 - Design handoff: `preview/follow-profile-settings-mocks/`
+- Contract lock: `docs/plans/2026-06-01-wander-m1-5-contract-lock.md`
 - TODOs: `TODOS.md`
 - Slate reference app: `/Users/joelipshutz/Developer/Slate`
 - Platform references checked:
@@ -29,6 +30,8 @@ Reviewed commit: 6e3a65a
 ## Summary Verdict
 
 Use a Supabase-backed architecture for the real social alpha, with SwiftData as the local app store and an explicit app-owned sync queue. Joe selected Clerk as the identity layer on top of Supabase. Clerk does not replace the Postgres/RLS/PostGIS recommendation; it owns identity/session/account surfaces while Supabase owns data, geo, RLS, functions, and storage.
+
+Reset addendum 2026-06-01: low-pass Swift/Xcode implementation was reverted and pushed as `c3ac87f`. The plan now requires M1.5 Contract Lock before any M2 UI rebuild. This is mandatory because the first implementation pass drifted from the design contract: Settings became a fifth tab, tokens were approximate instead of 1:1, Discover acted like a global people directory, and M2 UI was started before schema/RLS/sync/UI-state contracts were frozen.
 
 Decisions and remaining open item:
 
@@ -52,6 +55,40 @@ Decisions and remaining open item:
 18. Sync conflicts: use simple `updated_at`/server-wins style conflict handling plus local retry queue for v0.1.
 19. Backend environment: assume new Clerk and Supabase projects, with setup included in the eng plan.
 20. Analytics: define event names now behind a vendor-neutral analytics interface.
+21. M1.5 Contract Lock: add before M2.
+22. Settings placement: Profile gear only; no fifth bottom tab.
+23. Design tokens: promote `tokens.css` 1:1 into SwiftUI tokens.
+24. Xcode project: use XcodeGen `project.yml` as source of truth.
+25. Backend sequencing: lock Supabase schema/RLS before Clerk iOS wiring.
+26. Local models: mirror backend domain schema plus local sync metadata.
+27. Sync: define state machine in M1.5; implement full engine in M4.
+28. Discover parser: deterministic interface early; real cheap LLM parser in M5.
+29. M2 extraction: current-location/manual real; link/photo are shells until backend jobs.
+30. M2 map: use real MapKit seeded map, not a list placeholder.
+31. Design review: run after M1.5 before M2 polish.
+32. Tests: every milestone lands with matching tests.
+33. Onboarding: defer full onboarding; implement auth gates at save/sync/follow moments.
+34. Fonts: use tokenized system font now; add Funnel assets when packaging/licensing is clean.
+
+## Reset Audit Decision Table
+
+| ID | Decision | Recommendation accepted |
+|---|---|---|
+| D1 | Reset low-pass implementation | Revert Swift/Xcode implementation and redo from audited plan. |
+| D2 | Contract sequencing | Add M1.5 Contract Lock before M2. |
+| D3 | Settings placement | Profile gear only, no fifth tab. |
+| D4 | Token fidelity | Promote `tokens.css` 1:1. |
+| D5 | Xcode source of truth | XcodeGen `project.yml`. |
+| D6 | Backend sequencing | Supabase schema/RLS before Clerk iOS wiring. |
+| D7 | Local model shape | Backend domain parity plus local sync metadata. |
+| D8 | Sync scope | Define state machine in M1.5, implement engine in M4. |
+| D9 | Discover parser timing | Interface + deterministic parser early, real cheap LLM in M5. |
+| D10 | Extraction scope for M2 | Current-location/manual real; link/photo honest shells. |
+| D11 | Map surface for M2 | Real MapKit seeded map. |
+| D12 | Design review gate | Run design review after M1.5 before M2 polish. |
+| D13 | Test bar | Milestone cannot land without matching tests. |
+| D14 | Onboarding timing | Defer full onboarding, but implement auth gates where needed. |
+| D15 | Fonts | Tokenized system font now; add Funnel assets later if clean. |
 
 ## Step 0 Scope Challenge
 
