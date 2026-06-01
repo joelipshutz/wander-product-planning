@@ -17,14 +17,14 @@ Date: 2026-05-29
   - Result: design spec now includes information hierarchy, state coverage, journey, tokens, accessibility, and unresolved design decisions.
   - Follow-up: generating new visual variants was blocked pending explicit approval for the external gstack designer call.
 
-- Refresh design review / mocks for follow graph, profiles, and settings. Redone 2026-06-01 with Rodeo-ish visual direction.
+- Refresh design review / mocks for follow graph, profiles, and settings. Updated 2026-06-01 from `wander.zip` design handoff.
   - Why: the original mocks cover map, discover, and add flow, but the 2026-06-01 graph change adds profile pages, followers/following lists, block controls, settings, and a three-tier visibility picker.
-  - Result: local storyboard added at `preview/follow-profile-settings-mocks/index.html` with my profile/You, other-user profile, followers/following, username/contact search, Discover smart filters, Settings, visibility picker, coffee/hike question flows, block flow, blocked users, non-follower shell, and access-changed state.
-  - Follow-up: run design review against the storyboard and native implementation plan.
+  - Result: `preview/follow-profile-settings-mocks/` now holds the design handoff package. `tokens.css` is the literal source of truth; `index.html` and `screens.html` cover the core design system, Map, Add, saved, and merged Profile surfaces.
+  - Follow-up: run design review against the handoff plus the missing visual states: Discover, other-user profiles, followers/following, settings details, onboarding, and block/access-change states.
 
 - Run plan-eng-review.
   - Why: backend, sync, privacy rules, extraction, and data model need architecture review before implementation.
-  - Depends on: refreshed design coverage for follow/profile/settings and the updated product spec.
+  - Depends on: updated handoff-backed design/spec docs.
 
 ## P2
 
@@ -47,8 +47,8 @@ Date: 2026-05-29
 
 - Create `DESIGN.md` before implementation. Done 2026-06-01.
   - Why: the design review found no project-level design system, and implementation needs stable tokens/components.
-  - Result: root `DESIGN.md` now captures product feel, IA, provisional tokens, components, onboarding rules, accessibility, and plan-eng-review dependencies.
-  - Follow-up: final hex values, font package/licensing, and architecture-sensitive states still need validation.
+  - Result: root `DESIGN.md` now captures product feel, IA, handoff token source, components, onboarding rules, accessibility, and plan-eng-review dependencies.
+  - Follow-up: font package/licensing and architecture-sensitive states still need validation.
 
 - Decide whether to approve gstack designer variant generation.
   - Why: plan-design-review used the existing mocks but could not generate a new visual comparison board without external-call approval.

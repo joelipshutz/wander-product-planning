@@ -8,7 +8,9 @@ This repo contains the product spec, design system, research, and planning-grade
 
 - `docs/specs/wander-ios-product-spec.md` - product spec and current decisions
 - `DESIGN.md` - design system and UI guardrails
-- `preview/follow-profile-settings-mocks/index.html` - follow/profile/settings storyboard
+- `preview/follow-profile-settings-mocks/` - current design handoff source of truth
+- `preview/follow-profile-settings-mocks/tokens.css` - canonical visual tokens for SwiftUI implementation
+- `preview/follow-profile-settings-mocks/screens.html` - annotated core screen mocks
 - `docs/source/wander-mocks.pdf` - original mock PDF
 - `research/screensdesign/2026-05-30-social-map-onboarding/` - onboarding research and previews
 - `TODOS.md` - planning TODOs
@@ -18,7 +20,8 @@ This repo contains the product spec, design system, research, and planning-grade
 - Map-first iOS app
 - Follow graph, with mutual follows treated as friends
 - Visibility states: Everyone, Friends, Self
-- Settings as a gear from You/Profile
+- Four tabs: Map, Add, Discover, Profile
+- Profile merges personal place memory with public/self profile
+- Settings as a gear from Profile
 - Contacts and username search for finding people
 - Contextual add flows by category
-

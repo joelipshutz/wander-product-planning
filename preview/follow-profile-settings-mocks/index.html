@@ -1,1542 +1,313 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Wander Follow/Profile/Settings Mocks</title>
-  <style type="text/css">
-    :root {
-      --cream: #fff7ea;
-      --sand: #f2dcc4;
-      --clay: #a66d50;
-      --terracotta: #df7048;
-      --espresso: #241914;
-      --sage: #7c9465;
-      --mustard: #e4b946;
-      --sky: #7bb9cf;
-      --line: rgba(36, 25, 20, 0.14);
-      --soft: rgba(255, 247, 234, 0.78);
-      --shadow: 0 24px 70px rgba(36, 25, 20, 0.2);
-      --font-display: "Funnel Display", "Funnel Sans", ui-rounded, "Avenir Next", -apple-system, BlinkMacSystemFont, sans-serif;
-      --font-body: "Funnel Sans", ui-rounded, "Avenir Next", -apple-system, BlinkMacSystemFont, sans-serif;
-      color: var(--espresso);
-      background: var(--sand);
-      font-family: var(--font-body);
-      letter-spacing: 0;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background:
-        radial-gradient(circle at 8% 8%, rgba(228, 185, 70, 0.24), transparent 26%),
-        linear-gradient(135deg, var(--cream), var(--sand) 58%, #eac8aa);
-    }
-
-    .page {
-      width: min(1500px, calc(100% - 32px));
-      margin: 0 auto;
-      padding: 34px 0 64px;
-    }
-
-    .hero {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 24px;
-      align-items: end;
-      margin-bottom: 26px;
-    }
-
-    h1,
-    h2,
-    h3,
-    p {
-      margin: 0;
-    }
-
-    h1,
-    h2,
-    h3,
-    .brand {
-      font-family: var(--font-display);
-      letter-spacing: 0;
-    }
-
-    h1 {
-      max-width: 800px;
-      font-size: 40px;
-      line-height: 1.02;
-      font-weight: 800;
-    }
-
-    .hero p {
-      max-width: 760px;
-      margin-top: 10px;
-      color: rgba(36, 25, 20, 0.72);
-      font-size: 16px;
-      line-height: 1.42;
-      font-weight: 600;
-    }
-
-    .legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-
-    .legend span,
-    .pill,
-    .chip,
-    .tag {
-      display: inline-flex;
-      align-items: center;
-      min-height: 32px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: rgba(255, 247, 234, 0.82);
-      padding: 7px 11px;
-      color: rgba(36, 25, 20, 0.72);
-      font-size: 12px;
-      font-weight: 800;
-      white-space: nowrap;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-      gap: 30px;
-      align-items: start;
-    }
-
-    .mock {
-      display: grid;
-      justify-items: center;
-      gap: 12px;
-    }
-
-    .mock-title {
-      width: min(100%, 398px);
-    }
-
-    .mock-title h2 {
-      font-size: 18px;
-      line-height: 1.12;
-      font-weight: 800;
-    }
-
-    .mock-title p {
-      margin-top: 5px;
-      color: rgba(36, 25, 20, 0.68);
-      font-size: 13px;
-      line-height: 1.35;
-      font-weight: 600;
-    }
-
-    .phone {
-      position: relative;
-      width: 398px;
-      min-height: 862px;
-      overflow: hidden;
-      border: 11px solid var(--espresso);
-      border-radius: 46px;
-      background: var(--cream);
-      box-shadow: var(--shadow);
-    }
-
-    .notch {
-      position: absolute;
-      z-index: 10;
-      top: 0;
-      left: 50%;
-      width: 138px;
-      height: 36px;
-      transform: translateX(-50%);
-      border-radius: 0 0 22px 22px;
-      background: var(--espresso);
-    }
-
-    .screen {
-      position: relative;
-      min-height: 840px;
-      padding: 30px 17px 96px;
-      background:
-        linear-gradient(180deg, rgba(255, 247, 234, 0.94), rgba(242, 220, 196, 0.88)),
-        var(--sand);
-    }
-
-    .screen.map-screen {
-      padding: 0;
-      background: var(--sand);
-    }
-
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      min-height: 48px;
-      margin-top: 6px;
-    }
-
-    .brand {
-      color: var(--espresso);
-      font-size: 30px;
-      line-height: 1;
-      font-weight: 800;
-    }
-
-    .subbrand {
-      color: rgba(36, 25, 20, 0.58);
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-    .icon {
-      display: grid;
-      width: 42px;
-      height: 42px;
-      place-items: center;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: rgba(255, 247, 234, 0.86);
-      color: var(--espresso);
-      font-size: 18px;
-      font-weight: 900;
-      box-shadow: 0 8px 18px rgba(36, 25, 20, 0.06);
-    }
-
-    .profile-card,
-    .card,
-    .row,
-    .notice,
-    .settings-card,
-    .fat-filter,
-    .question-card {
-      border: 1px solid var(--line);
-      border-radius: 28px;
-      background: rgba(255, 247, 234, 0.86);
-      box-shadow: 0 10px 26px rgba(36, 25, 20, 0.08);
-    }
-
-    .profile-card {
-      display: grid;
-      gap: 14px;
-      margin-top: 14px;
-      padding: 17px;
-    }
-
-    .profile-head {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 12px;
-      align-items: center;
-    }
-
-    .avatar {
-      display: grid;
-      width: 54px;
-      height: 54px;
-      place-items: center;
-      border-radius: 20px;
-      background: var(--terracotta);
-      color: var(--cream);
-      font-family: var(--font-display);
-      font-size: 17px;
-      font-weight: 800;
-    }
-
-    .avatar.sky {
-      background: var(--sky);
-      color: #16343e;
-    }
-
-    .avatar.sage {
-      background: var(--sage);
-      color: var(--cream);
-    }
-
-    .avatar.mustard {
-      background: var(--mustard);
-      color: var(--espresso);
-    }
-
-    .person {
-      min-width: 0;
-    }
-
-    .person strong,
-    .row strong,
-    .card strong {
-      display: block;
-      color: var(--espresso);
-      font-size: 16px;
-      line-height: 1.15;
-      font-weight: 800;
-    }
-
-    .person span,
-    .row span,
-    .card span {
-      display: block;
-      margin-top: 4px;
-      color: rgba(36, 25, 20, 0.62);
-      font-size: 12px;
-      line-height: 1.3;
-      font-weight: 700;
-    }
-
-    .bio {
-      color: rgba(36, 25, 20, 0.68);
-      font-size: 14px;
-      line-height: 1.38;
-      font-weight: 600;
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
-
-    .stat {
-      min-height: 58px;
-      padding: 9px 8px;
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      background: rgba(242, 220, 196, 0.55);
-      text-align: center;
-    }
-
-    .stat strong {
-      display: block;
-      font-family: var(--font-display);
-      font-size: 19px;
-      line-height: 1.04;
-      font-weight: 800;
-    }
-
-    .stat span {
-      color: rgba(36, 25, 20, 0.62);
-      font-size: 11px;
-      font-weight: 800;
-    }
-
-    .actions,
-    .chips,
-    .tabs {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 42px;
-      border: 1px solid transparent;
-      border-radius: 999px;
-      background: var(--terracotta);
-      color: var(--cream);
-      padding: 0 15px;
-      font-size: 14px;
-      font-weight: 900;
-      white-space: nowrap;
-    }
-
-    .button.secondary {
-      border-color: var(--line);
-      background: var(--cream);
-      color: var(--espresso);
-    }
-
-    .button.mustard {
-      background: var(--mustard);
-      color: var(--espresso);
-    }
-
-    .button.danger {
-      border-color: rgba(166, 82, 59, 0.3);
-      background: rgba(166, 82, 59, 0.12);
-      color: #883923;
-    }
-
-    .tabs,
-    .chips {
-      margin: 14px 0 10px;
-      overflow-x: auto;
-      flex-wrap: nowrap;
-      scrollbar-width: none;
-    }
-
-    .tabs::-webkit-scrollbar,
-    .chips::-webkit-scrollbar {
-      display: none;
-    }
-
-    .chip.active,
-    .tab.active {
-      border-color: rgba(36, 25, 20, 0.18);
-      background: var(--espresso);
-      color: var(--cream);
-    }
-
-    .tab {
-      display: inline-flex;
-      align-items: center;
-      min-height: 38px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: rgba(255, 247, 234, 0.82);
-      color: rgba(36, 25, 20, 0.68);
-      padding: 0 13px;
-      font-size: 13px;
-      font-weight: 900;
-      white-space: nowrap;
-    }
-
-    .card {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 12px;
-      align-items: center;
-      margin-bottom: 10px;
-      padding: 14px;
-    }
-
-    .pin {
-      display: grid;
-      width: 38px;
-      height: 38px;
-      place-items: center;
-      border-radius: 50% 50% 50% 11px;
-      transform: rotate(-45deg);
-      background: var(--sky);
-      color: #17343e;
-      font-weight: 900;
-      box-shadow: 0 10px 18px rgba(36, 25, 20, 0.18);
-    }
-
-    .pin span {
-      transform: rotate(45deg);
-    }
-
-    .pin.you {
-      background: var(--terracotta);
-      color: var(--cream);
-    }
-
-    .pin.dashed {
-      border: 3px dashed currentColor;
-      background: var(--cream);
-      color: var(--sky);
-    }
-
-    .pin.dashed.you {
-      color: var(--terracotta);
-    }
-
-    .row {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 12px;
-      align-items: center;
-      min-height: 72px;
-      margin-bottom: 10px;
-      padding: 12px;
-    }
-
-    .row.disabled {
-      opacity: 0.62;
-    }
-
-    .notice {
-      margin-top: 12px;
-      padding: 14px;
-      color: rgba(36, 25, 20, 0.68);
-      font-size: 13px;
-      line-height: 1.38;
-      font-weight: 650;
-    }
-
-    .notice strong {
-      display: block;
-      margin-bottom: 5px;
-      color: var(--espresso);
-      font-size: 15px;
-      font-weight: 900;
-    }
-
-    .search {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 48px;
-      margin-top: 14px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: rgba(255, 247, 234, 0.92);
-      padding: 0 15px;
-      color: rgba(36, 25, 20, 0.62);
-      font-size: 14px;
-      font-weight: 850;
-    }
-
-    .segmented {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 4px;
-      min-height: 46px;
-      margin-top: 14px;
-      padding: 4px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: rgba(255, 247, 234, 0.74);
-    }
-
-    .segmented span {
-      display: grid;
-      place-items: center;
-      border-radius: 999px;
-      color: rgba(36, 25, 20, 0.64);
-      font-size: 13px;
-      font-weight: 900;
-    }
-
-    .segmented .active {
-      background: var(--espresso);
-      color: var(--cream);
-    }
-
-    .section-title {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 8px;
-      margin: 18px 0 10px;
-    }
-
-    .section-title h3 {
-      font-size: 17px;
-      line-height: 1.15;
-      font-weight: 900;
-    }
-
-    .section-title span {
-      color: rgba(36, 25, 20, 0.56);
-      font-size: 12px;
-      font-weight: 850;
-    }
-
-    .bottom-nav {
-      position: absolute;
-      left: 16px;
-      right: 16px;
-      bottom: 16px;
-      min-height: 72px;
-      border: 1px solid var(--line);
-      border-radius: 30px;
-      background: rgba(255, 247, 234, 0.95);
-      box-shadow: 0 16px 34px rgba(36, 25, 20, 0.16);
-      padding: 8px;
-    }
-
-    .nav-groups {
-      display: grid;
-      grid-template-columns: 1fr 58px 1fr;
-      gap: 8px;
-      align-items: end;
-    }
-
-    .nav-group {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 4px;
-      align-items: end;
-    }
-
-    .nav-group.single {
-      grid-template-columns: 1fr;
-    }
-
-    .nav-label {
-      grid-column: 1 / -1;
-      color: rgba(36, 25, 20, 0.48);
-      font-size: 9px;
-      font-weight: 900;
-      text-align: center;
-      text-transform: lowercase;
-    }
-
-    .nav-item {
-      display: grid;
-      justify-items: center;
-      gap: 2px;
-      min-width: 0;
-      color: rgba(36, 25, 20, 0.6);
-      font-size: 11px;
-      font-weight: 900;
-    }
-
-    .nav-item.active {
-      color: var(--espresso);
-    }
-
-    .nav-icon {
-      display: grid;
-      width: 28px;
-      height: 28px;
-      place-items: center;
-      border-radius: 12px;
-      background: rgba(242, 220, 196, 0.8);
-      font-size: 12px;
-    }
-
-    .plus {
-      display: grid;
-      width: 56px;
-      height: 56px;
-      place-items: center;
-      border-radius: 22px;
-      background: var(--terracotta);
-      color: var(--cream);
-      font-size: 30px;
-      font-weight: 900;
-      transform: translateY(-13px);
-      box-shadow: 0 12px 28px rgba(223, 112, 72, 0.42);
-    }
-
-    .settings-card {
-      overflow: hidden;
-      margin-top: 14px;
-    }
-
-    .setting-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-      align-items: center;
-      min-height: 60px;
-      padding: 13px 15px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .setting-row:last-child {
-      border-bottom: 0;
-    }
-
-    .setting-row strong {
-      display: block;
-      font-size: 15px;
-      font-weight: 900;
-    }
-
-    .setting-row span {
-      display: block;
-      margin-top: 3px;
-      color: rgba(36, 25, 20, 0.62);
-      font-size: 12px;
-      line-height: 1.3;
-      font-weight: 700;
-    }
-
-    .visibility-list {
-      display: grid;
-      gap: 10px;
-      margin-top: 14px;
-    }
-
-    .visibility-option {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 12px;
-      align-items: center;
-      min-height: 76px;
-      border: 1px solid var(--line);
-      border-radius: 24px;
-      background: rgba(255, 247, 234, 0.86);
-      padding: 13px;
-    }
-
-    .visibility-option.active {
-      border-color: rgba(223, 112, 72, 0.48);
-      box-shadow: inset 0 0 0 2px rgba(223, 112, 72, 0.14);
-    }
-
-    .radio {
-      display: grid;
-      width: 24px;
-      height: 24px;
-      place-items: center;
-      border: 2px solid var(--line);
-      border-radius: 50%;
-    }
-
-    .visibility-option.active .radio {
-      border-color: var(--terracotta);
-    }
-
-    .visibility-option.active .radio::after {
-      content: "";
-      width: 11px;
-      height: 11px;
-      border-radius: 50%;
-      background: var(--terracotta);
-    }
-
-    .question-card {
-      display: grid;
-      gap: 12px;
-      margin-top: 13px;
-      padding: 16px;
-    }
-
-    .emoji-scale {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 8px;
-    }
-
-    .emoji-scale span {
-      display: grid;
-      min-height: 48px;
-      place-items: center;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: rgba(242, 220, 196, 0.62);
-      font-size: 23px;
-    }
-
-    .toggle-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .toggle-row span.active {
-      background: var(--sage);
-      color: var(--cream);
-    }
-
-    .fat-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 11px;
-      margin-top: 14px;
-    }
-
-    .fat-filter {
-      min-height: 104px;
-      padding: 15px;
-      background:
-        linear-gradient(145deg, rgba(255, 247, 234, 0.86), rgba(242, 220, 196, 0.78));
-    }
-
-    .fat-filter strong {
-      display: block;
-      max-width: 120px;
-      color: var(--espresso);
-      font-family: var(--font-display);
-      font-size: 22px;
-      line-height: 1.02;
-      font-weight: 800;
-    }
-
-    .fat-filter span {
-      display: block;
-      margin-top: 8px;
-      color: rgba(36, 25, 20, 0.62);
-      font-size: 12px;
-      line-height: 1.25;
-      font-weight: 750;
-    }
-
-    .sheet {
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      padding: 18px 17px 98px;
-      border-top: 1px solid var(--line);
-      border-radius: 34px 34px 0 0;
-      background: rgba(255, 247, 234, 0.98);
-      box-shadow: 0 -20px 50px rgba(36, 25, 20, 0.18);
-    }
-
-    .handle {
-      width: 48px;
-      height: 6px;
-      margin: 0 auto 14px;
-      border-radius: 999px;
-      background: rgba(36, 25, 20, 0.18);
-    }
-
-    .modal {
-      position: absolute;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      padding: 28px;
-      background: rgba(36, 25, 20, 0.24);
-      backdrop-filter: blur(5px);
-    }
-
-    .dialog {
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 30px;
-      background: var(--cream);
-      padding: 19px;
-      box-shadow: 0 28px 70px rgba(36, 25, 20, 0.24);
-    }
-
-    .dialog h3 {
-      font-size: 25px;
-      line-height: 1.05;
-      font-weight: 800;
-    }
-
-    .dialog p {
-      margin-top: 9px;
-      color: rgba(36, 25, 20, 0.68);
-      font-size: 14px;
-      line-height: 1.4;
-      font-weight: 650;
-    }
-
-    .map-bg {
-      position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(30deg, transparent 47%, rgba(124, 148, 101, 0.28) 48%, rgba(124, 148, 101, 0.28) 52%, transparent 53%),
-        linear-gradient(120deg, transparent 44%, rgba(123, 185, 207, 0.26) 45%, rgba(123, 185, 207, 0.26) 49%, transparent 50%),
-        linear-gradient(0deg, rgba(255, 247, 234, 0.55), rgba(242, 220, 196, 0.84));
-    }
-
-    .map-pin {
-      position: absolute;
-      display: grid;
-      width: 38px;
-      height: 38px;
-      place-items: center;
-      border-radius: 50% 50% 50% 11px;
-      transform: rotate(-45deg);
-      background: var(--sky);
-      color: #17343e;
-      font-weight: 900;
-      box-shadow: 0 10px 18px rgba(36, 25, 20, 0.18);
-    }
-
-    .map-pin span {
-      transform: rotate(45deg);
-    }
-
-    .map-pin.one {
-      left: 52px;
-      top: 168px;
-    }
-
-    .map-pin.two {
-      right: 70px;
-      top: 236px;
-      background: var(--terracotta);
-      color: var(--cream);
-    }
-
-    .map-pin.three {
-      left: 164px;
-      top: 320px;
-      border: 3px dashed var(--sky);
-      background: var(--cream);
-      color: var(--sky);
-    }
-
-    .home-indicator {
-      position: absolute;
-      left: 50%;
-      bottom: 6px;
-      width: 130px;
-      height: 5px;
-      transform: translateX(-50%);
-      border-radius: 999px;
-      background: rgba(36, 25, 20, 0.28);
-    }
-
-    @media (max-width: 460px) {
-      .page {
-        width: min(100% - 18px, 398px);
-        padding-top: 22px;
-      }
-
-      .hero {
-        grid-template-columns: 1fr;
-      }
-
-      .legend {
-        justify-content: flex-start;
-      }
-
-      h1 {
-        font-size: 32px;
-      }
-
-      .phone,
-      .mock-title {
-        width: 100%;
-      }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wander · Design System</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="page">
-    <div class="hero">
-      <div>
-        <h1>wander follow/profile/settings mocks</h1>
-        <p>Redone with the warmer Rodeo-ish direction: cream and sand surfaces, espresso text, chunky rounded controls, terracotta and sky pins, and casual travel-buddy copy.</p>
-      </div>
-      <div class="legend">
-        <span>Funnel-style type</span>
-        <span>Everyone = followers</span>
-        <span>Settings = gear</span>
-        <span>open follow</span>
-      </div>
+<div class="doc">
+
+  <!-- ============ COVER ============ -->
+  <header>
+    <div class="kicker">iOS · v0.1 · handoff for eng agent</div>
+    <h1 class="doc-h1">wander <span class="slash">/</span><span class="reg">design system</span></h1>
+    <p class="doc-lede">A warm utility map with a playful editorial edge. Tokens, type, color and components below are the implementation contract — promote them to SwiftUI 1:1.</p>
+
+    <div class="doc-meta">
+      <div class="item"><div class="k">Platform</div><div class="v">Native iOS · SwiftUI · iPhone-first</div></div>
+      <div class="item"><div class="k">Grid</div><div class="v">8px base · 44px min tap</div></div>
+      <div class="item"><div class="k">Mode</div><div class="v">Light only (v0.1)</div></div>
+      <div class="item"><div class="k">Mock pass</div><div class="v">Core · for approval</div></div>
     </div>
 
-    <div class="grid">
-      <div class="mock">
-        <div class="mock-title">
-          <h2>1. You / My Profile</h2>
-          <p>Settings gear, follower counts, and saved places in the warmer app shell.</p>
-        </div>
-        <div class="phone">
-          <div class="notch"></div>
-          <div class="screen">
-            <div class="topbar">
-              <div>
-                <div class="brand">you</div>
-                <div class="subbrand">your world</div>
-              </div>
-              <div class="icon">⚙</div>
-            </div>
+    <nav class="toc">
+      <a href="#brand">00 · brand</a>
+      <a href="#color">01 · color</a>
+      <a href="#type">02 · type</a>
+      <a href="#space">03 · spacing &amp; shape</a>
+      <a href="#components">04 · components</a>
+      <a href="#pins">05 · pin system</a>
+      <a href="screens.html">→ screen mocks</a>
+    </nav>
+  </header>
 
-            <div class="profile-card">
-              <div class="profile-head">
-                <div class="avatar">JL</div>
-                <div class="person">
-                  <strong>Joe Lipshutz</strong>
-                  <span>@joe · eastside mostly</span>
-                </div>
-                <span class="pill">view as</span>
-              </div>
-              <p class="bio">Coffee, hikes, neighborhood places, and spots worth remembering.</p>
-              <div class="stats">
-                <div class="stat"><strong>84</strong><span>places</span></div>
-                <div class="stat"><strong>128</strong><span>followers</span></div>
-                <div class="stat"><strong>91</strong><span>following</span></div>
-              </div>
-              <div class="actions">
-                <span class="button secondary">Followers</span>
-                <span class="button secondary">Following</span>
-                <span class="button mustard">Add spot</span>
-              </div>
-            </div>
-
-            <div class="tabs">
-              <span class="tab active">been</span>
-              <span class="tab">wanna go</span>
-              <span class="tab">drafts 3</span>
-              <span class="tab">self only 7</span>
-            </div>
-
-            <div class="card">
-              <div>
-                <strong>Maru Coffee</strong>
-                <span>Everyone · people who follow you can see this</span>
-              </div>
-              <div class="pin you"><span>☕</span></div>
-            </div>
-            <div class="card">
-              <div>
-                <strong>Elysian trail loop</strong>
-                <span>Friends · mutual follows only</span>
-              </div>
-              <div class="pin dashed you"><span>↗</span></div>
-            </div>
-            <div class="card">
-              <div>
-                <strong>Home office lunch spot</strong>
-                <span>Self · just for you</span>
-              </div>
-              <div class="pin you"><span>•</span></div>
-            </div>
-          </div>
-          <div class="bottom-nav">
-            <div class="nav-groups">
-              <div class="nav-group">
-                <div class="nav-label">your world</div>
-                <div class="nav-item"><span class="nav-icon">⌖</span><span>map</span></div>
-                <div class="nav-item active"><span class="nav-icon">◎</span><span>you</span></div>
-              </div>
-              <div class="plus">+</div>
-              <div class="nav-group single">
-                <div class="nav-label">social world</div>
-                <div class="nav-item"><span class="nav-icon">⌕</span><span>discover</span></div>
-              </div>
-            </div>
-          </div>
-          <div class="home-indicator"></div>
+  <!-- ============ 00 · BRAND ============ -->
+  <section class="section" id="brand">
+    <div class="section-head">
+      <div class="num">00 — BRAND</div>
+      <h2>Useful before social</h2>
+      <p>Map first, not list first. Trusted people, not strangers. Capture must feel faster than organizing. Privacy must be visible before social value expands. Copy is informal but never slangy.</p>
+    </div>
+    <div class="spec-grid" style="grid-template-columns: 1.1fr .9fr;">
+      <div class="spec-card">
+        <div class="label">Voice — good copy</div>
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:15px;">
+          <div>“worth a detour”</div>
+          <div>“where's it from?”</div>
+          <div>“a few quick details”</div>
+          <div>“saved from Ryan”</div>
+          <div>“people you follow have been”</div>
         </div>
       </div>
-
-      <div class="mock">
-        <div class="mock-title">
-          <h2>2. Other Profile / Following</h2>
-          <p>A followed profile shows visible places, mutual status, and block access.</p>
-        </div>
-        <div class="phone">
-          <div class="notch"></div>
-          <div class="screen">
-            <div class="topbar">
-              <div class="icon">‹</div>
-              <div>
-                <div class="brand">profile</div>
-                <div class="subbrand">social world</div>
-              </div>
-              <div class="icon">⋯</div>
-            </div>
-
-            <div class="profile-card">
-              <div class="profile-head">
-                <div class="avatar sky">RS</div>
-                <div class="person">
-                  <strong>Ryan Simon</strong>
-                  <span>@ryans · follows you</span>
-                </div>
-                <span class="pill">friend</span>
-              </div>
-              <p class="bio">Noodles, bars, places with good light, and quick hikes.</p>
-              <div class="stats">
-                <div class="stat"><strong>62</strong><span>places</span></div>
-                <div class="stat"><strong>211</strong><span>followers</span></div>
-                <div class="stat"><strong>174</strong><span>following</span></div>
-              </div>
-              <div class="actions">
-                <span class="button secondary">Following</span>
-                <span class="button danger">Block</span>
-              </div>
-            </div>
-
-            <div class="tabs">
-              <span class="tab active">visible to you</span>
-              <span class="tab">been</span>
-              <span class="tab">wanna go</span>
-            </div>
-
-            <div class="card">
-              <div>
-                <strong>Courage Bagels</strong>
-                <span>Ryan has been · worth the line</span>
-              </div>
-              <div class="pin"><span>🥯</span></div>
-            </div>
-            <div class="card">
-              <div>
-                <strong>Highland Park Bowl</strong>
-                <span>Ryan wants to go · friends can see this</span>
-              </div>
-              <div class="pin dashed"><span>↗</span></div>
-            </div>
-          </div>
-          <div class="bottom-nav">
-            <div class="nav-groups">
-              <div class="nav-group">
-                <div class="nav-label">your world</div>
-                <div class="nav-item"><span class="nav-icon">⌖</span><span>map</span></div>
-                <div class="nav-item"><span class="nav-icon">◎</span><span>you</span></div>
-              </div>
-              <div class="plus">+</div>
-              <div class="nav-group single">
-                <div class="nav-label">social world</div>
-                <div class="nav-item active"><span class="nav-icon">⌕</span><span>discover</span></div>
-              </div>
-            </div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-      </div>
-
-      <div class="mock">
-        <div class="mock-title">
-          <h2>3. Non-Follower Profile Shell</h2>
-          <p>Basic profile is inspectable; places unlock after following.</p>
-        </div>
-        <div class="phone">
-          <div class="notch"></div>
-          <div class="screen">
-            <div class="topbar">
-              <div class="icon">‹</div>
-              <div class="brand">profile</div>
-              <div class="icon">⋯</div>
-            </div>
-
-            <div class="profile-card">
-              <div class="profile-head">
-                <div class="avatar sage">SK</div>
-                <div class="person">
-                  <strong>Sofia Kim</strong>
-                  <span>@sofiak · nearby taste twin</span>
-                </div>
-                <span class="pill">not following</span>
-              </div>
-              <p class="bio">Parks, bakeries, wine bars, bookstores.</p>
-              <div class="stats">
-                <div class="stat"><strong>48</strong><span>places</span></div>
-                <div class="stat"><strong>92</strong><span>followers</span></div>
-                <div class="stat"><strong>64</strong><span>following</span></div>
-              </div>
-              <div class="actions">
-                <span class="button">Follow</span>
-                <span class="button secondary">Block</span>
-              </div>
-            </div>
-
-            <div class="notice">
-              <strong>Follow Sofia to see shared places.</strong>
-              Everyone means people who follow Sofia. Friends-only places appear only if you follow each other.
-            </div>
-
-            <div class="row disabled">
-              <div class="avatar sage">?</div>
-              <div>
-                <strong>Places hidden for now</strong>
-                <span>Follow to unlock Sofia's follower-visible map.</span>
-              </div>
-              <span class="pill">locked</span>
-            </div>
-          </div>
-          <div class="bottom-nav">
-            <div class="nav-groups">
-              <div class="nav-group">
-                <div class="nav-label">your world</div>
-                <div class="nav-item"><span class="nav-icon">⌖</span><span>map</span></div>
-                <div class="nav-item"><span class="nav-icon">◎</span><span>you</span></div>
-              </div>
-              <div class="plus">+</div>
-              <div class="nav-group single">
-                <div class="nav-label">social world</div>
-                <div class="nav-item active"><span class="nav-icon">⌕</span><span>discover</span></div>
-              </div>
-            </div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-      </div>
-
-      <div class="mock">
-        <div class="mock-title">
-          <h2>4. Followers / Following</h2>
-          <p>Separate lists, inline relationship state, fast follow/unfollow/block.</p>
-        </div>
-        <div class="phone">
-          <div class="notch"></div>
-          <div class="screen">
-            <div class="topbar">
-              <div class="icon">‹</div>
-              <div class="brand">people</div>
-              <div class="icon">⌕</div>
-            </div>
-
-            <div class="segmented">
-              <span class="active">followers 128</span>
-              <span>following 91</span>
-            </div>
-            <div class="search">⌕ search people</div>
-
-            <div class="row">
-              <div class="avatar sky">RS</div>
-              <div>
-                <strong>Ryan Simon</strong>
-                <span>@ryans · friend · follows you</span>
-              </div>
-              <span class="button secondary">Following</span>
-            </div>
-            <div class="row">
-              <div class="avatar sage">SK</div>
-              <div>
-                <strong>Sofia Kim</strong>
-                <span>@sofiak · follows you</span>
-              </div>
-              <span class="button">Follow</span>
-            </div>
-            <div class="row">
-              <div class="avatar mustard">AT</div>
-              <div>
-                <strong>Andrew Tan</strong>
-                <span>@andrew · not your vibe</span>
-              </div>
-              <span class="button danger">Block</span>
-            </div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-      </div>
-
-      <div class="mock">
-        <div class="mock-title">
-          <h2>5. People Search</h2>
-          <p>Only username and contacts. Non-users are not fake-followable.</p>
-        </div>
-        <div class="phone">
-          <div class="notch"></div>
-          <div class="screen">
-            <div class="topbar">
-              <div class="icon">‹</div>
-              <div class="brand">find people</div>
-              <div class="icon">?</div>
-            </div>
-
-            <div class="segmented">
-              <span class="active">username</span>
-              <span>contacts</span>
-            </div>
-            <div class="search">⌕ @sofia, Ryan, Andrew...</div>
-
-            <div class="row">
-              <div class="avatar sage">SK</div>
-              <div>
-                <strong>Sofia Kim</strong>
-                <span>@sofiak · parks and bakeries</span>
-              </div>
-              <span class="button">Follow</span>
-            </div>
-            <div class="row">
-              <div class="avatar sky">RS</div>
-              <div>
-                <strong>Ryan Simon</strong>
-                <span>@ryans · friend</span>
-              </div>
-              <span class="button secondary">Following</span>
-            </div>
-            <div class="row disabled">
-              <div class="avatar mustard">NM</div>
-              <div>
-                <strong>Nora Mills</strong>
-                <span>Not on Wander yet. Invite later.</span>
-              </div>
-              <span class="pill">future</span>
-            </div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-      </div>
-
-      <div class="mock">
-        <div class="mock-title">
-          <h2>6. Discover Smart Filters</h2>
-          <p>Big fat query shortcuts instead of generic curation cards.</p>
-        </div>
-        <div class="phone">
-          <div class="notch"></div>
-          <div class="screen">
-            <div class="topbar">
-              <div>
-                <div class="brand">discover</div>
-                <div class="subbrand">social world</div>
-              </div>
-              <div class="icon">⌕</div>
-            </div>
-            <div class="search">⌕ place, vibe, area, or username</div>
-            <div class="chips">
-              <span class="chip active">following</span>
-              <span class="chip active">friends</span>
-              <span class="chip">been</span>
-              <span class="chip">wanna go</span>
-            </div>
-            <div class="fat-grid">
-              <div class="fat-filter"><strong>hikes in LA</strong><span>saved by 9 people you follow</span></div>
-              <div class="fat-filter"><strong>coffee eastside</strong><span>work-friendly, outlets, cute</span></div>
-              <div class="fat-filter"><strong>patio bars</strong><span>friends have been</span></div>
-              <div class="fat-filter"><strong>noodle night</strong><span>near you, open late</span></div>
-            </div>
-          </div>
-          <div class="bottom-nav">
-            <div class="nav-groups">
-              <div class="nav-group">
-                <div class="nav-label">your world</div>
-                <div class="nav-item"><span class="nav-icon">⌖</span><span>map</span></div>
-                <div class="nav-item"><span class="nav-icon">◎</span><span>you</span></div>
-              </div>
-              <div class="plus">+</div>
-              <div class="nav-group single">
-                <div class="nav-label">social world</div>
-                <div class="nav-item active"><span class="nav-icon">⌕</span><span>discover</span></div>
-              </div>
-            </div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-      </div>
-
-      <div class="mock">
-        <div class="mock-title">
-          <h2>7. Settings Gear</h2>
-          <p>Nested from You/Profile, with privacy and safety easy to reach.</p>
-        </div>
-        <div class="phone">
-          <div class="notch"></div>
-          <div class="screen">
-            <div class="topbar">
-              <div class="icon">‹</div>
-              <div class="brand">settings</div>
-              <div class="icon">✓</div>
-            </div>
-            <div class="settings-card">
-              <div class="setting-row"><div><strong>Profile</strong><span>Name, handle, bio, avatar</span></div><span>›</span></div>
-              <div class="setting-row"><div><strong>Default visibility</strong><span>Everyone · people who follow you can see this</span></div><span>›</span></div>
-              <div class="setting-row"><div><strong>Blocked users</strong><span>2 blocked profiles</span></div><span>›</span></div>
-              <div class="setting-row"><div><strong>Contacts</strong><span>Find people you know</span></div><span>off</span></div>
-              <div class="setting-row"><div><strong>Notifications</strong><span>Useful nearby recs, not spam</span></div><span>›</span></div>
-              <div class="setting-row"><div><strong>Data and sync</strong><span>Local saves, sync status, export later</span></div><span>›</span></div>
-            </div>
-            <div class="notice"><strong>Privacy is not buried.</strong> Per-place visibility still shows up before saving.</div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-      </div>
-
-      <div class="mock">
-        <div class="mock-title">
-          <h2>8. Visibility Picker</h2>
-          <p>Everyone/Friends/Self with clear helper copy in the add flow.</p>
-        </div>
-        <div class="phone">
-          <div class="notch"></div>
-          <div class="screen">
-            <div class="topbar">
-              <div class="icon">‹</div>
-              <div class="brand">add spot</div>
-              <span class="pill">step 2</span>
-            </div>
-
-            <div class="profile-card">
-              <div class="profile-head">
-                <div class="avatar">☕</div>
-                <div class="person">
-                  <strong>Maru Coffee</strong>
-                  <span>been · coffee · Los Feliz</span>
-                </div>
-                <span class="pill">nearby</span>
-              </div>
-              <p class="bio">Who should see this spot?</p>
-            </div>
-
-            <div class="visibility-list">
-              <div class="visibility-option active">
-                <div class="radio"></div>
-                <div><strong>Everyone</strong><span>People who follow you can see this.</span></div>
-                <span class="pill">default</span>
-              </div>
-              <div class="visibility-option">
-                <div class="radio"></div>
-                <div><strong>Friends</strong><span>Only mutual follows can see this.</span></div>
-                <span class="pill" style="visibility:hidden;">none</span>
-              </div>
-              <div class="visibility-option">
-                <div class="radio"></div>
-                <div><strong>Self</strong><span>Only you can see this spot.</span></div>
-                <span class="pill" style="visibility:hidden;">none</span>
-              </div>
-            </div>
-
-            <div class="notice"><strong>Sensitive spots default to Self.</strong> Home, work, school, wellness, and medical-ish places should never quietly default to Everyone.</div>
-          </div>
-          <div class="sheet">
-            <div class="handle"></div>
-            <div class="actions">
-              <span class="button">Keep going</span>
-              <span class="button secondary">Save draft</span>
-            </div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-      </div>
-
-      <div class="mock">
-        <div class="mock-title">
-          <h2>9. Coffee Questions</h2>
-          <p>Contextual add flow: emoji scales, yes/no toggles, and tag clouds.</p>
-        </div>
-        <div class="phone">
-          <div class="notch"></div>
-          <div class="screen">
-            <div class="topbar">
-              <div class="icon">‹</div>
-              <div class="brand">coffee check</div>
-              <span class="pill">quick</span>
-            </div>
-
-            <div class="question-card">
-              <h3>work vibe?</h3>
-              <p class="bio">Could you hang here with a laptop for an hour?</p>
-              <div class="emoji-scale">
-                <span>😵</span><span>😐</span><span>🙂</span><span>😎</span><span>💻</span>
-              </div>
-            </div>
-
-            <div class="question-card">
-              <h3>what matters here?</h3>
-              <div class="toggle-row">
-                <span class="chip active">solid wifi</span>
-                <span class="chip active">outlets</span>
-                <span class="chip">quiet</span>
-                <span class="chip active">cute</span>
-                <span class="chip">outdoor seats</span>
-                <span class="chip">good food</span>
-              </div>
-            </div>
-
-            <div class="question-card">
-              <h3>would you send a friend?</h3>
-              <div class="toggle-row">
-                <span class="chip active">yes</span>
-                <span class="chip">depends</span>
-                <span class="chip">nah</span>
-              </div>
-            </div>
-          </div>
-          <div class="sheet">
-            <div class="handle"></div>
-            <div class="actions">
-              <span class="button">Save spot</span>
-              <span class="button secondary">Skip questions</span>
-            </div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-      </div>
-
-      <div class="mock">
-        <div class="mock-title">
-          <h2>10. Hike Questions</h2>
-          <p>Same system, different category: strenuousness, shade, dogs, payoff.</p>
-        </div>
-        <div class="phone">
-          <div class="notch"></div>
-          <div class="screen">
-            <div class="topbar">
-              <div class="icon">‹</div>
-              <div class="brand">hike check</div>
-              <span class="pill">quick</span>
-            </div>
-
-            <div class="question-card">
-              <h3>how spicy?</h3>
-              <div class="emoji-scale">
-                <span>🥿</span><span>🥾</span><span>😅</span><span>🔥</span><span>🏔️</span>
-              </div>
-            </div>
-
-            <div class="question-card">
-              <h3>good to know</h3>
-              <div class="toggle-row">
-                <span class="chip active">easy parking</span>
-                <span class="chip">lots of shade</span>
-                <span class="chip active">dog friendly</span>
-                <span class="chip">steep</span>
-                <span class="chip active">sunset payoff</span>
-              </div>
-            </div>
-
-            <div class="notice"><strong>Fast, not fussy.</strong> These answers make the map useful later without turning the add flow into homework.</div>
-          </div>
-          <div class="sheet">
-            <div class="handle"></div>
-            <div class="actions">
-              <span class="button">Save hike</span>
-              <span class="button secondary">Skip</span>
-            </div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-      </div>
-
-      <div class="mock">
-        <div class="mock-title">
-          <h2>11. Block Flow</h2>
-          <p>Block removes profile discovery, follows, and visible place access.</p>
-        </div>
-        <div class="phone">
-          <div class="notch"></div>
-          <div class="screen">
-            <div class="topbar">
-              <div class="icon">‹</div>
-              <div class="brand">profile</div>
-              <div class="icon">⋯</div>
-            </div>
-            <div class="profile-card">
-              <div class="profile-head">
-                <div class="avatar mustard">AT</div>
-                <div class="person">
-                  <strong>Andrew Tan</strong>
-                  <span>@andrew · follows you</span>
-                </div>
-                <span class="pill">not following</span>
-              </div>
-              <p class="bio">Basic profile shell is visible. Places hidden until follow.</p>
-              <div class="actions">
-                <span class="button">Follow</span>
-                <span class="button danger">Block</span>
-              </div>
-            </div>
-          </div>
-          <div class="modal">
-            <div class="dialog">
-              <h3>Block Andrew?</h3>
-              <p>Andrew will not be able to find your profile, follow you, or see your visible places. Existing follows between you are removed.</p>
-              <div class="actions" style="margin-top: 14px;">
-                <span class="button danger">Block</span>
-                <span class="button secondary">Cancel</span>
-              </div>
-            </div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-      </div>
-
-      <div class="mock">
-        <div class="mock-title">
-          <h2>12. Access Changed</h2>
-          <p>Place detail handles visibility/follow/block changes without leaking data.</p>
-        </div>
-        <div class="phone">
-          <div class="notch"></div>
-          <div class="screen map-screen">
-            <div class="map-bg"></div>
-            <div class="map-pin one"><span>☕</span></div>
-            <div class="map-pin two"><span>★</span></div>
-            <div class="map-pin three"><span>↗</span></div>
-          </div>
-          <div class="sheet">
-            <div class="handle"></div>
-            <div class="notice" style="margin-top:0;">
-              <strong>This spot is no longer available.</strong>
-              The profile changed visibility or access while you were viewing it.
-            </div>
-            <div class="actions" style="margin-top:12px;">
-              <span class="button">Back to Discover</span>
-              <span class="button secondary">Refresh</span>
-            </div>
-          </div>
-          <div class="home-indicator"></div>
+      <div class="spec-card">
+        <div class="label">Voice — avoid</div>
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:15px;color:var(--text-muted);">
+          <div>generic travel-app language</div>
+          <div>gamified check-in language</div>
+          <div>public influencer-feed language</div>
+          <div>live-location language</div>
+          <div>cute slang · long onboarding lectures</div>
         </div>
       </div>
     </div>
-  </div>
+  </section>
+
+  <!-- ============ 01 · COLOR ============ -->
+  <section class="section" id="color">
+    <div class="section-head">
+      <div class="num">01 — COLOR</div>
+      <h2>Palette</h2>
+      <p>Warm cream surfaces, espresso ink, a single terracotta action color, and a sky social color. Color is never the only status indicator — pins also use fill and dash.</p>
+    </div>
+
+    <div class="sub-head">Surfaces &amp; text</div>
+    <div class="swatch-grid">
+      <div class="swatch"><div class="chip" style="background:var(--canvas-warm)"></div><div class="meta"><div class="nm">Canvas warm</div><div class="hex">#F3DFCA</div><div class="use">App background, map-adjacent</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--surface-bone)"></div><div class="meta"><div class="nm">Surface bone</div><div class="hex">#FFF7EA</div><div class="use">Cards, sheets, forms</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--surface-raised)"></div><div class="meta"><div class="nm">Surface raised</div><div class="hex">#FFFFFF</div><div class="use">Inputs, selected, elevated</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--text-ink)"></div><div class="meta"><div class="nm">Text ink</div><div class="hex">#2C2118</div><div class="use">Primary text</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--text-muted)"></div><div class="meta"><div class="nm">Text muted</div><div class="hex">#7B6555</div><div class="use">Secondary text</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--border-hairline)"></div><div class="meta"><div class="nm">Border hairline</div><div class="hex">#DBC2AA</div><div class="use">Dividers, outlines</div></div></div>
+    </div>
+
+    <div class="sub-head">Action &amp; pins</div>
+    <div class="swatch-grid">
+      <div class="swatch"><div class="chip" style="background:var(--terracotta)"></div><div class="meta"><div class="nm">Terracotta</div><div class="hex">#D46F4D</div><div class="use">Primary CTA · you pins</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--terracotta-dark)"></div><div class="meta"><div class="nm">Terracotta dark</div><div class="hex">#A94F35</div><div class="use">Pressed / strong state</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--pin-social)"></div><div class="meta"><div class="nm">Social sky</div><div class="hex">#69B8D7</div><div class="use">Social pins (been/wanna)</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--cat-moss)"></div><div class="meta"><div class="nm">Moss</div><div class="hex">#6F8F5F</div><div class="use">Outdoors / nature</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--cat-sun)"></div><div class="meta"><div class="nm">Sun</div><div class="hex">#E3B64B</div><div class="use">Warm highlight category</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--cat-sage)"></div><div class="meta"><div class="nm">Sage</div><div class="hex">#A0B98A</div><div class="use">Calm supporting category</div></div></div>
+    </div>
+
+    <div class="sub-head">Semantic state</div>
+    <div class="swatch-grid">
+      <div class="swatch"><div class="chip" style="background:var(--state-success)"></div><div class="meta"><div class="nm">Success</div><div class="hex">#3F8F64</div><div class="use">Saved / confirmed</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--state-warning)"></div><div class="meta"><div class="nm">Warning</div><div class="hex">#B98528</div><div class="use">Needs attention</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--state-error)"></div><div class="meta"><div class="nm">Error</div><div class="hex">#B84A3A</div><div class="use">Error / destructive</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--state-info)"></div><div class="meta"><div class="nm">Info</div><div class="hex">#4F8EAD</div><div class="use">Informational / system</div></div></div>
+    </div>
+  </section>
+
+  <!-- ============ 02 · TYPE ============ -->
+  <section class="section" id="type">
+    <div class="section-head">
+      <div class="num">02 — TYPE</div>
+      <h2>Typography</h2>
+      <p>Funnel Display for hero &amp; headings, Funnel Sans for body &amp; controls, Space Mono for quiet labels and redlines. No negative letter-spacing. Reserve display scale for true hierarchy moments. Type never scales with viewport width.</p>
+    </div>
+    <div class="spec-card">
+      <div class="type-row"><div class="ty-meta"><div class="tok">display.lg</div><div class="det">36 / 700 · Display</div></div><div class="ty-sample" style="font-family:var(--font-display);font-weight:700;font-size:36px;line-height:1">worth a detour</div></div>
+      <div class="type-row"><div class="ty-meta"><div class="tok">display.md</div><div class="det">28 / 700 · Display</div></div><div class="ty-sample" style="font-family:var(--font-display);font-weight:700;font-size:28px;line-height:1">where's it from?</div></div>
+      <div class="type-row"><div class="ty-meta"><div class="tok">title.lg</div><div class="det">22 / 700 · Display</div></div><div class="ty-sample" style="font-family:var(--font-display);font-weight:700;font-size:22px">Maru Coffee</div></div>
+      <div class="type-row"><div class="ty-meta"><div class="tok">title.md</div><div class="det">18 / 650 · Sans</div></div><div class="ty-sample" style="font-family:var(--font-body);font-weight:600;font-size:18px">Coffee questions</div></div>
+      <div class="type-row"><div class="ty-meta"><div class="tok">body</div><div class="det">16 / 400 · Sans</div></div><div class="ty-sample" style="font-family:var(--font-body);font-size:16px">Pick a source — we'll fill in what we can.</div></div>
+      <div class="type-row"><div class="ty-meta"><div class="tok">body.sm</div><div class="det">14 / 400 · Sans</div></div><div class="ty-sample" style="font-family:var(--font-body);font-size:14px;color:var(--text-muted)">arts district · coffee · 0.3 mi</div></div>
+      <div class="type-row"><div class="ty-meta"><div class="tok">label</div><div class="det">13 / 600 · Sans</div></div><div class="ty-sample" style="font-family:var(--font-body);font-weight:600;font-size:13px">date night</div></div>
+      <div class="type-row"><div class="ty-meta"><div class="tok">caption</div><div class="det">12 / 500 · Mono</div></div><div class="ty-sample" style="font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)">01 — MAP · YOUR WORLD</div></div>
+    </div>
+  </section>
+
+  <!-- ============ 03 · SPACING &amp; SHAPE ============ -->
+  <section class="section" id="space">
+    <div class="section-head">
+      <div class="num">03 — SPACING &amp; SHAPE</div>
+      <h2>Spacing, radius, elevation</h2>
+      <p>8px base unit. Comfortable for consumer iOS, compact enough for repeat map use. Do not nest cards inside cards.</p>
+    </div>
+
+    <div class="sub-head">Spacing scale</div>
+    <div class="spec-card space-scale">
+      <div class="space-row"><span class="tag">s-1 · 4px</span><span class="bar" style="width:4px"></span></div>
+      <div class="space-row"><span class="tag">s-2 · 8px</span><span class="bar" style="width:8px"></span></div>
+      <div class="space-row"><span class="tag">s-3 · 12px</span><span class="bar" style="width:12px"></span></div>
+      <div class="space-row"><span class="tag">s-4 · 16px</span><span class="bar" style="width:16px"></span></div>
+      <div class="space-row"><span class="tag">s-6 · 24px</span><span class="bar" style="width:24px"></span></div>
+      <div class="space-row"><span class="tag">s-8 · 32px</span><span class="bar" style="width:32px"></span></div>
+      <div class="space-row"><span class="tag">s-12 · 48px</span><span class="bar" style="width:48px"></span></div>
+      <div class="space-row"><span class="tag">s-16 · 64px</span><span class="bar" style="width:64px"></span></div>
+    </div>
+
+    <div class="sub-head">Border radius</div>
+    <div class="radius-grid">
+      <div class="radius-demo"><div class="box" style="border-radius:var(--r-sm)"></div><div class="nm">radius.sm</div><div class="px">8px · controls</div></div>
+      <div class="radius-demo"><div class="box" style="border-radius:var(--r-md)"></div><div class="nm">radius.md</div><div class="px">12px · result cards</div></div>
+      <div class="radius-demo"><div class="box" style="border-radius:var(--r-lg)"></div><div class="nm">radius.lg</div><div class="px">16px · panels</div></div>
+      <div class="radius-demo"><div class="box" style="border-radius:var(--r-sheet)"></div><div class="nm">radius.sheet</div><div class="px">24px · bottom sheets</div></div>
+      <div class="radius-demo"><div class="box" style="border-radius:var(--r-pill)"></div><div class="nm">radius.pill</div><div class="px">999px · chips</div></div>
+    </div>
+
+    <div class="sub-head">Elevation</div>
+    <div class="gallery">
+      <div class="demo-cell"><div class="label">shadow-card</div><div class="demo-stage center"><div style="width:120px;height:64px;background:var(--surface-raised);border-radius:var(--r-md);box-shadow:var(--shadow-card)"></div></div></div>
+      <div class="demo-cell"><div class="label">shadow-pin</div><div class="demo-stage center"><div class="w-pin you">☕</div></div></div>
+      <div class="demo-cell"><div class="label">shadow-fab</div><div class="demo-stage center"><div class="w-fab">+</div></div></div>
+    </div>
+  </section>
+
+  <!-- ============ 04 · COMPONENTS ============ -->
+  <section class="section" id="components">
+    <div class="section-head">
+      <div class="num">04 — COMPONENTS</div>
+      <h2>Component library</h2>
+      <p>Each control shown with its key states. Selected states must read by color, fill <em>and</em> label — never color alone. Touch targets stay ≥ 44px.</p>
+    </div>
+
+    <div class="gallery wide">
+      <!-- search -->
+      <div class="demo-cell"><div class="label">Search field · default / focused / loading</div>
+        <div class="demo-stage">
+          <div class="w-search"><span class="mag">🔍</span><span class="ph">search a place, vibe, or username…</span><div class="w-avatar sm" style="background:var(--avatar-sofia)">SR</div></div>
+          <div class="w-search focused"><span class="mag">🔍</span><span class="ph" style="color:var(--text-ink)">coffee eastside</span></div>
+          <div class="w-search"><span class="mag">🔍</span><span class="ph">reading…</span><div class="spin"></div></div>
+        </div>
+      </div>
+
+      <!-- filter chips -->
+      <div class="demo-cell"><div class="label">Filter chips · multi-select</div>
+        <div class="demo-stage">
+          <div class="chip-row">
+            <span class="w-chip on"><span class="ic">🧭</span>you</span>
+            <span class="w-chip"><span class="ic">👥</span>friends</span>
+            <span class="w-chip on"><span class="ic">●</span>been</span>
+            <span class="w-chip dashed"><span class="ic">○</span>wanna go</span>
+          </div>
+          <div class="state-note"><b>on</b> = ink fill · <b>off</b> = bone + hairline · wanna uses dashed border</div>
+        </div>
+      </div>
+
+      <!-- tag cloud -->
+      <div class="demo-cell"><div class="label">Tag chips · multi-tag question</div>
+        <div class="demo-stage">
+          <div class="tag-cloud">
+            <span class="w-tag on">wifi solid</span><span class="w-tag on">outlets</span><span class="w-tag">quiet</span><span class="w-tag">cute</span><span class="w-tag">outdoor seats</span><span class="w-tag">cash only</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- segmented -->
+      <div class="demo-cell"><div class="label">Single choice · yes/no</div>
+        <div class="demo-stage">
+          <div class="w-seg"><span class="opt on">yes</span><span class="opt">sometimes</span><span class="opt">nope</span></div>
+        </div>
+      </div>
+
+      <!-- emoji scale -->
+      <div class="demo-cell"><div class="label">Emoji scale</div>
+        <div class="demo-stage center">
+          <div class="w-emoji-scale"><span class="e">🤮</span><span class="e">😐</span><span class="e">🙂</span><span class="e on">😍</span><span class="e">🤩</span></div>
+        </div>
+      </div>
+
+      <!-- price -->
+      <div class="demo-cell"><div class="label">Price scale</div>
+        <div class="demo-stage center">
+          <div class="w-price"><span class="p on">$</span><span class="p">$$</span><span class="p">$$$</span><span class="p">$$$$</span></div>
+        </div>
+      </div>
+
+      <!-- visibility -->
+      <div class="demo-cell"><div class="label">Visibility pill · Everyone / Friends / Self</div>
+        <div class="demo-stage">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <span class="w-visibility"><span class="dot"></span>Everyone</span>
+            <span class="w-visibility friends"><span class="dot"></span>Friends</span>
+            <span class="w-visibility self"><span class="dot"></span>Self</span>
+          </div>
+          <div class="state-note">helper: <b>“People who follow you can see this.”</b> Everyone ≠ global public feed.</div>
+        </div>
+      </div>
+
+      <!-- buttons -->
+      <div class="demo-cell"><div class="label">Buttons &amp; FAB</div>
+        <div class="demo-stage center">
+          <button class="w-btn primary block">save to my map</button>
+          <button class="w-btn ghost block">add details</button>
+          <div class="w-fab">+</div>
+        </div>
+      </div>
+
+      <!-- source rows -->
+      <div class="demo-cell"><div class="label">Source picker rows</div>
+        <div class="demo-stage">
+          <div class="w-source primary"><span class="ic">📍</span><div class="txt"><div class="t">i'm here right now</div><div class="s">use my location · Maru Coffee detected</div></div><span class="chev">›</span></div>
+          <div class="w-source"><span class="ic">🔗</span><div class="txt"><div class="t">paste a link</div><div class="s">instagram, tiktok, google maps, a blog</div></div><span class="chev">›</span></div>
+        </div>
+      </div>
+
+      <!-- candidate -->
+      <div class="demo-cell"><div class="label">Candidate confirmation · selected / option</div>
+        <div class="demo-stage">
+          <div class="w-candidate sel"><div class="thumb" style="background:var(--terracotta-tint)">☕</div><div class="info"><div class="nm">Maru Coffee</div><div class="ad">1936 e 7th st · arts district</div></div><div class="pick">✓</div></div>
+          <div class="w-candidate"><div class="thumb" style="background:var(--surface-sand)">☕</div><div class="info"><div class="nm">Maru Coffee — DTLA</div><div class="ad">downtown · 1.2 mi</div></div><div class="pick"></div></div>
+        </div>
+      </div>
+
+      <!-- avatars -->
+      <div class="demo-cell"><div class="label">Avatars &amp; social proof stack</div>
+        <div class="demo-stage center">
+          <div style="display:flex;gap:12px;align-items:center;">
+            <div class="w-avatar" style="background:var(--avatar-james)">JM</div>
+            <div class="w-avatar" style="background:var(--avatar-ryan)">RK</div>
+            <div class="w-avatar" style="background:var(--avatar-andrew)">AP</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:6px;">
+            <div class="avatar-stack"><div class="w-avatar sm" style="background:var(--avatar-james)">JM</div><div class="w-avatar sm" style="background:var(--avatar-ryan)">RK</div><div class="w-avatar sm" style="background:var(--avatar-andrew)">AP</div></div>
+            <span style="font-size:13px;color:var(--text-muted)">+ 3 friends here</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- status badges -->
+      <div class="demo-cell"><div class="label">Status badge · been / wanna</div>
+        <div class="demo-stage center">
+          <div style="display:flex;gap:10px;">
+            <span class="status-badge been">been ✓</span>
+            <span class="status-badge">wanna</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 05 · PINS ============ -->
+  <section class="section" id="pins">
+    <div class="section-head">
+      <div class="num">05 — PIN SYSTEM</div>
+      <h2>Pin color system</h2>
+      <p>Owner sets color, status sets fill. Up to four pin states show at once. VoiceOver labels include owner, status, category, and place name — e.g. “Social place, been, coffee, Maru Coffee.”</p>
+    </div>
+    <div class="spec-card">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:28px;">
+        <div class="pin-legend-cell"><div class="w-pin you">☕</div><div class="nm">you · been</div><div class="ds">solid terracotta · your confirmed spots</div></div>
+        <div class="pin-legend-cell"><div class="w-pin you wanna">☕</div><div class="nm">you · wanna</div><div class="ds">dashed terracotta · your wishlist</div></div>
+        <div class="pin-legend-cell"><div class="w-pin social">🥾</div><div class="nm">friends · been</div><div class="ds">solid sky · friends have been</div></div>
+        <div class="pin-legend-cell"><div class="w-pin social wanna">🥾</div><div class="nm">friends · wanna</div><div class="ds">dashed sky · friends saved it</div></div>
+      </div>
+      <div class="callout" style="margin-top:28px;">
+        <div class="ct">Clustering</div>
+        <p>Mixed clusters preserve the owner/status breakdown and open a grouped sheet split by you / following / been / wanna. Recency may later layer in as opacity or tone — never a new primary color.</p>
+      </div>
+    </div>
+
+    <div style="margin-top:64px;text-align:center;">
+      <a href="screens.html" class="w-btn primary" style="text-decoration:none;display:inline-flex;">View the screen mocks →</a>
+    </div>
+  </section>
+
+</div>
 </body>
 </html>

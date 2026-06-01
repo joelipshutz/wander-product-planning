@@ -8,15 +8,15 @@ This is the project-level design source of truth for Wander. Read it before maki
 
 ## Sources
 
-- Product spec: `docs/specs/wander-ios-product-spec.md`
-- Design handoff source: `preview/follow-profile-settings-mocks/`
-- Canonical design tokens: `preview/follow-profile-settings-mocks/tokens.css`
-- Design-system reference: `preview/follow-profile-settings-mocks/index.html`
-- Annotated screen mocks: `preview/follow-profile-settings-mocks/screens.html`
-- Handoff IA feedback: `preview/follow-profile-settings-mocks/wander-ia-feedback.md`
-- Original mock PDF: `docs/source/wander-mocks.pdf`
-- Original rendered mocks: `docs/source/wander-mocks-pages/`
-- Onboarding research: `research/screensdesign/2026-05-30-social-map-onboarding/report.md`
+- Product spec: `wander-ios-product-spec.md`
+- Design handoff source: `../`
+- Canonical design tokens: `../tokens.css`
+- Design-system reference: `../index.html`
+- Annotated screen mocks: `../screens.html`
+- Handoff IA feedback: `../wander-ia-feedback.md`
+- Original mock PDF: `../../../docs/source/wander-mocks.pdf`
+- Original rendered mocks: `../../../docs/source/wander-mocks-pages/`
+- Onboarding research: `../../../research/screensdesign/2026-05-30-social-map-onboarding/report.md`
 
 ## Product Context
 

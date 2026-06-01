@@ -7,15 +7,15 @@ Project root: `/Users/joelipshutz/Developer/Wander (nametbd)`
 
 ## Sources
 
-- Conversation archive: [docs/source/wander-conversation-2026-05-29.md](../source/wander-conversation-2026-05-29.md)
-- Design handoff source: [preview/follow-profile-settings-mocks](../../preview/follow-profile-settings-mocks)
-- Canonical design tokens: [preview/follow-profile-settings-mocks/tokens.css](../../preview/follow-profile-settings-mocks/tokens.css)
-- Design-system reference: [preview/follow-profile-settings-mocks/index.html](../../preview/follow-profile-settings-mocks/index.html)
-- Annotated screen mocks: [preview/follow-profile-settings-mocks/screens.html](../../preview/follow-profile-settings-mocks/screens.html)
-- Handoff IA feedback: [preview/follow-profile-settings-mocks/wander-ia-feedback.md](../../preview/follow-profile-settings-mocks/wander-ia-feedback.md)
-- Original mock PDF: [docs/source/wander-mocks.pdf](../source/wander-mocks.pdf)
-- Original mock page renders: [docs/source/wander-mocks-pages](../source/wander-mocks-pages)
-- Deferred work: [TODOS.md](../../TODOS.md)
+- Conversation archive: [docs/source/wander-conversation-2026-05-29.md](../../../docs/source/wander-conversation-2026-05-29.md)
+- Design handoff source: [preview/follow-profile-settings-mocks](../)
+- Canonical design tokens: [preview/follow-profile-settings-mocks/tokens.css](../tokens.css)
+- Design-system reference: [preview/follow-profile-settings-mocks/index.html](../index.html)
+- Annotated screen mocks: [preview/follow-profile-settings-mocks/screens.html](../screens.html)
+- Handoff IA feedback: [preview/follow-profile-settings-mocks/wander-ia-feedback.md](../wander-ia-feedback.md)
+- Original mock PDF: [docs/source/wander-mocks.pdf](../../../docs/source/wander-mocks.pdf)
+- Original mock page renders: [docs/source/wander-mocks-pages](../../../docs/source/wander-mocks-pages)
+- Deferred work: [TODOS.md](../../../TODOS.md)
 - Slate reference app: `/Users/joelipshutz/Developer/Slate`
 - Competitive references:
   - Mapstr: https://en.mapstr.com/
