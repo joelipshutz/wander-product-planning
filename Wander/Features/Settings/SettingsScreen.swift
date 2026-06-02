@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsScreen: View {
     @EnvironmentObject private var store: WanderStore
+    @EnvironmentObject private var auth: AuthSessionStore
 
     var body: some View {
         NavigationStack {
@@ -71,7 +72,9 @@ struct SettingsScreen: View {
                         }
                         Spacer()
                         Button("unblock") {
-                            store.unblock(userID: profile.id)
+                            auth.requireSignIn(for: .manageBlocks) {
+                                store.unblock(userID: profile.id)
+                            }
                         }
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(WanderTheme.terracotta.color)
@@ -90,7 +93,9 @@ struct SettingsScreen: View {
             SettingsRow(title: "Profile and account", subtitle: "@\(store.currentUser.handle)", systemImage: "person.crop.circle")
             SettingsRow(title: "Contacts", subtitle: "planned native permission later", systemImage: "person.crop.rectangle.stack")
             SettingsRow(title: "Notifications", subtitle: "after first save", systemImage: "bell")
-            SettingsRow(title: "Data and sync", subtitle: "\(store.pendingSyncCount) pending local item\(store.pendingSyncCount == 1 ? "" : "s")", systemImage: "arrow.triangle.2.circlepath")
+            SettingsRow(title: "Data and sync", subtitle: "\(store.pendingSyncCount) pending local item\(store.pendingSyncCount == 1 ? "" : "s")", systemImage: "arrow.triangle.2.circlepath") {
+                auth.presentGate(for: .syncPending)
+            }
         }
     }
 }
@@ -112,30 +117,39 @@ private struct SettingsRow: View {
     let title: String
     let subtitle: String
     let systemImage: String
+    var action: (() -> Void)?
 
     var body: some View {
-        HStack(spacing: WanderTheme.spacing3) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(WanderTheme.terracotta.color)
-                .frame(width: 38, height: 38)
-                .background(WanderTheme.terracottaTint.color)
-                .clipShape(Circle())
-            VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
-                Text(title)
-                    .font(.system(size: 15, weight: .bold))
-                Text(subtitle)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(WanderTheme.textMuted.color)
-                    .lineLimit(1)
+        Button {
+            action?()
+        } label: {
+            HStack(spacing: WanderTheme.spacing3) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(WanderTheme.terracotta.color)
+                    .frame(width: 38, height: 38)
+                    .background(WanderTheme.terracottaTint.color)
+                    .clipShape(Circle())
+                VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .bold))
+                    Text(subtitle)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(WanderTheme.textMuted.color)
+                        .lineLimit(1)
+                }
+                Spacer()
+                if action != nil {
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(WanderTheme.textFaint.color)
+                }
             }
-            Spacer()
-            Image(systemName: "chevron.right")
-                .foregroundStyle(WanderTheme.textFaint.color)
+            .frame(minHeight: WanderTheme.tapMinimum)
+            .padding(WanderTheme.spacing3)
+            .background(WanderTheme.surfaceBone.color)
+            .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
         }
-        .frame(minHeight: WanderTheme.tapMinimum)
-        .padding(WanderTheme.spacing3)
-        .background(WanderTheme.surfaceBone.color)
-        .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+        .buttonStyle(.plain)
+        .disabled(action == nil)
     }
 }

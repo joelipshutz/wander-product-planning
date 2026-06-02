@@ -7,6 +7,17 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     DEVELOPMENT_TEAM: ""
+    WANDER_CLERK_PUBLISHABLE_KEY: ""
+    WANDER_CLERK_FRONTEND_API: growing-pheasant-22.clerk.accounts.dev
+    WANDER_SUPABASE_URL: https://rugmtlgufrhlxwfkumhw.supabase.co
+    WANDER_SUPABASE_PUBLISHABLE_KEY: ""
+packages:
+  clerk-ios:
+    url: https://github.com/clerk/clerk-ios
+    from: 1.1.3
+  supabase-swift:
+    url: https://github.com/supabase/supabase-swift.git
+    from: 2.46.0
 targets:
   Wander:
     type: application
@@ -15,12 +26,28 @@ targets:
       - Wander
     info:
       path: Wander/Resources/Info.plist
+      properties:
+        WANDER_CLERK_FRONTEND_API: $(WANDER_CLERK_FRONTEND_API)
+        WANDER_CLERK_PUBLISHABLE_KEY: $(WANDER_CLERK_PUBLISHABLE_KEY)
+        WANDER_SUPABASE_PUBLISHABLE_KEY: $(WANDER_SUPABASE_PUBLISHABLE_KEY)
+        WANDER_SUPABASE_URL: $(WANDER_SUPABASE_URL)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.grayline.wander
         MARKETING_VERSION: "0.1"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: Wander/Resources/Wander.entitlements
+    dependencies:
+      - package: clerk-ios
+        product: ClerkKit
+      - package: clerk-ios
+        product: ClerkKitUI
+      - package: supabase-swift
+        product: Supabase
   WanderTests:
     type: bundle.unit-test
     platform: iOS

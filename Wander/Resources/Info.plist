@@ -24,5 +24,13 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
+	<key>WANDER_CLERK_FRONTEND_API</key>
+	<string>$(WANDER_CLERK_FRONTEND_API)</string>
+	<key>WANDER_CLERK_PUBLISHABLE_KEY</key>
+	<string>$(WANDER_CLERK_PUBLISHABLE_KEY)</string>
+	<key>WANDER_SUPABASE_PUBLISHABLE_KEY</key>
+	<string>$(WANDER_SUPABASE_PUBLISHABLE_KEY)</string>
+	<key>WANDER_SUPABASE_URL</key>
+	<string>$(WANDER_SUPABASE_URL)</string>
 </dict>
 </plist>

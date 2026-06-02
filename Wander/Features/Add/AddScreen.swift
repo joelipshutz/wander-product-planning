@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AddScreen: View {
     @EnvironmentObject private var store: WanderStore
+    @EnvironmentObject private var auth: AuthSessionStore
     @State private var step: AddStep = .source
     @State private var candidates: [PlaceCandidate] = []
     @State private var selectedCandidateID: String?
@@ -222,6 +223,9 @@ struct AddScreen: View {
                     sourceType: selectedSource,
                     attributes: attributeDrafts()
                 )
+                if !auth.isSignedIn {
+                    auth.presentGate(for: .syncPlace)
+                }
                 step = .saved
             }
         }
@@ -244,12 +248,25 @@ struct AddScreen: View {
             }
 
             if let savedResult {
-                Text(savedResult.syncState == .pendingCreate ? "sync queued" : "saved")
-                    .font(.system(size: 13, weight: .bold))
-                    .padding(.horizontal, WanderTheme.spacing3)
-                    .padding(.vertical, WanderTheme.spacing2)
-                    .background(WanderTheme.surfaceSand.color)
-                    .clipShape(Capsule())
+                VStack(spacing: WanderTheme.spacing2) {
+                    Text(savedResult.syncState == .pendingCreate ? "sync queued" : "saved")
+                        .font(.system(size: 13, weight: .bold))
+                        .padding(.horizontal, WanderTheme.spacing3)
+                        .padding(.vertical, WanderTheme.spacing2)
+                        .background(WanderTheme.surfaceSand.color)
+                        .clipShape(Capsule())
+
+                    if savedResult.syncState == .pendingCreate && !auth.isSignedIn {
+                        Button {
+                            auth.presentGate(for: .syncPlace)
+                        } label: {
+                            Text("sign in to sync")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(WanderTheme.terracotta.color)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
 
             WanderPrimaryButton(title: "add another place", systemImage: "plus") {

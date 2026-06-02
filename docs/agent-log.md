@@ -413,6 +413,45 @@ Known remaining M3 setup work:
 - Install Docker/OrbStack/Colima if we want the standard local Supabase stack and CLI pgTAP runner.
 - Review hosted Supabase Auth settings before alpha because `npx supabase config push` pushed generated local auth defaults plus Clerk config.
 
+## 2026-06-02 14:27 PDT - Codex - M3 iOS Clerk/Supabase Wiring
+
+Agent: Codex plus parallel explorers `Socrates`, `Euclid`, and `Ohm`
+Branch: `main`
+Starting commit: `b8de80d`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` has the same unrelated local signing/file-type diff and should remain unstaged unless Joe explicitly asks.
+
+Goal: execute the next slice of the existing engineering plan, not create a new plan: add iOS Clerk/Supabase SDK wiring behind repository/auth boundaries, introduce auth gates at save/sync/follow/social-save intent points, and keep views from calling Clerk/Supabase directly.
+
+Coordination:
+
+- Source plan: `docs/plans/2026-06-01-wander-ios-eng-plan.md`, especially M3 Clerk + Supabase Foundation and D14 auth gates.
+- Mission Control task creation to `http://localhost:4000/api/tasks` failed because localhost:4000 is not reachable.
+- GBrain search for Wander Clerk/Supabase context timed out on a PGLite lock; proceeding from repo docs and this agent log.
+- Spawned parallel explorers:
+  - `Socrates`: project.yml/SwiftPM dependency mechanics.
+  - `Euclid`: service/repository boundary recommendations.
+  - `Ohm`: UI auth-gate insertion points.
+
+Expected files to touch:
+
+- `project.yml`
+- `Wander/App/*`
+- `Wander/Services/Auth/*`
+- `Wander/Services/Remote/*`
+- `Wander/Services/RepositoryProtocols.swift`
+- Feature files only where auth gates are wired.
+- `WanderTests/*` for auth/repository contract coverage.
+- `docs/agent-log.md`, and docs/decisions/open-questions only if new durable decisions appear.
+
+Initial implementation checklist:
+
+- Add Clerk/Supabase SwiftPM packages through XcodeGen.
+- Add auth session provider and minimal auth gate state.
+- Add Supabase client factory using local non-secret config and Clerk session token boundary.
+- Add remote repository shells/DTOs behind protocols.
+- Gate save/sync/follow/social-save intents without implementing full onboarding.
+- Regenerate Xcode project and run the full `xcodebuild test` command before committing.
+
 ## 2026-06-01 - Codex - Discover People Rail Fix
 
 Agent: Codex
@@ -514,3 +553,42 @@ Completion checkpoint:
   - `DerivedData/visual-sweep/m2-visual-acceptance-profile-iphone16plus.png`
   - `DerivedData/visual-sweep/m2-visual-acceptance-settings-iphone16plus.png`
 - Remaining local caveat: `Wander.xcodeproj/project.pbxproj` still has the unrelated unstaged local signing/team diff and should remain uncommitted unless Joe asks.
+
+## 2026-06-02 - Codex - M3 iOS Wiring Checkpoint
+
+Agent: Codex
+Branch: `main`
+Starting commit: `b8de80d`
+Starting status: local `main` matched `origin/main`; `Wander.xcodeproj/project.pbxproj` already had unrelated local generated/signing churn and should not be committed unless intentional.
+
+Goal: continue the existing engineering plan's M3 iOS work, not create a new plan. Wire Clerk/Supabase behind service boundaries, gate account-required UI actions, add contract tests, then regenerate/build/test.
+
+Checkpoint:
+
+- Confirmed Mission Control was not reachable locally and GBrain was locked earlier; continued from repo docs and existing eng plan.
+- Closed completed subagents after folding in their findings.
+- Added Clerk/Supabase package/config entries in `project.yml`, app Info.plist keys, and associated-domain entitlements.
+- Added `AuthSessionProviding`, `ClerkAuthService`, `AuthGateSheet`, `WanderSupabaseClient`, Supabase DTOs, and Supabase repository conformers.
+- Wired auth gate state at `WanderApp` / `WanderRootView`.
+- Gated Add sync intent, Discover follow/social save, Map social save, Profile follow/unfollow/block, graph-list follow/unfollow, Settings unblock/data-sync.
+- Replaced the placeholder Supabase RPC shell with a REST RPC transport that attaches the Clerk/Supabase JWT through `Authorization`.
+- Added tests:
+  - `WanderTests/AuthSessionTests.swift`
+  - `WanderTests/RemoteRepositoryTests.swift`
+  - `WanderTests/BoundaryImportTests.swift`
+
+Next: run `xcodegen generate`, inspect generated project churn carefully, then build/test and fix compile/API issues.
+
+Completion checkpoint:
+
+- Ran `xcodegen generate` successfully and confirmed the project churn is the intentional SwiftPM/package/entitlements wiring for Clerk and Supabase.
+- SwiftPM resolved:
+  - Clerk iOS at `1.1.4`
+  - Supabase Swift at `2.46.0`
+- Fixed the first full test failure by removing `convertFromSnakeCase` from the remote DTO decoder, since the DTOs already use explicit snake_case `CodingKeys`.
+- Full test command:
+  `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: 32 tests, 0 failures.
+- Latest passing result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.02_14-47-32--0700.xcresult`.
+- Files changed for the commit include `project.yml`, generated `Wander.xcodeproj` package references/SwiftPM lockfile, backend config/auth/remote service files, auth gates across M2 UI surfaces, and the three new test files.
+- Known caveat: project signing/team settings are local-machine state and should remain uncommitted if Xcode reintroduces them.

@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MapScreen: View {
     @EnvironmentObject private var store: WanderStore
+    @EnvironmentObject private var auth: AuthSessionStore
     @State private var selectedPlaceID: String?
     @State private var isPlaceSheetExpanded: Bool
     @State private var mapQuery = ""
@@ -121,7 +122,9 @@ struct MapScreen: View {
                         currentUserID: store.currentUser.id,
                         isExpanded: $isPlaceSheetExpanded
                     ) {
-                        _ = store.saveVisiblePlace(selectedPlace)
+                        auth.requireSignIn(for: .socialSave) {
+                            _ = store.saveVisiblePlace(selectedPlace)
+                        }
                     }
                     .padding(.horizontal, WanderTheme.spacing3)
                     .padding(.bottom, WanderTheme.spacing2)

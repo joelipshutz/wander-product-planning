@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileScreen: View {
     @EnvironmentObject private var store: WanderStore
+    @EnvironmentObject private var auth: AuthSessionStore
     @State private var showsSettings = false
     @State private var listMode: GraphListMode?
     @State private var selectedPeopleMode: GraphListMode = .following
@@ -25,10 +26,12 @@ struct ProfileScreen: View {
             .sheet(isPresented: $showsSettings) {
                 SettingsScreen()
                     .environmentObject(store)
+                    .environmentObject(auth)
             }
             .sheet(item: $listMode) { mode in
                 GraphListScreen(mode: mode)
                     .environmentObject(store)
+                    .environmentObject(auth)
             }
         }
     }
@@ -190,6 +193,7 @@ struct ProfileScreen: View {
 
 struct ProfileDetailView: View {
     @EnvironmentObject private var store: WanderStore
+    @EnvironmentObject private var auth: AuthSessionStore
     let profileID: String
     @State private var showBlockConfirm = false
 
@@ -222,7 +226,9 @@ struct ProfileDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .confirmationDialog("Block this person?", isPresented: $showBlockConfirm, titleVisibility: .visible) {
                 Button("Block", role: .destructive) {
-                    store.block(userID: profileID)
+                    auth.requireSignIn(for: .manageBlocks) {
+                        store.block(userID: profileID)
+                    }
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
@@ -270,11 +276,15 @@ struct ProfileDetailView: View {
             HStack {
                 if state.shell.relationship == .nonFollower && !state.isBlocked {
                     WanderPrimaryButton(title: "follow", systemImage: "person.badge.plus") {
-                        store.follow(userID: state.shell.id)
+                        auth.requireSignIn(for: .followPeople) {
+                            store.follow(userID: state.shell.id)
+                        }
                     }
                 } else if state.shell.relationship != .owner && !state.isBlocked {
                     Button {
-                        store.unfollow(userID: state.shell.id)
+                        auth.requireSignIn(for: .followPeople) {
+                            store.unfollow(userID: state.shell.id)
+                        }
                     } label: {
                         Text(state.shell.relationship == .mutual ? "friend" : "following")
                             .font(.system(size: 15, weight: .bold))
@@ -329,6 +339,7 @@ private enum GraphListMode: String, CaseIterable, Identifiable {
 
 private struct GraphListScreen: View {
     @EnvironmentObject private var store: WanderStore
+    @EnvironmentObject private var auth: AuthSessionStore
     let mode: GraphListMode
 
     private var profiles: [LocalProfile] {
@@ -357,7 +368,9 @@ private struct GraphListScreen: View {
                         }
                         Spacer()
                         Button(store.relationship(to: profile.id) == .nonFollower ? "follow" : "unfollow") {
-                            store.relationship(to: profile.id) == .nonFollower ? store.follow(userID: profile.id) : store.unfollow(userID: profile.id)
+                            auth.requireSignIn(for: .followPeople) {
+                                store.relationship(to: profile.id) == .nonFollower ? store.follow(userID: profile.id) : store.unfollow(userID: profile.id)
+                            }
                         }
                         .font(.system(size: 13, weight: .bold))
                     }

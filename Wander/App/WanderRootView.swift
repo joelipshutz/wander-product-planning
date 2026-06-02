@@ -2,6 +2,7 @@ import SwiftUI
 
 @MainActor
 struct WanderRootView: View {
+    @EnvironmentObject private var auth: AuthSessionStore
     @State private var selectedTab: WanderTab
     @State private var initialPresentation: WanderInitialPresentation?
     @StateObject private var store: WanderStore
@@ -32,12 +33,29 @@ struct WanderRootView: View {
         }
         .tint(WanderTheme.terracotta.color)
         .environmentObject(store)
+        .sheet(item: $auth.activeGate) { request in
+            AuthGateSheet(request: request)
+                .environmentObject(auth)
+                .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $auth.isPresentingNativeAuth) {
+            ClerkNativeAuthView()
+                .environmentObject(auth)
+        }
         .sheet(item: $initialPresentation) { presentation in
             switch presentation {
             case .settings:
                 SettingsScreen()
                     .environmentObject(store)
+                    .environmentObject(auth)
             }
+        }
+        .task {
+            await auth.refreshSession()
+        }
+        .onChange(of: auth.isPresentingNativeAuth) { _, isPresenting in
+            guard !isPresenting else { return }
+            Task { await auth.refreshSession() }
         }
     }
 
