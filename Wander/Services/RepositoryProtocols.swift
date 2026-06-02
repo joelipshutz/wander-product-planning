@@ -53,6 +53,40 @@ struct UserPlaceDraft: Equatable {
     let sourceType: String
 }
 
+struct PlaceAttributeDraft: Equatable {
+    let questionKey: String
+    let valueType: String
+    let valueJSON: String
+
+    init(questionKey: String, valueType: String, valueJSON: String) {
+        self.questionKey = questionKey
+        self.valueType = valueType
+        self.valueJSON = valueJSON
+    }
+
+    init(questionKey: String, valueType: String, stringValue: String) {
+        self.questionKey = questionKey
+        self.valueType = valueType
+        self.valueJSON = Self.encoded(stringValue)
+    }
+
+    init(questionKey: String, valueType: String, stringValues: [String]) {
+        self.questionKey = questionKey
+        self.valueType = valueType
+        self.valueJSON = Self.encoded(stringValues)
+    }
+
+    private static func encoded<T: Encodable>(_ value: T) -> String {
+        guard let data = try? JSONEncoder().encode(value),
+              let encoded = String(data: data, encoding: .utf8)
+        else {
+            return "null"
+        }
+
+        return encoded
+    }
+}
+
 struct SaveResult: Equatable {
     let userPlaceID: String
     let syncState: SyncState

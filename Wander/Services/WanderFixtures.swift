@@ -6,6 +6,7 @@ struct WanderFixtures {
     let profiles: [LocalProfile]
     let places: [LocalPlace]
     let userPlaces: [LocalUserPlace]
+    let placeAttributes: [LocalPlaceAttribute]
     let follows: [LocalFollow]
     let blocks: [LocalBlock]
     let contactProvider: FakeContactProvider
@@ -26,6 +27,19 @@ struct WanderFixtures {
             LocalUserPlace(localID: "local_up_ryan_noodles", serverID: "up_ryan_noodles", userID: ryan.id, placeID: noodles.id, status: .wannaGo, visibility: .mutuals, note: "Saved for a rainy night.", sourceType: "social_seed", syncState: .synced)
         ]
 
+        let placeAttributes = [
+            LocalPlaceAttribute(localID: "local_attr_joe_woodcat_rating", serverID: "attr_joe_woodcat_rating", userPlaceID: "up_joe_woodcat", questionKey: "rating_signal", valueType: "emoji_scale", valueJSON: "\"great\"", syncState: .synced),
+            LocalPlaceAttribute(localID: "local_attr_joe_woodcat_work", serverID: "attr_joe_woodcat_work", userPlaceID: "up_joe_woodcat", questionKey: "work_setup", valueType: "single_choice", valueJSON: "\"yes\"", syncState: .synced),
+            LocalPlaceAttribute(localID: "local_attr_joe_woodcat_tags", serverID: "attr_joe_woodcat_tags", userPlaceID: "up_joe_woodcat", questionKey: "coffee_tags", valueType: "multi_tag", valueJSON: "[\"wifi solid\",\"quiet\"]", syncState: .synced),
+            LocalPlaceAttribute(localID: "local_attr_maya_griffith_rating", serverID: "attr_maya_griffith_rating", userPlaceID: "up_maya_griffith", questionKey: "rating_signal", valueType: "emoji_scale", valueJSON: "\"great\"", syncState: .synced),
+            LocalPlaceAttribute(localID: "local_attr_maya_griffith_strenuousness", serverID: "attr_maya_griffith_strenuousness", userPlaceID: "up_maya_griffith", questionKey: "strenuousness", valueType: "single_choice", valueJSON: "\"easy\"", syncState: .synced),
+            LocalPlaceAttribute(localID: "local_attr_maya_griffith_tags", serverID: "attr_maya_griffith_tags", userPlaceID: "up_maya_griffith", questionKey: "hike_tags", valueType: "multi_tag", valueJSON: "[\"sunset\",\"views\"]", syncState: .synced),
+            LocalPlaceAttribute(localID: "local_attr_ryan_noodles_rating", serverID: "attr_ryan_noodles_rating", userPlaceID: "up_ryan_noodles", questionKey: "rating_signal", valueType: "emoji_scale", valueJSON: "\"excited\"", syncState: .synced),
+            LocalPlaceAttribute(localID: "local_attr_ryan_noodles_price", serverID: "attr_ryan_noodles_price", userPlaceID: "up_ryan_noodles", questionKey: "price", valueType: "price_scale", valueJSON: "\"$$\"", syncState: .synced),
+            LocalPlaceAttribute(localID: "local_attr_ryan_noodles_occasion", serverID: "attr_ryan_noodles_occasion", userPlaceID: "up_ryan_noodles", questionKey: "occasion", valueType: "single_choice", valueJSON: "\"rainy night\"", syncState: .synced),
+            LocalPlaceAttribute(localID: "local_attr_ryan_noodles_tags", serverID: "attr_ryan_noodles_tags", userPlaceID: "up_ryan_noodles", questionKey: "restaurant_tags", valueType: "multi_tag", valueJSON: "[\"cozy\",\"worth it\"]", syncState: .synced)
+        ]
+
         let follows = [
             LocalFollow(localID: "local_follow_joe_maya", serverID: "follow_joe_maya", followerUserID: currentUser.id, followedUserID: maya.id, source: .contacts, syncState: .synced),
             LocalFollow(localID: "local_follow_ryan_joe", serverID: "follow_ryan_joe", followerUserID: ryan.id, followedUserID: currentUser.id, source: .profile, syncState: .synced),
@@ -42,6 +56,7 @@ struct WanderFixtures {
             profiles: [currentUser, maya, ryan],
             places: [coffee, hike, noodles],
             userPlaces: userPlaces,
+            placeAttributes: placeAttributes,
             follows: follows,
             blocks: [],
             contactProvider: contacts

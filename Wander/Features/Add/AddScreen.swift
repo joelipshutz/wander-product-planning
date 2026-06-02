@@ -13,11 +13,19 @@ struct AddScreen: View {
     @State private var manualArea = ""
     @State private var manualCategory = "coffee"
     @State private var linkInput = ""
+    @State private var selectedAnswers: [String: Set<String>] = [:]
     @State private var savedResult: SaveResult?
     @State private var draft: UnresolvedDraft?
 
     private var selectedCandidate: PlaceCandidate? {
         candidates.first { $0.id == selectedCandidateID } ?? candidates.first
+    }
+
+    private var currentQuestionBlocks: [AddQuestionBlock] {
+        AddQuestionTemplates.blocks(
+            category: selectedCandidate?.category ?? manualCategory,
+            status: selectedStatus
+        )
     }
 
     var body: some View {
@@ -157,7 +165,7 @@ struct AddScreen: View {
             }
 
             WanderPrimaryButton(title: "continue to details", systemImage: "arrow.right") {
-                step = .details
+                prepareDetails()
             }
         }
     }
@@ -181,24 +189,15 @@ struct AddScreen: View {
                 .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusMedium))
             }
 
-            QuestionBlock(title: "how's the vibe?", tag: "emoji") {
-                HStack {
-                    ForEach(["meh", "fine", "good", "great"], id: \.self) { value in
-                        WanderChip(title: value, isSelected: value == "great")
+            ForEach(currentQuestionBlocks) { block in
+                QuestionBlock(title: block.title, tag: block.tag) {
+                    SelectableQuestionOptions(
+                        block: block,
+                        selectedValues: selectedAnswers[block.key] ?? Set(block.defaultValues)
+                    ) { option in
+                        toggleAnswer(option, in: block)
                     }
                 }
-            }
-
-            QuestionBlock(title: "good for working?", tag: "yes/no") {
-                HStack {
-                    WanderChip(title: "yes", isSelected: true)
-                    WanderChip(title: "sometimes")
-                    WanderChip(title: "nope")
-                }
-            }
-
-            QuestionBlock(title: "tags", tag: "multi") {
-                FlowTags(tags: ["wifi solid", "outlets", "quiet", "cute", "food on point"])
             }
 
             VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
@@ -220,7 +219,8 @@ struct AddScreen: View {
                     status: selectedStatus,
                     visibility: selectedVisibility,
                     note: note.isEmpty ? nil : note,
-                    sourceType: selectedSource
+                    sourceType: selectedSource,
+                    attributes: attributeDrafts()
                 )
                 step = .saved
             }
@@ -292,8 +292,58 @@ struct AddScreen: View {
         manualName = ""
         manualArea = ""
         manualCategory = "coffee"
+        selectedAnswers = [:]
         savedResult = nil
         draft = nil
+    }
+
+    private func prepareDetails() {
+        let blocks = currentQuestionBlocks
+        let allowedKeys = Set(blocks.map(\.key))
+        var nextAnswers = selectedAnswers.filter { allowedKeys.contains($0.key) }
+
+        for block in blocks where nextAnswers[block.key] == nil {
+            nextAnswers[block.key] = Set(block.defaultValues)
+        }
+
+        selectedAnswers = nextAnswers
+        step = .details
+    }
+
+    private func toggleAnswer(_ option: String, in block: AddQuestionBlock) {
+        var values = selectedAnswers[block.key] ?? Set(block.defaultValues)
+
+        switch block.kind {
+        case .singleChoice:
+            values = [option]
+        case .multiTag:
+            if values.contains(option) {
+                values.remove(option)
+            } else {
+                values.insert(option)
+            }
+        }
+
+        selectedAnswers[block.key] = values
+    }
+
+    private func attributeDrafts() -> [PlaceAttributeDraft] {
+        currentQuestionBlocks.compactMap { block in
+            let values = orderedSelections(for: block)
+            guard !values.isEmpty else { return nil }
+
+            switch block.kind {
+            case .singleChoice:
+                return PlaceAttributeDraft(questionKey: block.key, valueType: block.valueType, stringValue: values[0])
+            case .multiTag:
+                return PlaceAttributeDraft(questionKey: block.key, valueType: block.valueType, stringValues: values)
+            }
+        }
+    }
+
+    private func orderedSelections(for block: AddQuestionBlock) -> [String] {
+        let values = selectedAnswers[block.key] ?? Set(block.defaultValues)
+        return block.options.filter { values.contains($0) }
     }
 }
 
@@ -335,6 +385,213 @@ private enum AddStep {
         case .saved: "it is ready on your map."
         case .draft: "we kept the input without pretending extraction works."
         }
+    }
+}
+
+private enum AddQuestionKind: Equatable {
+    case singleChoice
+    case multiTag
+}
+
+private struct AddQuestionBlock: Identifiable, Equatable {
+    let key: String
+    let title: String
+    let tag: String
+    let kind: AddQuestionKind
+    let valueType: String
+    let options: [String]
+    let defaultValues: [String]
+    var minimumOptionWidth: CGFloat = 82
+
+    var id: String { key }
+}
+
+private enum AddQuestionTemplates {
+    static func blocks(category: String, status: PlaceStatus) -> [AddQuestionBlock] {
+        let normalizedCategory = category.lowercased()
+        var blocks = [ratingBlock(status: status)]
+
+        switch normalizedCategory {
+        case "coffee":
+            blocks.append(contentsOf: coffeeBlocks)
+        case "hike":
+            blocks.append(contentsOf: hikeBlocks)
+        case "restaurant":
+            blocks.append(contentsOf: restaurantBlocks)
+        case "bar":
+            blocks.append(contentsOf: barBlocks)
+        case "park":
+            blocks.append(contentsOf: parkBlocks)
+        default:
+            blocks.append(contentsOf: defaultBlocks(category: normalizedCategory))
+        }
+
+        return blocks
+    }
+
+    private static func ratingBlock(status: PlaceStatus) -> AddQuestionBlock {
+        if status == .wannaGo {
+            return AddQuestionBlock(
+                key: "rating_signal",
+                title: "how excited are you?",
+                tag: "scale",
+                kind: .singleChoice,
+                valueType: "emoji_scale",
+                options: ["curious", "excited", "must go"],
+                defaultValues: ["excited"],
+                minimumOptionWidth: 88
+            )
+        }
+
+        return AddQuestionBlock(
+            key: "rating_signal",
+            title: "how much did you like it?",
+            tag: "scale",
+            kind: .singleChoice,
+            valueType: "emoji_scale",
+            options: ["meh", "fine", "good", "great"],
+            defaultValues: ["great"]
+        )
+    }
+
+    private static let coffeeBlocks = [
+        AddQuestionBlock(
+            key: "work_setup",
+            title: "good for working?",
+            tag: "yes/no",
+            kind: .singleChoice,
+            valueType: "single_choice",
+            options: ["yes", "sometimes", "nope"],
+            defaultValues: ["yes"],
+            minimumOptionWidth: 96
+        ),
+        AddQuestionBlock(
+            key: "coffee_tags",
+            title: "tags",
+            tag: "multi",
+            kind: .multiTag,
+            valueType: "multi_tag",
+            options: ["wifi solid", "outlets", "quiet", "cute", "food on point"],
+            defaultValues: ["wifi solid", "quiet"],
+            minimumOptionWidth: 102
+        )
+    ]
+
+    private static let hikeBlocks = [
+        AddQuestionBlock(
+            key: "strenuousness",
+            title: "how strenuous?",
+            tag: "scale",
+            kind: .singleChoice,
+            valueType: "single_choice",
+            options: ["easy", "moderate", "hard"],
+            defaultValues: ["easy"],
+            minimumOptionWidth: 94
+        ),
+        AddQuestionBlock(
+            key: "hike_tags",
+            title: "tags",
+            tag: "multi",
+            kind: .multiTag,
+            valueType: "multi_tag",
+            options: ["sunset", "views", "shade", "dog friendly", "crowded"],
+            defaultValues: ["sunset", "views"],
+            minimumOptionWidth: 98
+        )
+    ]
+
+    private static let restaurantBlocks = [
+        AddQuestionBlock(
+            key: "price",
+            title: "price feel?",
+            tag: "price",
+            kind: .singleChoice,
+            valueType: "price_scale",
+            options: ["$", "$$", "$$$"],
+            defaultValues: ["$$"],
+            minimumOptionWidth: 64
+        ),
+        AddQuestionBlock(
+            key: "occasion",
+            title: "best for?",
+            tag: "occasion",
+            kind: .singleChoice,
+            valueType: "single_choice",
+            options: ["quick bite", "date night", "group", "rainy night"],
+            defaultValues: ["rainy night"],
+            minimumOptionWidth: 104
+        ),
+        AddQuestionBlock(
+            key: "restaurant_tags",
+            title: "tags",
+            tag: "multi",
+            kind: .multiTag,
+            valueType: "multi_tag",
+            options: ["cozy", "good table", "share plates", "worth it"],
+            defaultValues: ["cozy", "worth it"],
+            minimumOptionWidth: 104
+        )
+    ]
+
+    private static let barBlocks = [
+        AddQuestionBlock(
+            key: "occasion",
+            title: "best for?",
+            tag: "occasion",
+            kind: .singleChoice,
+            valueType: "single_choice",
+            options: ["first drink", "date", "group", "late"],
+            defaultValues: ["first drink"],
+            minimumOptionWidth: 98
+        ),
+        AddQuestionBlock(
+            key: "bar_tags",
+            title: "tags",
+            tag: "multi",
+            kind: .multiTag,
+            valueType: "multi_tag",
+            options: ["patio", "good music", "not too loud", "walk-in"],
+            defaultValues: ["patio"],
+            minimumOptionWidth: 104
+        )
+    ]
+
+    private static let parkBlocks = [
+        AddQuestionBlock(
+            key: "best_for",
+            title: "best for?",
+            tag: "occasion",
+            kind: .singleChoice,
+            valueType: "single_choice",
+            options: ["walk", "picnic", "views", "reset"],
+            defaultValues: ["walk"],
+            minimumOptionWidth: 84
+        ),
+        AddQuestionBlock(
+            key: "park_tags",
+            title: "tags",
+            tag: "multi",
+            kind: .multiTag,
+            valueType: "multi_tag",
+            options: ["shade", "sunny", "quiet", "dog friendly"],
+            defaultValues: ["quiet"],
+            minimumOptionWidth: 96
+        )
+    ]
+
+    private static func defaultBlocks(category: String) -> [AddQuestionBlock] {
+        [
+            AddQuestionBlock(
+                key: "\(category.isEmpty ? "place" : category)_tags",
+                title: "tags",
+                tag: "multi",
+                kind: .multiTag,
+                valueType: "multi_tag",
+                options: ["worth it", "easy", "cozy", "bring friends"],
+                defaultValues: ["worth it"],
+                minimumOptionWidth: 104
+            )
+        ]
     }
 }
 
@@ -483,13 +740,25 @@ private struct QuestionBlock<Content: View>: View {
     }
 }
 
-private struct FlowTags: View {
-    let tags: [String]
+private struct SelectableQuestionOptions: View {
+    let block: AddQuestionBlock
+    let selectedValues: Set<String>
+    let onSelect: (String) -> Void
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: WanderTheme.spacing2)], alignment: .leading, spacing: WanderTheme.spacing2) {
-            ForEach(tags, id: \.self) { tag in
-                WanderChip(title: tag, isSelected: tag == "wifi solid" || tag == "quiet")
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: block.minimumOptionWidth), spacing: WanderTheme.spacing2)],
+            alignment: .leading,
+            spacing: WanderTheme.spacing2
+        ) {
+            ForEach(block.options, id: \.self) { option in
+                Button {
+                    onSelect(option)
+                } label: {
+                    WanderChip(title: option, isSelected: selectedValues.contains(option))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
             }
         }
     }

@@ -33,6 +33,7 @@ final class WanderStore: ObservableObject {
     @Published private(set) var profiles: [LocalProfile]
     @Published private(set) var places: [LocalPlace]
     @Published private(set) var userPlaces: [LocalUserPlace]
+    @Published private(set) var placeAttributes: [LocalPlaceAttribute]
     @Published private(set) var follows: [LocalFollow]
     @Published private(set) var blocks: [LocalBlock]
     @Published private(set) var unresolvedDrafts: [UnresolvedDraft] = []
@@ -55,6 +56,7 @@ final class WanderStore: ObservableObject {
         self.profiles = fixtures.profiles
         self.places = fixtures.places
         self.userPlaces = fixtures.userPlaces
+        self.placeAttributes = fixtures.placeAttributes
         self.follows = fixtures.follows
         self.blocks = fixtures.blocks
         self.contactProvider = fixtures.contactProvider
@@ -71,7 +73,9 @@ final class WanderStore: ObservableObject {
     }
 
     var pendingSyncCount: Int {
-        userPlaces.filter { $0.syncState != .synced }.count + unresolvedDrafts.count
+        userPlaces.filter { $0.syncState != .synced }.count
+            + placeAttributes.filter { $0.syncState != .synced }.count
+            + unresolvedDrafts.count
     }
 
     var currentUserVisiblePlaces: [VisiblePlace] {
@@ -115,6 +119,12 @@ final class WanderStore: ObservableObject {
 
     func visiblePlaces(for profileID: String) -> [VisiblePlace] {
         visiblePlaces().filter { $0.owner.id == profileID }
+    }
+
+    func attributes(for userPlaceID: String) -> [LocalPlaceAttribute] {
+        placeAttributes
+            .filter { $0.userPlaceID == userPlaceID }
+            .sorted { $0.questionKey < $1.questionKey }
     }
 
     func followers(of userID: String) -> [LocalProfile] {
@@ -261,7 +271,8 @@ final class WanderStore: ObservableObject {
         status: PlaceStatus,
         visibility: PlaceVisibility,
         note: String?,
-        sourceType: AddSourceType
+        sourceType: AddSourceType,
+        attributes: [PlaceAttributeDraft]? = nil
     ) -> SaveResult {
         let place = upsertPlace(from: candidate, sourceType: sourceType)
 
@@ -269,6 +280,10 @@ final class WanderStore: ObservableObject {
             existing.statusRaw = status.rawValue
             existing.visibilityRaw = visibility.rawValue
             existing.note = note
+            if let attributes {
+                existing.ratingSignal = ratingSignal(from: attributes)
+                replaceAttributes(for: existing.id, with: attributes, syncState: .pendingUpdate)
+            }
             existing.updatedAt = .now
             existing.localUpdatedAt = .now
             existing.syncStateRaw = SyncState.pendingUpdate.rawValue
@@ -283,11 +298,15 @@ final class WanderStore: ObservableObject {
             status: status,
             visibility: visibility,
             note: note,
+            ratingSignal: attributes.flatMap { ratingSignal(from: $0) },
             nearbyConfirmed: sourceType == .currentLocation,
             sourceType: sourceType.rawValue,
             syncState: .pendingCreate
         )
         userPlaces.append(userPlace)
+        if let attributes {
+            replaceAttributes(for: userPlace.id, with: attributes, syncState: .pendingCreate)
+        }
         return SaveResult(userPlaceID: userPlace.id, syncState: userPlace.syncState)
     }
 
@@ -320,7 +339,11 @@ final class WanderStore: ObservableObject {
     }
 
     func saveVisiblePlace(_ visiblePlace: VisiblePlace, status: PlaceStatus = .wannaGo) -> SaveResult {
-        saveCandidate(
+        let copiedAttributes = attributes(for: visiblePlace.userPlace.id).map { attribute in
+            PlaceAttributeDraft(questionKey: attribute.questionKey, valueType: attribute.valueType, valueJSON: attribute.valueJSON)
+        }
+
+        return saveCandidate(
             PlaceCandidate(
                 id: visiblePlace.place.id,
                 name: visiblePlace.place.canonicalName,
@@ -332,7 +355,8 @@ final class WanderStore: ObservableObject {
             status: status,
             visibility: defaultVisibility,
             note: visiblePlace.userPlace.note,
-            sourceType: .socialSave
+            sourceType: .socialSave,
+            attributes: copiedAttributes
         )
     }
 
@@ -423,6 +447,35 @@ final class WanderStore: ObservableObject {
         )
         places.append(place)
         return place
+    }
+
+    private func replaceAttributes(for userPlaceID: String, with drafts: [PlaceAttributeDraft], syncState: SyncState) {
+        placeAttributes.removeAll { $0.userPlaceID == userPlaceID }
+
+        let uniqueDrafts = Dictionary(grouping: drafts, by: \.questionKey)
+            .compactMap { $0.value.last }
+            .sorted { $0.questionKey < $1.questionKey }
+
+        for draft in uniqueDrafts where draft.valueJSON != "null" {
+            placeAttributes.append(
+                LocalPlaceAttribute(
+                    localID: "local_attr_\(slug(userPlaceID))_\(slug(draft.questionKey))",
+                    userPlaceID: userPlaceID,
+                    questionKey: draft.questionKey,
+                    valueType: draft.valueType,
+                    valueJSON: draft.valueJSON,
+                    syncState: syncState
+                )
+            )
+        }
+    }
+
+    private func ratingSignal(from attributes: [PlaceAttributeDraft]) -> String? {
+        guard let rating = attributes.first(where: { $0.questionKey == "rating_signal" }),
+              let data = rating.valueJSON.data(using: .utf8)
+        else { return nil }
+
+        return try? JSONDecoder().decode(String.self, from: data)
     }
 
     private func slug(_ value: String) -> String {

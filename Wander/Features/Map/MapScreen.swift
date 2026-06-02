@@ -117,6 +117,7 @@ struct MapScreen: View {
                     PlaceSheet(
                         visiblePlace: selectedPlace,
                         savers: savers(for: selectedPlace),
+                        attributes: store.attributes(for: selectedPlace.userPlace.id),
                         currentUserID: store.currentUser.id,
                         isExpanded: $isPlaceSheetExpanded
                     ) {
@@ -351,6 +352,7 @@ private struct WanderMapPin: View {
 private struct PlaceSheet: View {
     let visiblePlace: VisiblePlace
     let savers: [LocalProfile]
+    let attributes: [LocalPlaceAttribute]
     let currentUserID: String
     @Binding var isExpanded: Bool
     let onSave: () -> Void
@@ -476,34 +478,41 @@ private struct PlaceSheet: View {
             PlaceFact(title: visiblePlace.userPlace.visibility.displayTitle, systemImage: "eye.fill")
         ]
 
-        if let ratingSignal = visiblePlace.userPlace.ratingSignal {
-            facts.append(PlaceFact(title: ratingSignal, systemImage: "heart.fill"))
-        } else {
-            facts.append(PlaceFact(title: visiblePlace.userPlace.status == .been ? "liked it" : "wants to try", systemImage: "heart"))
-        }
-
-        switch visiblePlace.place.category {
-        case "coffee":
-            facts.append(contentsOf: [
-                PlaceFact(title: "wifi solid", systemImage: "wifi"),
-                PlaceFact(title: "work vibe", systemImage: "laptopcomputer")
-            ])
-        case "hike":
-            facts.append(contentsOf: [
-                PlaceFact(title: "easy", systemImage: "figure.hiking"),
-                PlaceFact(title: "sunset", systemImage: "sun.max.fill")
-            ])
-        case "restaurant":
-            facts.append(contentsOf: [
-                PlaceFact(title: "dinner", systemImage: "fork.knife"),
-                PlaceFact(title: "worth it", systemImage: "sparkles")
-            ])
-        default:
-            facts.append(PlaceFact(title: visiblePlace.place.category, systemImage: "tag.fill"))
-        }
-
+        facts.append(contentsOf: attributes.flatMap(facts(for:)))
         facts.append(PlaceFact(title: visiblePlace.userPlace.sourceType.replacingOccurrences(of: "_", with: " "), systemImage: "tray.full.fill"))
         return facts
+    }
+
+    private func facts(for attribute: LocalPlaceAttribute) -> [PlaceFact] {
+        if attribute.valueType == "multi_tag" {
+            return decodedStringArray(from: attribute.valueJSON).map { value in
+                PlaceFact(title: value, systemImage: icon(for: attribute.questionKey))
+            }
+        }
+
+        guard let value = decodedString(from: attribute.valueJSON) else { return [] }
+        return [PlaceFact(title: value, systemImage: icon(for: attribute.questionKey))]
+    }
+
+    private func icon(for questionKey: String) -> String {
+        switch questionKey {
+        case "rating_signal": "heart.fill"
+        case "work_setup": "laptopcomputer"
+        case "strenuousness": "figure.hiking"
+        case "price": "dollarsign.circle.fill"
+        case "occasion", "best_for": "sparkles"
+        default: "tag.fill"
+        }
+    }
+
+    private func decodedString(from valueJSON: String) -> String? {
+        guard let data = valueJSON.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(String.self, from: data)
+    }
+
+    private func decodedStringArray(from valueJSON: String) -> [String] {
+        guard let data = valueJSON.data(using: .utf8) else { return [] }
+        return (try? JSONDecoder().decode([String].self, from: data)) ?? []
     }
 
     private func handleSheetDrag(_ value: DragGesture.Value) {
@@ -529,7 +538,7 @@ private struct PlaceSheet: View {
 }
 
 private struct PlaceFact: Identifiable {
-    var id: String { title }
+    var id: String { "\(systemImage)-\(title)" }
     let title: String
     let systemImage: String
 }

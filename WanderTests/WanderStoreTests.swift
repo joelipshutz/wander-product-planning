@@ -62,6 +62,64 @@ final class WanderStoreTests: XCTestCase {
         XCTAssertEqual(saved?.userPlace.nearbyConfirmed, true)
     }
 
+    func testSaveCandidatePersistsQuestionAttributes() {
+        let store = makeStore()
+        let candidate = PlaceCandidate(
+            id: "manual_answer_test",
+            name: "Answer Test Coffee",
+            category: "coffee",
+            latitude: 34.0522,
+            longitude: -118.2437,
+            confidence: 0.8
+        )
+
+        let result = store.saveCandidate(
+            candidate,
+            status: .been,
+            visibility: .followers,
+            note: "has answers",
+            sourceType: .manual,
+            attributes: [
+                PlaceAttributeDraft(questionKey: "rating_signal", valueType: "emoji_scale", stringValue: "great"),
+                PlaceAttributeDraft(questionKey: "work_setup", valueType: "single_choice", stringValue: "yes"),
+                PlaceAttributeDraft(questionKey: "coffee_tags", valueType: "multi_tag", stringValues: ["wifi solid", "quiet"])
+            ]
+        )
+
+        let attributes = store.attributes(for: result.userPlaceID)
+        XCTAssertEqual(attributes.map(\.questionKey), ["coffee_tags", "rating_signal", "work_setup"])
+        XCTAssertEqual(attributes.first { $0.questionKey == "rating_signal" }?.valueJSON, "\"great\"")
+        XCTAssertEqual(attributes.first { $0.questionKey == "coffee_tags" }?.valueJSON, "[\"wifi solid\",\"quiet\"]")
+        XCTAssertEqual(store.currentUserVisiblePlaces.first { $0.id == result.userPlaceID }?.userPlace.ratingSignal, "great")
+    }
+
+    func testUpdatingCandidateReplacesQuestionAttributesWhenProvided() {
+        let store = makeStore()
+        let candidate = PlaceCandidate(
+            id: "place_woodcat",
+            name: "Woodcat Coffee",
+            category: "coffee",
+            latitude: 34.077,
+            longitude: -118.260,
+            confidence: 1
+        )
+
+        let result = store.saveCandidate(
+            candidate,
+            status: .been,
+            visibility: .followers,
+            note: "changed answers",
+            sourceType: .manual,
+            attributes: [
+                PlaceAttributeDraft(questionKey: "rating_signal", valueType: "emoji_scale", stringValue: "good")
+            ]
+        )
+
+        let attributes = store.attributes(for: result.userPlaceID)
+        XCTAssertEqual(attributes.map(\.questionKey), ["rating_signal"])
+        XCTAssertEqual(attributes[0].valueJSON, "\"good\"")
+    }
+
     func testFollowersAndFollowingUseGraphEdges() {
         let store = makeStore()
 

@@ -230,7 +230,61 @@ Checkpoint:
   - Final command: `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
   - Result: 22 tests, 0 failures.
   - Latest passing result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.02_12-56-11--0700.xcresult`.
-  - No screenshots captured for this pass; Joe said he would test and wanted push/merge first.
+- No screenshots captured for this pass; Joe said he would test and wanted push/merge first.
+
+## 2026-06-02 - Codex - Persist Add Question Answers
+
+Agent: Codex
+Branch: `main`
+Starting commit: `eba2c70`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` has the same unrelated unstaged local signing/team diff and should remain untouched.
+
+Goal: wire Add-flow contextual question answers into `LocalPlaceAttribute`, show those persisted answers in the expanded Map place sheet, commit/push, then continue into M3 backend foundation.
+
+Current question source:
+
+- Code currently has starter blocks: `how's the vibe?`, `good for working?`, and `tags`.
+- Spec defines category templates but does not enumerate all options. Implementing starter category-aware templates now:
+  - Coffee: rating, work setup, coffee tags.
+  - Hike: rating, strenuousness, hike tags.
+  - Restaurant: rating, price, occasion, restaurant tags.
+  - Bar/park/default: rating plus lightweight category tags.
+
+Expected files to touch:
+
+- `Wander/Features/Add/AddScreen.swift`
+- `Wander/Features/Map/MapScreen.swift`
+- `Wander/Models/LocalModels.swift`
+- `Wander/Services/RepositoryProtocols.swift`
+- `Wander/Services/WanderFixtures.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- `WanderTests/WanderStoreTests.swift`
+- `docs/decisions.md`
+- `docs/agent-log.md`
+
+Completion checkpoint:
+
+- Added category-aware Add question templates while keeping answer persistence open-ended for future custom/user-created questions.
+  - Coffee: rating/excitement, work setup, tags.
+  - Hike: rating/excitement, strenuousness, tags.
+  - Restaurant: rating/excitement, price, occasion, tags.
+  - Bar/park/default: rating/excitement plus lightweight category tags.
+- Added `PlaceAttributeDraft` and store-level `placeAttributes` state.
+- `saveCandidate` now accepts optional answer attributes:
+  - Add details passes attributes and persists them.
+  - Existing callers that omit attributes preserve existing answers instead of wiping them.
+  - Explicitly provided attributes replace the old answer set for that saved place.
+- Seeded Woodcat, Griffith, and Larchmont with real `LocalPlaceAttribute` rows.
+- Expanded Map place sheet now reads persisted attributes instead of category-derived placeholder chips.
+- Social saves copy source place attributes into the saved place.
+- `pendingSyncCount` now includes unsynced attributes.
+- Locked the flexible-answer/custom-question decision in `docs/decisions.md`.
+- Tests:
+  - First run failed on a missing `return` in `saveVisiblePlace` after adding copied attributes; fixed.
+  - Final command: `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+  - Result: 24 tests, 0 failures.
+  - Latest passing result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.02_13-12-47--0700.xcresult`.
+  - No screenshots captured for this pass.
 
 ## 2026-06-01 - Codex - Discover People Rail Fix
 

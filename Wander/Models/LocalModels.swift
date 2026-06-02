@@ -251,6 +251,9 @@ final class LocalPlaceAttribute {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
+
+    var id: String { serverID ?? localID }
+    var syncState: SyncState { SyncState(rawValue: syncStateRaw) ?? .localOnly }
 }
 
 @Model
