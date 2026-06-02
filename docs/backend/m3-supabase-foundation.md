@@ -6,30 +6,70 @@ This is the backend contract started for M3. It should be reviewed and run befor
 
 ## Files
 
-- Migration: `supabase/migrations/20260602131500_m3_foundation.sql`
-- RLS tests: `supabase/tests/rls_visibility.sql`
+- Migrations:
+  - `supabase/migrations/20260602131500_m3_foundation.sql`
+  - `supabase/migrations/20260602140304_clerk_profile_mirroring.sql`
+  - `supabase/migrations/20260602143000_public_clerk_profile_mirror_rpc.sql`
+- Tests:
+  - `supabase/tests/rls_visibility.sql`
+  - `supabase/tests/clerk_profile_mirroring.sql`
+- Edge Function: `supabase/functions/clerk-profile-webhook/index.ts`
 - Source plan: `docs/plans/2026-06-01-wander-ios-eng-plan.md`
 - Contract lock: `docs/plans/2026-06-01-wander-m1-5-contract-lock.md`
 
-## Current Local Status
+## Hosted Project Status
 
-The SQL artifacts are written, but not executed locally yet.
+Created on 2026-06-02:
 
-As of 2026-06-02, this machine does not have:
+- Supabase project: `wander`
+- Supabase ref: `rugmtlgufrhlxwfkumhw`
+- Region: `us-west-2`
+- Dashboard: `https://supabase.com/dashboard/project/rugmtlgufrhlxwfkumhw`
+- Clerk app: `Wander`
+- Clerk app id: `app_3Eb3JbpbMDjOA2qKUCqfsZwfct9`
+- Clerk dev instance id: `ins_3Eb3Je6FO3qfUDIt5n3aTHMxYN1`
+- Clerk dev domain: `growing-pheasant-22.clerk.accounts.dev`
 
-- `supabase`
-- `psql`
+Local-only secrets/config were stored in `/Users/joelipshutz/.openclaw/workspace/.env.keys`.
 
-Before M3 is considered verified, install/configure a Supabase/Postgres test runner and run the migration plus RLS tests.
+The migrations were pushed to the hosted Supabase project on 2026-06-02.
 
-Expected runner once Supabase CLI is available:
+Webhook status:
+
+- Supabase Edge Function: `clerk-profile-webhook`
+- Function URL: `https://rugmtlgufrhlxwfkumhw.supabase.co/functions/v1/clerk-profile-webhook`
+- Clerk/Svix endpoint id: `ep_3Eb5WlmjQlDav83RHa3hWxp07wd`
+- Endpoint event scope: currently listening to all Clerk events; function ignores non-user events.
+- Edge Function secrets set in Supabase:
+  - `CLERK_WEBHOOK_SIGNING_SECRET`
+  - `WANDER_SUPABASE_URL`
+  - `WANDER_SUPABASE_SERVICE_ROLE_KEY`
+
+Backend test status:
+
+- `npx supabase test db --linked ...` could not run because the Supabase CLI still requires Docker for its pgTAP runner.
+- A temporary Node `pg` runner executed SQL tests against hosted Postgres.
+- Result:
+  - `supabase/tests/rls_visibility.sql`: 15 assertions, 0 failures.
+  - `supabase/tests/clerk_profile_mirroring.sql`: 14 assertions, 0 failures.
+  - Total: 29 assertions, 0 failures.
+- Direct signed webhook POST passed: Svix-style signature verification, Edge Function, PostgREST RPC, and profile lookup.
+- Real Clerk create/delete passed: disposable Clerk dev user mirrored through Clerk -> Svix -> Supabase and then soft-deleted on `user.deleted`.
+
+Local stack status:
+
+- Supabase CLI is available through `npx supabase`.
+- Docker is not installed/running, so `npx supabase start`, `npx supabase db reset`, and Supabase's built-in local/linked test runner are blocked.
+
+Expected local runner once Docker-compatible runtime is available:
 
 ```bash
-supabase db reset
-supabase test db
+npx supabase start
+npx supabase db reset
+npx supabase test db supabase/tests/rls_visibility.sql
 ```
 
-If those commands differ after local project configuration, update this file and `docs/setup.md`.
+Use `--no-seed` if seed data is re-enabled before `supabase/seed.sql` exists.
 
 ## Clerk Mapping
 
@@ -61,9 +101,28 @@ Official docs checked on 2026-06-02:
 
 Remaining setup work:
 
-- Configure Clerk as a Supabase third-party auth provider.
-- Ensure Clerk session tokens include `role=authenticated`.
-- Mirror Clerk users into `profiles` through webhook or backend job.
+- Confirm hosted Supabase Auth third-party Clerk config in the dashboard if auth wiring fails. `supabase/config.toml` contains the Clerk domain and `npx supabase config push` was run.
+- Review hosted Supabase Auth settings before alpha because `npx supabase config push` pushed generated local auth defaults plus Clerk config.
+
+## Profile Mirroring
+
+Clerk user mirroring is implemented through the `clerk-profile-webhook` Edge Function.
+
+Flow:
+
+1. Clerk emits `user.created`, `user.updated`, or `user.deleted`.
+2. Svix delivers the signed webhook to the Supabase Edge Function.
+3. The Edge Function verifies `svix-id`, `svix-timestamp`, and `svix-signature`.
+4. The function calls `public.mirror_clerk_profile` through PostgREST using service-role credentials.
+5. `public.mirror_clerk_profile` is a service-role wrapper around private `app.mirror_clerk_profile`.
+
+The database function handles:
+
+- duplicate Svix event ids
+- stale event ordering
+- handle normalization and collision suffixes
+- delete-before-create events
+- soft-deleting profiles on `user.deleted`
 
 ## Schema
 
@@ -128,6 +187,8 @@ Blocks are hard blocks. A block hides profiles, places, follows, search results,
 
 Implemented in the migration:
 
+- `app.mirror_clerk_profile(event_id, event_type, event_timestamp, profile_id, desired_handle, desired_display_name, desired_avatar_url)`
+- `public.mirror_clerk_profile(...)` service-role PostgREST wrapper
 - `app.visible_places_in_view(min_lat, min_lng, max_lat, max_lng, status_filter, category_filter, owner_scope)`
 - `app.search_profiles_by_handle(query)`
 - `app.profile_visible_places(profile_id, status_filter, category_filter)`
@@ -157,10 +218,44 @@ Notes:
 - Unattached custom question definitions stay hidden from other users.
 - `visible_places_in_view` and `search_profiles_by_handle` return expected rows.
 
-Still needed after runner setup:
+`supabase/tests/clerk_profile_mirroring.sql` covers:
+
+- profile create/update mirroring
+- handle collisions
+- duplicate event id ignoring
+- soft delete
+- stale update after delete
+- delete-before-create ordering
+- public PostgREST wrapper write-through
+
+Still needed:
 
 - Logged-out/anon behavior.
 - Delete/tombstone behavior.
 - `save_visible_place` copy behavior.
 - `follow_user`, `unfollow_user`, and `block_user` mutation behavior.
-- Profile mirroring webhook tests.
+- Standard Supabase CLI test runner once Docker/OrbStack/Colima is available.
+
+## Notes From Project Setup
+
+`npx supabase config push` pushes the whole local auth config, not only the Clerk third-party auth section. This was acceptable for the new dev project, but before alpha the hosted auth settings should be reviewed in the Supabase dashboard.
+
+The local config has:
+
+```toml
+[auth.third_party.clerk]
+enabled = true
+domain = "growing-pheasant-22.clerk.accounts.dev"
+```
+
+Clerk development session tokens were patched with:
+
+```json
+{
+  "session": {
+    "claims": {
+      "role": "authenticated"
+    }
+  }
+}
+```

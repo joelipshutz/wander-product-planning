@@ -1,6 +1,6 @@
 # Setup
 
-Last updated: 2026-06-01
+Last updated: 2026-06-02
 
 ## Requirements
 
@@ -61,6 +61,78 @@ Known good result on 2026-06-01:
 ```
 
 If CoreSimulator or Swift plugin server errors happen in a sandbox, rerun from a normal terminal or with approved elevated access.
+
+## Supabase
+
+The new Wander Supabase project was created on 2026-06-02.
+
+- Project name: `wander`
+- Project ref: `rugmtlgufrhlxwfkumhw`
+- Region: `us-west-2`
+
+Local-only credentials are stored in:
+
+```text
+/Users/joelipshutz/.openclaw/workspace/.env.keys
+```
+
+Useful commands:
+
+```bash
+npx supabase projects list
+npx supabase migration list --linked
+npx supabase db push --linked
+npx supabase functions deploy clerk-profile-webhook --project-ref "$WANDER_SUPABASE_PROJECT_REF" --no-verify-jwt --use-api
+```
+
+Local Supabase requires Docker. Docker is not currently available in this environment, so the local stack commands are blocked until Docker/OrbStack/Colima is installed and running:
+
+```bash
+npx supabase start
+npx supabase db reset
+npx supabase test db supabase/tests/rls_visibility.sql
+```
+
+The hosted migrations and Clerk profile webhook have been pushed/deployed. The current SQL tests passed against hosted Postgres through a temporary Node `pg` runner because the Supabase CLI pgTAP runner still requires Docker.
+
+Current hosted SQL test status:
+
+```text
+supabase/tests/rls_visibility.sql: 15 assertions, 0 failures
+supabase/tests/clerk_profile_mirroring.sql: 14 assertions, 0 failures
+```
+
+## Clerk
+
+The new Wander Clerk application was created on 2026-06-02.
+
+- App name: `Wander`
+- App id: `app_3Eb3JbpbMDjOA2qKUCqfsZwfct9`
+- Development instance id: `ins_3Eb3Je6FO3qfUDIt5n3aTHMxYN1`
+- Development domain: `growing-pheasant-22.clerk.accounts.dev`
+
+Local-only Clerk env values are stored in `/Users/joelipshutz/.openclaw/workspace/.env.keys`.
+
+The Clerk development instance has session token claims patched for Supabase:
+
+```json
+{"role":"authenticated"}
+```
+
+The repo is linked to the Clerk app through the Clerk CLI remote link:
+
+```bash
+npx clerk whoami --json
+```
+
+Clerk user profile mirroring is wired through Svix:
+
+- Supabase Edge Function: `clerk-profile-webhook`
+- Function URL: `https://rugmtlgufrhlxwfkumhw.supabase.co/functions/v1/clerk-profile-webhook`
+- Clerk/Svix endpoint id: `ep_3Eb5WlmjQlDav83RHa3hWxp07wd`
+- The endpoint currently listens to all Clerk events; the function handles only `user.created`, `user.updated`, and `user.deleted`.
+
+The Svix signing secret and function service credentials are stored local-only and in Supabase Edge Function secrets. Do not commit them.
 
 ## Visual QA
 

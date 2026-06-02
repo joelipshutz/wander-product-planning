@@ -324,6 +324,95 @@ Checkpoint:
 - Added `docs/backend/m3-supabase-foundation.md`.
 - Updated `docs/decisions.md` and `docs/open-questions.md` for Clerk `sub` mapping and M3 test-runner status.
 
+## 2026-06-02 - Codex - M3 Project Setup And Verification
+
+Agent: Codex plus sub-agents `Godel` and `Epicurus`
+Branch: `main`
+Starting commit: `08b7aca`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` has the same unrelated unstaged local signing/team diff and should remain untouched.
+
+Goal: proceed with M3 setup using new Supabase and Clerk projects, verify the Supabase migration/RLS tests, and document any account/credential blockers.
+
+Coordination:
+
+- Spawned Supabase setup explorer sub-agent `Godel`.
+- Spawned Clerk setup explorer sub-agent `Epicurus`.
+- Mission Control create-task attempt to `http://localhost:4000/api/tasks` failed because localhost:4000 was not reachable.
+
+Expected files to touch:
+
+- `docs/agent-log.md`
+- `docs/backend/m3-supabase-foundation.md`
+- `docs/setup.md` if local Supabase/Clerk setup commands are confirmed
+- Supabase config files if CLI initialization succeeds
+
+Initial local findings:
+
+- `brew`, `npm`, and `npx` are available.
+- `supabase`, `psql`, and `clerk` CLIs are not currently installed.
+- Existing `supabase/` folder contains the M3 migration/test artifacts only.
+
+Checkpoint:
+
+- Supabase sub-agent `Godel` confirmed no existing Wander Supabase project was linked, no local Docker, no `psql`, no Supabase access token before login, and noted generated config expected missing `supabase/seed.sql`.
+- Clerk sub-agent `Epicurus` confirmed no existing Wander Clerk app/config and found iOS bundle id `com.grayline.wander` in `project.yml`.
+- Logged into Supabase CLI with Joe's browser verification.
+- Created new Supabase hosted project:
+  - Name: `wander`
+  - Ref: `rugmtlgufrhlxwfkumhw`
+  - Region: `us-west-2`
+- Stored Supabase project ref, DB password, URL, anon key, and service role key in `/Users/joelipshutz/.openclaw/workspace/.env.keys`.
+- Ran `npx supabase init` and normalized `supabase/config.toml` project id to `wander`.
+- Disabled Supabase seed because generated config referenced missing `supabase/seed.sql`.
+- Linked the repo to the new Supabase project.
+- Ran migration dry-run: one migration detected, `20260602131500_m3_foundation.sql`.
+- Pushed migration to hosted Supabase. PostGIS metadata privilege warnings appeared but migration completed successfully.
+- Verified remote migration list: local and remote both have `20260602131500`.
+- `npx supabase test db --linked supabase/tests/rls_visibility.sql` failed because the CLI still tried to use Docker.
+- Installed temporary Node `pg` client under `/private/tmp/wander-pg-runner` and ran `supabase/tests/rls_visibility.sql` against hosted Postgres.
+- Hosted RLS test result: 15 pgTAP assertions, 0 failures.
+- Logged into Clerk CLI as `joe@bondaiapp.com`.
+- Existing Clerk apps were TheEssayPress and Signal; no Wander app existed.
+- Created new Clerk app:
+  - Name: `Wander`
+  - App id: `app_3Eb3JbpbMDjOA2qKUCqfsZwfct9`
+  - Development instance: `ins_3Eb3Je6FO3qfUDIt5n3aTHMxYN1`
+  - Development domain: `growing-pheasant-22.clerk.accounts.dev`
+- Linked repo to new Clerk app.
+- Patched Clerk development session token claims to include `role: authenticated`.
+- Pulled Clerk env values into `/private/tmp/wander-clerk.env` and appended them to `.env.keys`.
+- Added local Supabase Clerk third-party auth config in `supabase/config.toml`.
+- Ran `npx supabase config push`; it pushed generated local auth defaults plus the Clerk config to the new hosted project. Review hosted auth settings before alpha.
+- Spawned Edge Function review sub-agent `Fermat`, which flagged handle collision, replay/stale event, delete-event typing, and runtime secret issues before finalizing the webhook.
+- Added Clerk profile mirroring migration `20260602140304_clerk_profile_mirroring.sql`:
+  - Adds `clerk_updated_at` and `last_clerk_event_id` to `profiles`.
+  - Adds `clerk_webhook_events` and `clerk_profile_mirror_state`.
+  - Adds `app.mirror_clerk_profile` for duplicate, stale-event, handle-collision, delete-before-create, and soft-delete handling.
+- Added public service-role wrapper migration `20260602143000_public_clerk_profile_mirror_rpc.sql` after direct PostgREST testing showed `/rest/v1/rpc/...` only searched the `public` schema.
+- Added `supabase/tests/clerk_profile_mirroring.sql`; hosted pgTAP result is 14 assertions, 0 failures.
+- Deployed Supabase Edge Function `clerk-profile-webhook`.
+- Created Clerk/Svix endpoint `ep_3Eb5WlmjQlDav83RHa3hWxp07wd` pointing to `https://rugmtlgufrhlxwfkumhw.supabase.co/functions/v1/clerk-profile-webhook`.
+- Stored the Svix signing secret local-only and set Supabase Edge Function secrets:
+  - `CLERK_WEBHOOK_SIGNING_SECRET`
+  - `WANDER_SUPABASE_URL`
+  - `WANDER_SUPABASE_SERVICE_ROLE_KEY`
+- Direct signed Edge Function test passed: Svix-style signature verification, RPC call, and `profiles` lookup all succeeded.
+- Real Clerk/Svix create webhook test passed with disposable Clerk dev user `user_3Eb6hVABCXRiZ3tcbdvlu2NAh2j`.
+- Real Clerk/Svix delete webhook test passed; the mirrored profile received `deleted_at`.
+- Hosted SQL tests rerun through temporary Node `pg` runner:
+  - `supabase/tests/rls_visibility.sql`: 15 assertions, 0 failures.
+  - `supabase/tests/clerk_profile_mirroring.sql`: 14 assertions, 0 failures.
+  - Total: 29 assertions, 0 failures.
+- Redeployed the final formatted Edge Function and reran a signed smoke test against the deployed URL; `codex_redeploy_test` profile was created successfully.
+- Updated `docs/setup.md`, `docs/backend/m3-supabase-foundation.md`, `docs/open-questions.md`, `docs/decisions.md`, and this log.
+
+Known remaining M3 setup work:
+
+- Add iOS Clerk/Supabase SDK dependencies and repository-boundary wiring.
+- Add remote repository tests and auth-gated UI tests.
+- Install Docker/OrbStack/Colima if we want the standard local Supabase stack and CLI pgTAP runner.
+- Review hosted Supabase Auth settings before alpha because `npx supabase config push` pushed generated local auth defaults plus Clerk config.
+
 ## 2026-06-01 - Codex - Discover People Rail Fix
 
 Agent: Codex
