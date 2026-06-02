@@ -126,6 +126,45 @@ struct WanderChip: View {
     }
 }
 
+struct WanderSegmentOption: Identifiable, Equatable {
+    let id: String
+    let title: String
+}
+
+struct WanderSegmentedSwitch: View {
+    let options: [WanderSegmentOption]
+    @Binding var selection: String
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(options) { option in
+                Button {
+                    selection = option.id
+                } label: {
+                    Text(option.title)
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .background(selection == option.id ? WanderTheme.surfaceRaised.color : Color.clear)
+                        .foregroundStyle(selection == option.id ? WanderTheme.textInk.color : WanderTheme.textMuted.color)
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(selection == option.id ? WanderTheme.terracotta.color : Color.clear, lineWidth: 2)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selection == option.id ? .isSelected : [])
+            }
+        }
+        .padding(4)
+        .background(WanderTheme.surfaceSand.color)
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(WanderTheme.borderHairline.color.opacity(0.65), lineWidth: 1))
+    }
+}
+
 struct WanderPrimaryButton: View {
     let title: String
     var systemImage: String?

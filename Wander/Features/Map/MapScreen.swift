@@ -5,6 +5,7 @@ struct MapScreen: View {
     @EnvironmentObject private var store: WanderStore
     @State private var selectedPlaceID: String?
     @State private var isPlaceSheetExpanded: Bool
+    @State private var mapQuery = ""
     @State private var selectedFilters: Set<MapFilter> = [.you, .social, .been, .wanna]
     @State private var position: MapCameraPosition = .region(
         MKCoordinateRegion(
@@ -24,7 +25,19 @@ struct MapScreen: View {
     }
 
     private var visiblePlaces: [VisiblePlace] {
-        store.visiblePlaces(filters: filters)
+        let places = store.visiblePlaces(filters: filters)
+        let normalizedQuery = mapQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalizedQuery.isEmpty else { return places }
+
+        return places.filter { visiblePlace in
+            visiblePlace.place.canonicalName.lowercased().contains(normalizedQuery)
+                || visiblePlace.place.category.lowercased().contains(normalizedQuery)
+                || (visiblePlace.place.locality?.lowercased().contains(normalizedQuery) ?? false)
+                || visiblePlace.owner.displayName.lowercased().contains(normalizedQuery)
+                || visiblePlace.owner.handle.lowercased().contains(normalizedQuery)
+                || (visiblePlace.userPlace.note?.lowercased().contains(normalizedQuery) ?? false)
+                || (visiblePlace.userPlace.ratingSignal?.lowercased().contains(normalizedQuery) ?? false)
+        }
     }
 
     private var visiblePlaceIDs: [String] {
@@ -79,7 +92,7 @@ struct MapScreen: View {
 
             VStack(spacing: 0) {
                 VStack(spacing: WanderTheme.spacing2) {
-                    SearchBar(title: "search a place, vibe, or username...")
+                    SearchBar(query: $mapQuery)
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: WanderTheme.spacing1) {
                             ForEach(MapFilter.allCases) { filter in
@@ -121,6 +134,12 @@ struct MapScreen: View {
         .onChange(of: visiblePlaceIDs) { _, ids in
             if let current = selectedPlaceID, !ids.contains(current) {
                 selectedPlaceID = ids.first
+                isPlaceSheetExpanded = false
+            }
+        }
+        .onChange(of: mapQuery) { _, _ in
+            if let firstVisibleID = visiblePlaceIDs.first, !visiblePlaceIDs.contains(selectedPlaceID ?? "") {
+                selectedPlaceID = firstVisibleID
                 isPlaceSheetExpanded = false
             }
         }
@@ -205,18 +224,30 @@ private enum MapFilter: String, CaseIterable, Identifiable {
 }
 
 private struct SearchBar: View {
-    let title: String
+    @Binding var query: String
 
     var body: some View {
         HStack(spacing: WanderTheme.spacing2) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(WanderTheme.textMuted.color)
-            Text(title)
+            TextField("search a place, vibe, or username...", text: $query)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(WanderTheme.textFaint.color)
-                .lineLimit(1)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
             Spacer()
-            WanderAvatar(initials: "JL", size: 28, color: WanderTheme.avatarSofia.color)
+            if query.isEmpty {
+                WanderAvatar(initials: "JL", size: 28, color: WanderTheme.avatarSofia.color)
+            } else {
+                Button {
+                    query = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(WanderTheme.textFaint.color)
+                }
+                .accessibilityLabel("Clear map search")
+            }
         }
         .padding(.horizontal, WanderTheme.spacing3)
         .frame(height: 46)
@@ -265,31 +296,9 @@ private struct MapPlaceMarker: View {
     let isSelected: Bool
 
     var body: some View {
-        VStack(spacing: WanderTheme.spacing1) {
-            WanderMapPin(visiblePlace: visiblePlace, isCurrentUser: isCurrentUser, isSelected: isSelected)
-            MapPlaceLabel(title: visiblePlace.place.canonicalName, isSelected: isSelected)
-        }
+        WanderMapPin(visiblePlace: visiblePlace, isCurrentUser: isCurrentUser, isSelected: isSelected)
         .scaleEffect(isSelected ? 1.08 : 1)
         .animation(.spring(response: 0.24, dampingFraction: 0.78), value: isSelected)
-    }
-}
-
-private struct MapPlaceLabel: View {
-    let title: String
-    let isSelected: Bool
-
-    var body: some View {
-        Text(title)
-            .font(.system(size: isSelected ? 12 : 11, weight: .black))
-            .lineLimit(1)
-            .padding(.horizontal, WanderTheme.spacing2)
-            .frame(maxWidth: isSelected ? 150 : 118)
-            .frame(height: isSelected ? 24 : 22)
-            .background((isSelected ? WanderTheme.surfaceRaised : WanderTheme.surfaceBone).color.opacity(isSelected ? 0.96 : 0.88))
-            .foregroundStyle(isSelected ? WanderTheme.textInk.color : WanderTheme.textMuted.color)
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(isSelected ? WanderTheme.terracotta.color : WanderTheme.borderHairline.color.opacity(0.75), lineWidth: isSelected ? 1.5 : 1))
-            .shadow(color: WanderTheme.textInk.color.opacity(isSelected ? 0.16 : 0.08), radius: isSelected ? 8 : 4, x: 0, y: 2)
     }
 }
 
@@ -348,19 +357,12 @@ private struct PlaceSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
-            Button {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                Capsule()
-                    .fill(WanderTheme.borderStrong.color)
-                    .frame(width: 42, height: 5)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, WanderTheme.spacing1)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(isExpanded ? "Collapse place details" : "Expand place details")
+            Capsule()
+                .fill(WanderTheme.borderStrong.color)
+                .frame(width: 42, height: 5)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, WanderTheme.spacing1)
+                .accessibilityLabel(isExpanded ? "Place details expanded" : "Swipe up for place details")
 
             if isExpanded {
                 expandedContent
@@ -372,6 +374,10 @@ private struct PlaceSheet: View {
         .background(WanderTheme.surfaceBone.color)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusSheet))
         .shadow(color: WanderTheme.textInk.color.opacity(0.14), radius: 20, x: 0, y: 10)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 14, coordinateSpace: .local)
+                .onEnded(handleSheetDrag)
+        )
     }
 
     private var compactContent: some View {
@@ -442,11 +448,70 @@ private struct PlaceSheet: View {
                 .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
             }
 
-            HStack(spacing: WanderTheme.spacing2) {
-                PlaceFactPill(title: visiblePlace.userPlace.status.displayTitle, systemImage: visiblePlace.userPlace.status == .been ? "checkmark.circle.fill" : "circle.dashed")
-                PlaceFactPill(title: visiblePlace.userPlace.visibility.displayTitle, systemImage: "eye.fill")
-                PlaceFactPill(title: visiblePlace.userPlace.sourceType.replacingOccurrences(of: "_", with: " "), systemImage: "tray.full.fill")
+            detailTagsSection
+        }
+    }
+
+    private var detailTagsSection: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
+            Text("answers")
+                .font(.system(size: 12, weight: .black))
+                .foregroundStyle(WanderTheme.textMuted.color)
+
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 104), spacing: WanderTheme.spacing2)],
+                alignment: .leading,
+                spacing: WanderTheme.spacing2
+            ) {
+                ForEach(detailFacts) { fact in
+                    PlaceFactPill(title: fact.title, systemImage: fact.systemImage)
+                }
             }
+        }
+    }
+
+    private var detailFacts: [PlaceFact] {
+        var facts: [PlaceFact] = [
+            PlaceFact(title: visiblePlace.userPlace.status.displayTitle, systemImage: visiblePlace.userPlace.status == .been ? "checkmark.circle.fill" : "circle.dashed"),
+            PlaceFact(title: visiblePlace.userPlace.visibility.displayTitle, systemImage: "eye.fill")
+        ]
+
+        if let ratingSignal = visiblePlace.userPlace.ratingSignal {
+            facts.append(PlaceFact(title: ratingSignal, systemImage: "heart.fill"))
+        } else {
+            facts.append(PlaceFact(title: visiblePlace.userPlace.status == .been ? "liked it" : "wants to try", systemImage: "heart"))
+        }
+
+        switch visiblePlace.place.category {
+        case "coffee":
+            facts.append(contentsOf: [
+                PlaceFact(title: "wifi solid", systemImage: "wifi"),
+                PlaceFact(title: "work vibe", systemImage: "laptopcomputer")
+            ])
+        case "hike":
+            facts.append(contentsOf: [
+                PlaceFact(title: "easy", systemImage: "figure.hiking"),
+                PlaceFact(title: "sunset", systemImage: "sun.max.fill")
+            ])
+        case "restaurant":
+            facts.append(contentsOf: [
+                PlaceFact(title: "dinner", systemImage: "fork.knife"),
+                PlaceFact(title: "worth it", systemImage: "sparkles")
+            ])
+        default:
+            facts.append(PlaceFact(title: visiblePlace.place.category, systemImage: "tag.fill"))
+        }
+
+        facts.append(PlaceFact(title: visiblePlace.userPlace.sourceType.replacingOccurrences(of: "_", with: " "), systemImage: "tray.full.fill"))
+        return facts
+    }
+
+    private func handleSheetDrag(_ value: DragGesture.Value) {
+        let verticalIntent = value.translation.height
+        guard abs(verticalIntent) > abs(value.translation.width), abs(verticalIntent) > 24 else { return }
+
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+            isExpanded = verticalIntent < 0
         }
     }
 
@@ -461,6 +526,12 @@ private struct PlaceSheet: View {
         }
         .accessibilityLabel("Save to my map")
     }
+}
+
+private struct PlaceFact: Identifiable {
+    var id: String { title }
+    let title: String
+    let systemImage: String
 }
 
 private struct SocialProofRow: View {

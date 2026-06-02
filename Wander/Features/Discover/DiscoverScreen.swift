@@ -7,7 +7,7 @@ struct DiscoverScreen: View {
     @State private var contacts: [ContactMatch] = []
     @State private var selectedProfile: SelectedProfile?
     @State private var savedMessage: String?
-    @State private var selectedScope: DiscoverPlaceScope = .friendsPlaces
+    @State private var selectedScope: DiscoverPlaceScope = .everyone
     @FocusState private var searchFieldFocused: Bool
 
     private var matchedContacts: [ContactMatch] {
@@ -30,11 +30,11 @@ struct DiscoverScreen: View {
                     searchField
                     peopleSection
                     resultsSection
-                    filterSection
                 }
                 .padding(WanderTheme.spacing4)
                 .padding(.bottom, WanderTheme.spacing8)
             }
+            .scrollDismissesKeyboard(.interactively)
             .wanderScreen()
             .task {
                 contacts = await store.contactMatches()
@@ -129,50 +129,16 @@ struct DiscoverScreen: View {
         }
     }
 
-    private var filterSection: some View {
-        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
-            SectionTitle("filters")
-            scopeToggle
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: WanderTheme.spacing2)], alignment: .leading, spacing: WanderTheme.spacing2) {
-                ForEach(store.smartFilters) { filter in
-                    Button {
-                        query = filter.query
-                    } label: {
-                        Text(filter.title)
-                            .font(.system(size: 14, weight: .bold))
-                            .lineLimit(2)
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                            .padding(.horizontal, WanderTheme.spacing3)
-                            .background(query == filter.query ? WanderTheme.textInk.color : WanderTheme.surfaceBone.color)
-                            .foregroundStyle(query == filter.query ? WanderTheme.textOnAction.color : WanderTheme.textInk.color)
-                            .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
     private var scopeToggle: some View {
-        HStack(spacing: WanderTheme.spacing2) {
-            ForEach(DiscoverPlaceScope.allCases) { scope in
-                Button {
-                    selectedScope = scope
-                } label: {
-                    Text(scope.title)
-                        .font(.system(size: 13, weight: .bold))
-                        .frame(maxWidth: .infinity, minHeight: 40)
-                        .background(selectedScope == scope ? WanderTheme.surfaceRaised.color : WanderTheme.surfaceSand.color)
-                        .foregroundStyle(WanderTheme.textInk.color)
-                        .clipShape(Capsule())
-                        .overlay(
-                            Capsule()
-                                .stroke(selectedScope == scope ? WanderTheme.terracotta.color : WanderTheme.borderHairline.color.opacity(0.72), lineWidth: selectedScope == scope ? 2 : 1)
-                        )
-                }
-                .buttonStyle(.plain)
-            }
-        }
+        WanderSegmentedSwitch(
+            options: DiscoverPlaceScope.allCases.map { scope in
+                WanderSegmentOption(id: scope.rawValue, title: scope.title)
+            },
+            selection: Binding(
+                get: { selectedScope.rawValue },
+                set: { selectedScope = DiscoverPlaceScope(rawValue: $0) ?? .everyone }
+            )
+        )
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Discover place source")
     }
@@ -180,9 +146,10 @@ struct DiscoverScreen: View {
     private var resultsSection: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
             SectionTitle("places")
+            scopeToggle
 
             if results.places.isEmpty {
-                EmptyPanel(title: "No places here yet", action: selectedScope == .myPlaces ? "try friends' places" : "broaden filters")
+                EmptyPanel(title: "No places here yet", action: selectedScope == .myPlaces ? "try friends or everyone" : "try another search")
             } else {
                 ForEach(results.places) { visiblePlace in
                     DiscoverPlaceRow(visiblePlace: visiblePlace) {

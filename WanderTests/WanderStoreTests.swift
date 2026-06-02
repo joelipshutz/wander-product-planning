@@ -114,13 +114,15 @@ final class WanderStoreTests: XCTestCase {
         XCTAssertTrue(results.profiles.isEmpty)
     }
 
-    func testDiscoverCanScopeBetweenMyPlacesAndFriendsPlaces() async {
+    func testDiscoverCanScopeBetweenMyPlacesFriendsAndEveryone() async {
         let store = makeStore()
 
         let mine = await store.discover(query: "", scope: .myPlaces)
         let friends = await store.discover(query: "", scope: .friendsPlaces)
+        let everyone = await store.discover(query: "", scope: .everyone)
 
         XCTAssertEqual(mine.places.map(\.owner.id), ["user_joe"])
-        XCTAssertEqual(Set(friends.places.map(\.owner.id)), ["user_maya", "user_ryan"])
+        XCTAssertEqual(friends.places.map(\.owner.id), ["user_ryan"])
+        XCTAssertEqual(Set(everyone.places.map(\.owner.id)), ["user_joe", "user_maya", "user_ryan"])
     }
 }

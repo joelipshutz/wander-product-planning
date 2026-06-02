@@ -202,15 +202,14 @@ final class WanderStore: ObservableObject {
         return (try? await parser.parse(query: query, schema: schema)) ?? DiscoverFilters(query: query)
     }
 
-    func discover(query: String, scope: DiscoverPlaceScope = .friendsPlaces) async -> DiscoverResults {
+    func discover(query: String, scope: DiscoverPlaceScope = .everyone) async -> DiscoverResults {
         let filters = await parseDiscover(query: query)
         var placeFilters = PlaceFilters()
         placeFilters.statuses = filters.statuses
         placeFilters.categories = filters.categories
+        placeFilters.ownerScopes = scope.ownerScopes
 
-        if scope == .myPlaces {
-            placeFilters.ownerScopes = scope.ownerScopes
-        } else if let relationship = filters.relationship {
+        if scope == .everyone, let relationship = filters.relationship {
             switch relationship {
             case .mutual:
                 placeFilters.ownerScopes = ["friends"]
@@ -221,8 +220,6 @@ final class WanderStore: ObservableObject {
             case .nonFollower:
                 placeFilters.ownerScopes = []
             }
-        } else if query.isEmpty {
-            placeFilters.ownerScopes = scope.ownerScopes
         }
 
         let places = visiblePlaces(filters: placeFilters)

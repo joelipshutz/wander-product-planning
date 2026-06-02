@@ -4,6 +4,7 @@ struct ProfileScreen: View {
     @EnvironmentObject private var store: WanderStore
     @State private var showsSettings = false
     @State private var listMode: GraphListMode?
+    @State private var selectedPeopleMode: GraphListMode = .following
 
     var body: some View {
         NavigationStack {
@@ -152,32 +153,37 @@ struct ProfileScreen: View {
             Text("people")
                 .font(.system(size: 17, weight: .black))
 
-            ConnectionRow(
-                title: "following",
-                subtitle: "people whose places can show up",
-                count: store.following(of: store.currentUser.id).count,
-                systemImage: "person.2.fill"
-            ) {
-                listMode = .following
-            }
+            WanderSegmentedSwitch(
+                options: GraphListMode.allCases.map { mode in
+                    WanderSegmentOption(id: mode.rawValue, title: mode.title)
+                },
+                selection: Binding(
+                    get: { selectedPeopleMode.rawValue },
+                    set: { selectedPeopleMode = GraphListMode(rawValue: $0) ?? .following }
+                )
+            )
 
-            ConnectionRow(
-                title: "followers",
-                subtitle: "people who can see Everyone places",
-                count: store.followers(of: store.currentUser.id).count,
-                systemImage: "person.crop.circle.badge.checkmark"
-            ) {
-                listMode = .followers
+            let people = people(for: selectedPeopleMode)
+            if people.isEmpty {
+                SmallEmptyRow(title: "No \(selectedPeopleMode.title) yet", subtitle: selectedPeopleMode.emptySubtitle)
+            } else {
+                ForEach(people, id: \.id) { profile in
+                    ProfilePersonRow(profile: profile, relationship: store.relationship(to: profile.id)) {
+                        listMode = selectedPeopleMode
+                    }
+                }
             }
+        }
+    }
 
-            ConnectionRow(
-                title: "friends",
-                subtitle: "mutual follows",
-                count: store.stats.friends,
-                systemImage: "person.2.badge.gearshape.fill"
-            ) {
-                listMode = .friends
-            }
+    private func people(for mode: GraphListMode) -> [LocalProfile] {
+        switch mode {
+        case .following:
+            return store.following(of: store.currentUser.id)
+        case .followers:
+            return store.followers(of: store.currentUser.id)
+        case .friends:
+            return store.following(of: store.currentUser.id).filter { store.relationship(to: $0.id) == .mutual }
         }
     }
 }
@@ -297,12 +303,28 @@ struct ProfileDetailView: View {
     }
 }
 
-private enum GraphListMode: String, Identifiable {
-    case followers
+private enum GraphListMode: String, CaseIterable, Identifiable {
     case following
+    case followers
     case friends
 
     var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .following: "following"
+        case .followers: "followers"
+        case .friends: "friends"
+        }
+    }
+
+    var emptySubtitle: String {
+        switch self {
+        case .following: "follow someone from contacts or username search"
+        case .followers: "people who follow you will show up here"
+        case .friends: "mutual follows show up here"
+        }
+    }
 }
 
 private struct GraphListScreen: View {
@@ -381,6 +403,34 @@ private struct ConnectionRow: View {
                     .font(.system(size: 18, weight: .black))
                     .foregroundStyle(WanderTheme.textInk.color)
                     .frame(minWidth: 30, alignment: .trailing)
+            }
+            .padding(WanderTheme.spacing3)
+            .background(WanderTheme.surfaceBone.color)
+            .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct ProfilePersonRow: View {
+    let profile: LocalProfile
+    let relationship: ViewerRelationship
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: WanderTheme.spacing3) {
+                WanderAvatar(initials: profile.initials, size: 40, color: WanderTheme.pinSocial.color)
+
+                VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
+                    Text(profile.displayName)
+                        .font(.system(size: 15, weight: .bold))
+                    Text("@\(profile.handle) · \(relationship.displayTitle)")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(WanderTheme.textMuted.color)
+                }
+
+                Spacer()
             }
             .padding(WanderTheme.spacing3)
             .background(WanderTheme.surfaceBone.color)

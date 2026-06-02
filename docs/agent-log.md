@@ -189,6 +189,49 @@ xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=
 - Latest passing result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.01_15-29-13--0700.xcresult`.
 - Remaining local caveat: `Wander.xcodeproj/project.pbxproj` still has the unrelated unstaged local signing/team diff and should remain uncommitted unless Joe asks.
 
+## 2026-06-02 - Codex - M2 Interaction Punch List
+
+Agent: Codex
+Branch: `main`
+Starting commit: `0d861f0`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` has the same unrelated unstaged local signing/team diff and should remain untouched.
+
+Goal: finish the M2 acceptance punch list Joe approved: Discover keyboard swipe dismissal, basic Map search, Discover places section with an embedded 3-stage `my`/`friends`/`everyone` switch, and Profile people section with the same 3-stage switch for `following`/`followers`/`friends`.
+
+Expected files to touch:
+
+- `Wander/DesignSystem/WanderTheme.swift`
+- `Wander/Features/Discover/DiscoverScreen.swift`
+- `Wander/Features/Map/MapScreen.swift`
+- `Wander/Features/Profile/ProfileScreen.swift`
+- `Wander/Services/DiscoverModels.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- `WanderTests/WanderStoreTests.swift`
+- `docs/decisions.md`
+- `docs/agent-log.md`
+
+Checkpoint:
+
+- Joe added Map selected-place details feedback mid-pass.
+- Discover:
+  - Added `.scrollDismissesKeyboard(.interactively)`.
+  - Moved source scope into the Places section as a 3-way `mine` / `friends` / `everyone` segmented switch.
+  - Default Discover scope is now `everyone` under current follow/privacy visibility rules.
+- Profile:
+  - Reworked the people section into a 3-way `following` / `followers` / `friends` switch with inline rows.
+- Map:
+  - Added local search over visible place name/category/locality/owner/note/rating.
+  - Removed the custom marker title pill so MapKit's outside annotation title is the only place label.
+  - Changed selected place sheet expansion from tap-on-handle to vertical swipe/drag.
+  - Added expanded sheet answer/detail chips from current local fixture fields because M2 does not yet persist Add-flow `LocalPlaceAttribute` answers.
+- During final verification, found a transient dirty typo in `Wander/App/WanderRootView.swift` (`_initialPresentation` name mangled). Restored it to committed content; no RootView diff remains.
+- Tests:
+  - Initial sandboxed `xcodebuild test` could not access CoreSimulator; reran with approved elevated simulator access.
+  - Final command: `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+  - Result: 22 tests, 0 failures.
+  - Latest passing result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.02_12-56-11--0700.xcresult`.
+  - No screenshots captured for this pass; Joe said he would test and wanted push/merge first.
+
 ## 2026-06-01 - Codex - Discover People Rail Fix
 
 Agent: Codex

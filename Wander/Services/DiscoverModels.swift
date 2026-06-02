@@ -30,20 +30,23 @@ struct DiscoverResults {
 enum DiscoverPlaceScope: String, CaseIterable, Identifiable, Equatable {
     case myPlaces = "my_places"
     case friendsPlaces = "friends_places"
+    case everyone
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .myPlaces: "my places"
-        case .friendsPlaces: "friends' places"
+        case .myPlaces: "mine"
+        case .friendsPlaces: "friends"
+        case .everyone: "everyone"
         }
     }
 
     var ownerScopes: Set<String> {
         switch self {
         case .myPlaces: ["you"]
-        case .friendsPlaces: ["following", "friends"]
+        case .friendsPlaces: ["friends"]
+        case .everyone: ["you", "following", "friends"]
         }
     }
 }

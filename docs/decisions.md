@@ -59,7 +59,7 @@ Durable product and engineering decisions for Wander. See the product spec and e
 | Map place labels | M2 selected/simple labels | Show place labels on Wander pins in the local prototype, with selected/tapped state made visually explicit. Revisit clutter rules later with real density. |
 | Social proof copy | Locked | Place sheets should show who saved a place with avatars/facepile, not "`Name`'s tip" copy. |
 | Screen titles | Locked | Main surfaces use plain titles like Discover and Settings; avoid oversized informal slogans as page titles. |
-| Discover hierarchy | Locked | Places are the primary Discover content; filters sit below as a subsection with a My places/Friends' places toggle. |
+| Discover hierarchy | Locked | People stay near the top under search; Places are the primary Discover content with a segmented `mine` / `friends` / `everyone` scope switch at the top of the Places section. |
 
 ## Reset Decisions
 
