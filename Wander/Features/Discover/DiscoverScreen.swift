@@ -7,6 +7,19 @@ struct DiscoverScreen: View {
     @State private var contacts: [ContactMatch] = []
     @State private var selectedProfile: SelectedProfile?
     @State private var savedMessage: String?
+    @FocusState private var searchFieldFocused: Bool
+
+    private var matchedContacts: [ContactMatch] {
+        contacts.filter(\.isMatchedUser)
+    }
+
+    private var contactUserIDs: Set<String> {
+        Set(matchedContacts.compactMap(\.userID))
+    }
+
+    private var profileResults: [ProfileShell] {
+        results.profiles.filter { !contactUserIDs.contains($0.id) }
+    }
 
     var body: some View {
         NavigationStack {
@@ -63,6 +76,7 @@ struct DiscoverScreen: View {
                 .font(.system(size: 15, weight: .medium))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+                .focused($searchFieldFocused)
             if !query.isEmpty {
                 Button {
                     query = ""
@@ -83,12 +97,15 @@ struct DiscoverScreen: View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
             SectionTitle("people")
 
-            if contacts.isEmpty && results.profiles.isEmpty {
-                EmptyPanel(title: "Follow someone to unlock this", action: "try @maya")
-            } else {
+            HStack(alignment: .top, spacing: WanderTheme.spacing3) {
+                AddPersonCard {
+                    query = "@"
+                    searchFieldFocused = true
+                }
+
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: WanderTheme.spacing3) {
-                        ForEach(contacts) { contact in
+                    HStack(spacing: WanderTheme.spacing2) {
+                        ForEach(matchedContacts) { contact in
                             ContactCard(contact: contact) {
                                 if let userID = contact.userID {
                                     selectedProfile = SelectedProfile(id: userID)
@@ -101,7 +118,7 @@ struct DiscoverScreen: View {
                             }
                         }
 
-                        ForEach(results.profiles) { profile in
+                        ForEach(profileResults) { profile in
                             ProfileMiniCard(profile: profile) {
                                 selectedProfile = SelectedProfile(id: profile.id)
                             } follow: {
@@ -201,6 +218,43 @@ private struct EmptyPanel: View {
     }
 }
 
+private struct AddPersonCard: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
+                Image(systemName: "person.badge.plus")
+                    .font(.system(size: 17, weight: .bold))
+                    .frame(width: 36, height: 36)
+                    .background(WanderTheme.terracotta.color)
+                    .foregroundStyle(WanderTheme.textOnAction.color)
+                    .clipShape(Circle())
+
+                Text("add")
+                    .font(.system(size: 14, weight: .bold))
+                Text("username")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(WanderTheme.textMuted.color)
+                    .lineLimit(1)
+
+                Spacer()
+
+                Text("find")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(WanderTheme.terracotta.color)
+            }
+            .frame(width: 82, height: 116, alignment: .leading)
+            .padding(WanderTheme.spacing3)
+            .background(WanderTheme.surfaceSand.color)
+            .foregroundStyle(WanderTheme.textInk.color)
+            .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Add a person by username")
+    }
+}
+
 private struct ContactCard: View {
     let contact: ContactMatch
     let open: () -> Void
@@ -208,35 +262,29 @@ private struct ContactCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
-            WanderAvatar(initials: initials, size: 36, color: contact.isMatchedUser ? WanderTheme.avatarRyan.color : WanderTheme.borderStrong.color)
+            WanderAvatar(initials: initials, size: 36, color: WanderTheme.avatarRyan.color)
             VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
                 Text(contact.displayName)
                     .font(.system(size: 14, weight: .bold))
                     .lineLimit(1)
-                Text(contact.handle.map { "@\($0)" } ?? "not on Wander yet")
+                Text(contact.handle.map { "@\($0)" } ?? "on Wander")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(WanderTheme.textMuted.color)
                     .lineLimit(1)
             }
             Spacer()
-            if contact.isMatchedUser {
-                Button(contact.isAlreadyFollowing ? "view" : "follow") {
-                    contact.isAlreadyFollowing ? open() : follow()
-                }
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(WanderTheme.terracotta.color)
-            } else {
-                Text("later")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(WanderTheme.textFaint.color)
+            Button(contact.isAlreadyFollowing ? "view" : "follow") {
+                contact.isAlreadyFollowing ? open() : follow()
             }
+            .font(.system(size: 13, weight: .bold))
+            .foregroundStyle(WanderTheme.terracotta.color)
         }
         .frame(width: 122, height: 116, alignment: .leading)
         .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceBone.color)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
         .onTapGesture {
-            if contact.isMatchedUser { open() }
+            open()
         }
     }
 

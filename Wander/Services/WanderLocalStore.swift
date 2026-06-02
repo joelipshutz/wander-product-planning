@@ -188,7 +188,7 @@ final class WanderStore: ObservableObject {
     func contactMatches() async -> [ContactMatch] {
         let matches = (try? await contactProvider.matches()) ?? []
         return matches.filter { match in
-            guard let userID = match.userID else { return true }
+            guard let userID = match.userID else { return false }
             return !isBlockedBetweenCurrentUser(and: userID)
         }
     }

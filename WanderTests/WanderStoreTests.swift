@@ -96,6 +96,15 @@ final class WanderStoreTests: XCTestCase {
         XCTAssertTrue(store.searchProfiles(handleQuery: "r").isEmpty)
     }
 
+    func testContactMatchesOnlyIncludePeopleOnWander() async {
+        let store = makeStore()
+
+        let matches = await store.contactMatches()
+
+        XCTAssertEqual(matches.map(\.id), ["contact_maya"])
+        XCTAssertTrue(matches.allSatisfy { $0.isMatchedUser })
+    }
+
     func testDiscoverSmartQueryUsesDeterministicParser() async {
         let store = makeStore()
 

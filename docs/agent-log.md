@@ -188,3 +188,31 @@ xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=
 - Result: 20 tests, 0 failures.
 - Latest passing result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.01_15-29-13--0700.xcresult`.
 - Remaining local caveat: `Wander.xcodeproj/project.pbxproj` still has the unrelated unstaged local signing/team diff and should remain uncommitted unless Joe asks.
+
+## 2026-06-01 - Codex - Discover People Rail Fix
+
+Agent: Codex
+Branch: `main`
+Starting commit: `89988a0`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` has an unstaged local signing/team diff containing `DEVELOPMENT_TEAM = Y7TVK75RZ8`, generated app file type churn, and target-attribute cleanup. Treat as unrelated unless Joe explicitly wants signing metadata committed.
+
+Goal: update Discover's people rail so it starts with an add-person affordance and only shows users who are actually on Wander. Non-Wander contact rows should not appear in the people rail.
+
+Expected files to touch:
+
+- `Wander/Features/Discover/DiscoverScreen.swift`
+- `WanderTests/WanderStoreTests.swift` or related tests if store behavior needs coverage
+- `docs/agent-log.md`
+
+Completion checkpoint:
+
+- Changed `WanderStore.contactMatches()` to exclude contacts without a matched Wander `userID`, so non-Wander contacts are not shown in social rails.
+- Updated Discover people rail to show a fixed add-person card to the left of the horizontal people scroll. Tapping it seeds username search with `@` and focuses the search field.
+- Deduplicated Discover profile search results against matched contact user IDs, so Maya does not appear twice when also returned from username search.
+- Visual QA screenshots:
+  - `DerivedData/visual-sweep/after-discover-add-rail-iphone16plus.png`
+  - `DerivedData/visual-sweep/after-discover-add-rail-iphone16e.png`
+- Tests: `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: 21 tests, 0 failures.
+- Latest passing result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.01_17-06-34--0700.xcresult`.
+- Remaining local caveat: `Wander.xcodeproj/project.pbxproj` still has the unrelated unstaged local signing/team diff and should remain uncommitted unless Joe asks.
