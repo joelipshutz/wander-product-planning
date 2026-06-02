@@ -1,6 +1,6 @@
 # Open Questions
 
-Last updated: 2026-06-01
+Last updated: 2026-06-02
 
 These are the known unresolved questions and risks. Some are intentionally deferred; do not reopen locked decisions unless Joe asks.
 
@@ -16,10 +16,10 @@ These are the known unresolved questions and risks. Some are intentionally defer
 
 | Question | Recommendation | Notes |
 |---|---|---|
-| Exact Clerk claim key for Supabase ownership/RLS? | Use standard Clerk subject/user id unless current Clerk/Supabase docs require a different claim. | Must verify against current official docs during M3. |
+| Exact Clerk/Supabase dashboard config values? | Use native Clerk third-party auth integration, with Clerk session token `role=authenticated` and user ownership from `auth.jwt()->>'sub'`. | Claim mapping is now resolved in M3; remaining work is project-specific domain/provider setup. |
 | Where does profile mirroring happen? | Backend webhook from Clerk into Supabase `profiles`. | Needs migration/function plan. |
-| How are Supabase RLS policies tested? | Add SQL/policy tests before iOS Clerk wiring. | RLS is authoritative for privacy. |
-| Do we create Supabase migrations in this repo? | Yes unless Joe creates a backend repo split. | Current plan says build in this repo unless split is needed. |
+| How are Supabase RLS policies tested? | Use repo SQL tests in `supabase/tests/`; run once Supabase CLI/Postgres test runner is installed. | RLS is authoritative for privacy. Local CLI is not installed yet. |
+| Do we create Supabase migrations in this repo? | Yes. | M3 migration started under `supabase/migrations/`; revisit only if Joe creates a backend repo split. |
 | Which analytics provider? | Keep vendor-neutral interface; choose provider later. | PostHog is likely but not locked. |
 
 ## Needs Answer Before M5

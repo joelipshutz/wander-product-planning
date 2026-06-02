@@ -30,6 +30,7 @@ Durable product and engineering decisions for Wander. See the product spec and e
 | Native iOS | Locked | SwiftUI, iOS 17+, iPhone-first. |
 | XcodeGen | Locked | `project.yml` is source of truth. |
 | Clerk + Supabase | Locked | Clerk for identity/account, Supabase for data/RLS/PostGIS/storage/functions. |
+| Clerk user id mapping | Locked | Store Clerk user ids as text `profiles.id` / owner fields. Supabase RLS reads the Clerk session token subject through `auth.jwt()->>'sub'`, with a local-test fallback to `request.jwt.claim.sub`. |
 | SwiftData local-first | Locked | Local cache, guest-local records, sync queue. |
 | MapKit-only v0.1 | Locked | Keep provider-extensible place IDs. |
 | Supabase RLS authoritative | Locked | Client policy is for UI behavior only. |
@@ -43,6 +44,7 @@ Durable product and engineering decisions for Wander. See the product spec and e
 | Analytics provider | Deferred | Define vendor-neutral event interface first. |
 | Sync conflict behavior | Locked v0.1 | Simple `updated_at`/server-wins plus local retry queue. |
 | Full onboarding | Deferred | Auth gates at save/sync/follow/social-save intents still required. |
+| M3 backend schema/RLS foundation | In progress | First M3 artifact is a Supabase migration plus pgTAP-style policy test file before iOS Clerk UI wiring. Schema includes custom `question_definitions` plus JSON-backed `place_attributes` so future user-created questions/inputs can be added without answer-column churn. |
 
 ## Design Decisions
 

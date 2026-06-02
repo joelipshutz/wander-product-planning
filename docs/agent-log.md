@@ -284,7 +284,45 @@ Completion checkpoint:
   - Final command: `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
   - Result: 24 tests, 0 failures.
   - Latest passing result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.02_13-12-47--0700.xcresult`.
-  - No screenshots captured for this pass.
+- No screenshots captured for this pass.
+
+## 2026-06-02 - Codex - M3 Supabase Foundation
+
+Agent: Codex
+Branch: `main`
+Starting commit: `d0f624c`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` has the same unrelated unstaged local signing/team diff and should remain untouched.
+
+Goal: start M3 backend foundation with Supabase schema/RLS/RPC contract artifacts before wiring iOS Clerk UI. Include question-definition support so future user-created/custom questions can be added without changing answer columns.
+
+Environment note:
+
+- `supabase` CLI is not installed locally.
+- `psql` is not installed locally.
+- I can write migration and SQL policy test files, but cannot execute them in this environment until a Supabase/Postgres runner is available.
+
+Expected files to touch:
+
+- `supabase/migrations/20260602131500_m3_foundation.sql`
+- `supabase/tests/rls_visibility.sql`
+- `docs/backend/m3-supabase-foundation.md`
+- `docs/agent-log.md`
+- `docs/decisions.md` if M3 backend decisions need to be locked.
+
+Checkpoint:
+
+- Added first M3 migration under `supabase/migrations/`.
+- Added pgTAP-style RLS visibility tests under `supabase/tests/`.
+- Verified current official Clerk/Supabase docs: native Clerk Supabase integration uses Clerk session tokens, `role=authenticated`, and RLS can read the Clerk user id from `auth.jwt()->>'sub'`.
+- Added explicit `question_definitions` support for future user-created questions/inputs:
+  - System starter prompts are global.
+  - User custom prompts are owner-authored.
+  - Attached custom prompt metadata becomes readable only through visible place attributes.
+  - Answers stay JSON-backed in `place_attributes`; do not add hardcoded answer columns for new prompts.
+- Tightened profile/map RPCs so they return joined place rows with attributes, not raw `user_places` rows.
+- Removed authenticated client update access for canonical `places`; future reconciliation should use service-role backend code.
+- Added `docs/backend/m3-supabase-foundation.md`.
+- Updated `docs/decisions.md` and `docs/open-questions.md` for Clerk `sub` mapping and M3 test-runner status.
 
 ## 2026-06-01 - Codex - Discover People Rail Fix
 
