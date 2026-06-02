@@ -7,6 +7,7 @@ struct DiscoverScreen: View {
     @State private var contacts: [ContactMatch] = []
     @State private var selectedProfile: SelectedProfile?
     @State private var savedMessage: String?
+    @State private var selectedScope: DiscoverPlaceScope = .friendsPlaces
     @FocusState private var searchFieldFocused: Bool
 
     private var matchedContacts: [ContactMatch] {
@@ -28,8 +29,8 @@ struct DiscoverScreen: View {
                     header
                     searchField
                     peopleSection
-                    smartFilters
                     resultsSection
+                    filterSection
                 }
                 .padding(WanderTheme.spacing4)
                 .padding(.bottom, WanderTheme.spacing8)
@@ -40,6 +41,9 @@ struct DiscoverScreen: View {
                 await refresh()
             }
             .onChange(of: query) { _, _ in
+                Task { await refresh() }
+            }
+            .onChange(of: selectedScope) { _, _ in
                 Task { await refresh() }
             }
             .sheet(item: $selectedProfile) { profile in
@@ -55,17 +59,9 @@ struct DiscoverScreen: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
-            Text("DISCOVER")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(WanderTheme.textMuted.color)
-            Text("ask your people's map")
-                .font(.system(size: 27, weight: .black))
-                .lineLimit(2)
-            Text("Search places, vibes, contacts, or exact usernames. No global people directory.")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(WanderTheme.textMuted.color)
-        }
+        Text("discover")
+            .font(.system(size: 30, weight: .black, design: .rounded))
+            .lineLimit(1)
     }
 
     private var searchField: some View {
@@ -133,9 +129,10 @@ struct DiscoverScreen: View {
         }
     }
 
-    private var smartFilters: some View {
+    private var filterSection: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
-            SectionTitle("smart filters")
+            SectionTitle("filters")
+            scopeToggle
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: WanderTheme.spacing2)], alignment: .leading, spacing: WanderTheme.spacing2) {
                 ForEach(store.smartFilters) { filter in
                     Button {
@@ -156,12 +153,36 @@ struct DiscoverScreen: View {
         }
     }
 
+    private var scopeToggle: some View {
+        HStack(spacing: WanderTheme.spacing2) {
+            ForEach(DiscoverPlaceScope.allCases) { scope in
+                Button {
+                    selectedScope = scope
+                } label: {
+                    Text(scope.title)
+                        .font(.system(size: 13, weight: .bold))
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .background(selectedScope == scope ? WanderTheme.surfaceRaised.color : WanderTheme.surfaceSand.color)
+                        .foregroundStyle(WanderTheme.textInk.color)
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(selectedScope == scope ? WanderTheme.terracotta.color : WanderTheme.borderHairline.color.opacity(0.72), lineWidth: selectedScope == scope ? 2 : 1)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Discover place source")
+    }
+
     private var resultsSection: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
-            SectionTitle("places from your people")
+            SectionTitle("places")
 
             if results.places.isEmpty {
-                EmptyPanel(title: "Nothing from your people yet", action: "broaden filters")
+                EmptyPanel(title: "No places here yet", action: selectedScope == .myPlaces ? "try friends' places" : "broaden filters")
             } else {
                 ForEach(results.places) { visiblePlace in
                     DiscoverPlaceRow(visiblePlace: visiblePlace) {
@@ -176,7 +197,7 @@ struct DiscoverScreen: View {
     }
 
     private func refresh() async {
-        results = await store.discover(query: query)
+        results = await store.discover(query: query, scope: selectedScope)
     }
 }
 
@@ -348,7 +369,7 @@ private struct DiscoverPlaceRow: View {
                     .font(.system(size: 15, weight: .bold))
                     .lineLimit(1)
                 Button(action: openProfile) {
-                    Text("saved from \(visiblePlace.owner.displayName) · \(visiblePlace.userPlace.status.displayTitle)")
+                    Text("\(visiblePlace.owner.displayName) saved it · \(visiblePlace.userPlace.status.displayTitle)")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(WanderTheme.textMuted.color)
                         .lineLimit(1)

@@ -1,6 +1,6 @@
 # Decisions
 
-Last updated: 2026-06-01
+Last updated: 2026-06-02
 
 Durable product and engineering decisions for Wander. See the product spec and engineering plan for fuller rationale.
 
@@ -55,6 +55,11 @@ Durable product and engineering decisions for Wander. See the product spec and e
 | System fonts temporarily | Locked | Funnel Display/Sans direction is tokenized; add font assets when packaging/licensing is clean. |
 | SF Symbols/native controls | Locked | Use native symbols instead of mock emoji chrome for structural UI. |
 | iPhone-first visual QA | Locked | Verify real simulator screenshots before calling UI accepted. |
+| Map filter selected state | Locked | Inactive chips keep the bone/sand fill; active chips add a terracotta ring and terracotta icon, with no checkmark. |
+| Map place labels | M2 selected/simple labels | Show place labels on Wander pins in the local prototype, with selected/tapped state made visually explicit. Revisit clutter rules later with real density. |
+| Social proof copy | Locked | Place sheets should show who saved a place with avatars/facepile, not "`Name`'s tip" copy. |
+| Screen titles | Locked | Main surfaces use plain titles like Discover and Settings; avoid oversized informal slogans as page titles. |
+| Discover hierarchy | Locked | Places are the primary Discover content; filters sit below as a subsection with a My places/Friends' places toggle. |
 
 ## Reset Decisions
 

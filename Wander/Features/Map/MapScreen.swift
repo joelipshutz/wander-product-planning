@@ -4,7 +4,8 @@ import SwiftUI
 struct MapScreen: View {
     @EnvironmentObject private var store: WanderStore
     @State private var selectedPlaceID: String?
-    @State private var selectedFilters: Set<MapFilter> = [.you, .social, .friends, .been, .wanna]
+    @State private var isPlaceSheetExpanded: Bool
+    @State private var selectedFilters: Set<MapFilter> = [.you, .social, .been, .wanna]
     @State private var position: MapCameraPosition = .region(
         MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 34.075, longitude: -118.285),
@@ -12,8 +13,22 @@ struct MapScreen: View {
         )
     )
 
+    private let initialPlaceQuery: String?
+
+    init(
+        initialPlaceQuery: String? = Self.resolvedInitialMapPlaceQuery(),
+        startsExpanded: Bool = ProcessInfo.processInfo.arguments.contains("-WanderMapSheetExpanded")
+    ) {
+        self.initialPlaceQuery = initialPlaceQuery
+        _isPlaceSheetExpanded = State(initialValue: startsExpanded)
+    }
+
     private var visiblePlaces: [VisiblePlace] {
         store.visiblePlaces(filters: filters)
+    }
+
+    private var visiblePlaceIDs: [String] {
+        visiblePlaces.map(\.id)
     }
 
     private var filters: PlaceFilters {
@@ -28,7 +43,6 @@ struct MapScreen: View {
         var scopes: Set<String> = []
         if selectedFilters.contains(.you) { scopes.insert("you") }
         if selectedFilters.contains(.social) { scopes.insert("social") }
-        if selectedFilters.contains(.friends) { scopes.insert("friends") }
         filters.ownerScopes = scopes
 
         return filters
@@ -48,8 +62,13 @@ struct MapScreen: View {
                     ) {
                         Button {
                             selectedPlaceID = visiblePlace.id
+                            isPlaceSheetExpanded = false
                         } label: {
-                            WanderMapPin(visiblePlace: visiblePlace, isCurrentUser: visiblePlace.owner.id == store.currentUser.id)
+                            MapPlaceMarker(
+                                visiblePlace: visiblePlace,
+                                isCurrentUser: visiblePlace.owner.id == store.currentUser.id,
+                                isSelected: selectedPlaceID == visiblePlace.id
+                            )
                         }
                         .buttonStyle(.plain)
                     }
@@ -73,14 +92,21 @@ struct MapScreen: View {
                             }
                         }
                         .padding(.horizontal, WanderTheme.spacing3)
+                        .padding(.vertical, WanderTheme.spacing1)
                     }
+                    .frame(height: 48)
                 }
                 .padding(.top, WanderTheme.spacing2)
 
                 Spacer()
 
                 if let selectedPlace {
-                    PlaceSheet(visiblePlace: selectedPlace) {
+                    PlaceSheet(
+                        visiblePlace: selectedPlace,
+                        savers: savers(for: selectedPlace),
+                        currentUserID: store.currentUser.id,
+                        isExpanded: $isPlaceSheetExpanded
+                    ) {
                         _ = store.saveVisiblePlace(selectedPlace)
                     }
                     .padding(.horizontal, WanderTheme.spacing3)
@@ -90,8 +116,12 @@ struct MapScreen: View {
         }
         .background(WanderTheme.canvasWarm.color)
         .onAppear {
-            if selectedPlaceID == nil {
-                selectedPlaceID = visiblePlaces.first?.id
+            resolveInitialSelection()
+        }
+        .onChange(of: visiblePlaceIDs) { _, ids in
+            if let current = selectedPlaceID, !ids.contains(current) {
+                selectedPlaceID = ids.first
+                isPlaceSheetExpanded = false
             }
         }
     }
@@ -103,12 +133,53 @@ struct MapScreen: View {
             selectedFilters.insert(filter)
         }
     }
+
+    private func resolveInitialSelection() {
+        guard selectedPlaceID == nil else { return }
+
+        if let initialPlaceQuery {
+            let normalized = initialPlaceQuery.lowercased()
+            selectedPlaceID = visiblePlaces.first { visiblePlace in
+                visiblePlace.id.lowercased().contains(normalized)
+                    || visiblePlace.place.id.lowercased().contains(normalized)
+                    || visiblePlace.place.canonicalName.lowercased().contains(normalized)
+            }?.id
+        }
+
+        if selectedPlaceID == nil {
+            selectedPlaceID = visiblePlaces.first?.id
+        }
+    }
+
+    private func savers(for selectedPlace: VisiblePlace) -> [LocalProfile] {
+        var seen = Set<String>()
+        return visiblePlaces
+            .filter { $0.place.id == selectedPlace.place.id }
+            .map(\.owner)
+            .filter { profile in
+                guard !seen.contains(profile.id) else { return false }
+                seen.insert(profile.id)
+                return true
+            }
+    }
+
+    private static func resolvedInitialMapPlaceQuery(from arguments: [String] = ProcessInfo.processInfo.arguments) -> String? {
+        guard let flagIndex = arguments.firstIndex(of: "-WanderMapPlace") else {
+            return nil
+        }
+
+        let valueIndex = arguments.index(after: flagIndex)
+        guard arguments.indices.contains(valueIndex) else {
+            return nil
+        }
+
+        return arguments[valueIndex]
+    }
 }
 
 private enum MapFilter: String, CaseIterable, Identifiable {
     case you
     case social
-    case friends
     case been
     case wanna
 
@@ -118,7 +189,6 @@ private enum MapFilter: String, CaseIterable, Identifiable {
         switch self {
         case .you: "you"
         case .social: "social"
-        case .friends: "friends"
         case .been: "been"
         case .wanna: "wanna"
         }
@@ -128,7 +198,6 @@ private enum MapFilter: String, CaseIterable, Identifiable {
         switch self {
         case .you: "location.circle.fill"
         case .social: "person.2.fill"
-        case .friends: "person.2.badge.gearshape.fill"
         case .been: "checkmark.circle.fill"
         case .wanna: "circle.dashed"
         }
@@ -168,23 +237,66 @@ private struct MapFilterChip: View {
         HStack(spacing: WanderTheme.spacing1) {
             Image(systemName: systemImage)
                 .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(isSelected ? WanderTheme.terracotta.color : WanderTheme.textInk.color)
             Text(title)
                 .lineLimit(1)
         }
         .font(.system(size: 12, weight: .bold))
         .padding(.horizontal, WanderTheme.spacing3)
         .frame(height: 38)
-        .background(isSelected ? WanderTheme.textInk.color : WanderTheme.surfaceSand.color)
-        .foregroundStyle(isSelected ? WanderTheme.textOnAction.color : WanderTheme.textInk.color)
+        .background(WanderTheme.surfaceSand.color)
+        .foregroundStyle(WanderTheme.textInk.color)
         .clipShape(Capsule())
-        .overlay(Capsule().stroke(WanderTheme.surfaceRaised.color.opacity(isSelected ? 0 : 0.55), lineWidth: 1))
+        .overlay(
+            Capsule()
+                .stroke(
+                    isSelected ? WanderTheme.terracotta.color : WanderTheme.surfaceRaised.color.opacity(0.55),
+                    lineWidth: isSelected ? 2 : 1
+                )
+        )
+        .shadow(color: WanderTheme.textInk.color.opacity(isSelected ? 0.12 : 0), radius: 8, x: 0, y: 3)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+private struct MapPlaceMarker: View {
+    let visiblePlace: VisiblePlace
+    let isCurrentUser: Bool
+    let isSelected: Bool
+
+    var body: some View {
+        VStack(spacing: WanderTheme.spacing1) {
+            WanderMapPin(visiblePlace: visiblePlace, isCurrentUser: isCurrentUser, isSelected: isSelected)
+            MapPlaceLabel(title: visiblePlace.place.canonicalName, isSelected: isSelected)
+        }
+        .scaleEffect(isSelected ? 1.08 : 1)
+        .animation(.spring(response: 0.24, dampingFraction: 0.78), value: isSelected)
+    }
+}
+
+private struct MapPlaceLabel: View {
+    let title: String
+    let isSelected: Bool
+
+    var body: some View {
+        Text(title)
+            .font(.system(size: isSelected ? 12 : 11, weight: .black))
+            .lineLimit(1)
+            .padding(.horizontal, WanderTheme.spacing2)
+            .frame(maxWidth: isSelected ? 150 : 118)
+            .frame(height: isSelected ? 24 : 22)
+            .background((isSelected ? WanderTheme.surfaceRaised : WanderTheme.surfaceBone).color.opacity(isSelected ? 0.96 : 0.88))
+            .foregroundStyle(isSelected ? WanderTheme.textInk.color : WanderTheme.textMuted.color)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(isSelected ? WanderTheme.terracotta.color : WanderTheme.borderHairline.color.opacity(0.75), lineWidth: isSelected ? 1.5 : 1))
+            .shadow(color: WanderTheme.textInk.color.opacity(isSelected ? 0.16 : 0.08), radius: isSelected ? 8 : 4, x: 0, y: 2)
     }
 }
 
 private struct WanderMapPin: View {
     let visiblePlace: VisiblePlace
     let isCurrentUser: Bool
+    let isSelected: Bool
 
     private var pinColor: Color {
         isCurrentUser ? WanderTheme.pinYou.color : WanderTheme.pinSocial.color
@@ -192,8 +304,8 @@ private struct WanderMapPin: View {
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: 16, weight: .bold))
-            .frame(width: 38, height: 38)
+            .font(.system(size: isSelected ? 17 : 16, weight: .bold))
+            .frame(width: isSelected ? 42 : 38, height: isSelected ? 42 : 38)
             .background(WanderTheme.surfaceRaised.color)
             .clipShape(Circle())
             .overlay(
@@ -201,13 +313,18 @@ private struct WanderMapPin: View {
                     .stroke(
                         pinColor,
                         style: StrokeStyle(
-                            lineWidth: 3,
+                            lineWidth: isSelected ? 4 : 3,
                             lineCap: .round,
                             dash: visiblePlace.userPlace.status == .wannaGo ? [5, 4] : []
                         )
                     )
             )
-            .shadow(color: WanderTheme.textInk.color.opacity(0.22), radius: 6, x: 0, y: 2)
+            .overlay(
+                Circle()
+                    .stroke(WanderTheme.textInk.color.opacity(isSelected ? 0.2 : 0), lineWidth: 1)
+                    .padding(-4)
+            )
+            .shadow(color: WanderTheme.textInk.color.opacity(0.22), radius: isSelected ? 9 : 6, x: 0, y: 2)
             .accessibilityLabel("\(isCurrentUser ? "Your" : "Social") \(visiblePlace.userPlace.status.displayTitle) \(visiblePlace.place.category), \(visiblePlace.place.canonicalName)")
     }
 
@@ -224,15 +341,41 @@ private struct WanderMapPin: View {
 
 private struct PlaceSheet: View {
     let visiblePlace: VisiblePlace
+    let savers: [LocalProfile]
+    let currentUserID: String
+    @Binding var isExpanded: Bool
     let onSave: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
-            Capsule()
-                .fill(WanderTheme.borderStrong.color)
-                .frame(width: 40, height: 5)
-                .frame(maxWidth: .infinity)
+        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
+            Button {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                Capsule()
+                    .fill(WanderTheme.borderStrong.color)
+                    .frame(width: 42, height: 5)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, WanderTheme.spacing1)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isExpanded ? "Collapse place details" : "Expand place details")
 
+            if isExpanded {
+                expandedContent
+            } else {
+                compactContent
+            }
+        }
+        .padding(WanderTheme.spacing3)
+        .background(WanderTheme.surfaceBone.color)
+        .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusSheet))
+        .shadow(color: WanderTheme.textInk.color.opacity(0.14), radius: 20, x: 0, y: 10)
+    }
+
+    private var compactContent: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
             HStack(alignment: .center, spacing: WanderTheme.spacing3) {
                 CategoryThumb(category: visiblePlace.place.category)
 
@@ -243,7 +386,7 @@ private struct PlaceSheet: View {
                             .lineLimit(1)
                         StatusBadge(status: visiblePlace.userPlace.status)
                     }
-                    Text("\(visiblePlace.place.locality ?? "Los Angeles") · \(visiblePlace.place.category) · saved by \(visiblePlace.owner.displayName)")
+                    Text("\(visiblePlace.place.locality ?? "Los Angeles") · \(visiblePlace.place.category)")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(WanderTheme.textMuted.color)
                         .lineLimit(1)
@@ -258,35 +401,134 @@ private struct PlaceSheet: View {
 
                 Spacer()
 
-                Button(action: onSave) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 21, weight: .black))
-                        .frame(width: 46, height: 46)
-                        .background(WanderTheme.terracotta.color)
-                        .foregroundStyle(WanderTheme.textOnAction.color)
-                        .clipShape(Circle())
+                saveButton(size: 46, iconSize: 21)
+            }
+
+            SocialProofRow(savers: savers, currentUserID: currentUserID, visibility: visiblePlace.userPlace.visibility)
+        }
+    }
+
+    private var expandedContent: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
+            HStack(alignment: .top, spacing: WanderTheme.spacing3) {
+                CategoryThumb(category: visiblePlace.place.category)
+                VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
+                    Text(visiblePlace.place.canonicalName)
+                        .font(.system(size: 24, weight: .black))
+                        .lineLimit(2)
+                    Text("\(visiblePlace.place.locality ?? "Los Angeles") · \(visiblePlace.place.category)")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(WanderTheme.textMuted.color)
+                    StatusBadge(status: visiblePlace.userPlace.status)
                 }
-                .accessibilityLabel("Save to my map")
+                Spacer()
+                saveButton(size: 48, iconSize: 22)
+            }
+
+            SocialProofRow(savers: savers, currentUserID: currentUserID, visibility: visiblePlace.userPlace.visibility)
+
+            if let note = visiblePlace.userPlace.note {
+                VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
+                    Text("note")
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundStyle(WanderTheme.textMuted.color)
+                    Text(note)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(WanderTheme.textInk.color)
+                }
+                .padding(WanderTheme.spacing3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(WanderTheme.surfaceSand.color)
+                .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
             }
 
             HStack(spacing: WanderTheme.spacing2) {
-                WanderAvatar(initials: visiblePlace.owner.initials, size: 26, color: visiblePlace.owner.id == visiblePlace.userPlace.userID ? WanderTheme.pinSocial.color : WanderTheme.terracotta.color)
-                Text(visiblePlace.owner.id == visiblePlace.userPlace.userID ? "\(visiblePlace.owner.displayName)'s tip" : "on your map")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(WanderTheme.textMuted.color)
-                Spacer()
-                Text(visiblePlace.userPlace.visibility.displayTitle)
-                    .font(.system(size: 13, weight: .bold))
-                    .padding(.horizontal, WanderTheme.spacing3)
-                    .padding(.vertical, WanderTheme.spacing1)
-                    .background(WanderTheme.surfaceSand.color)
-                    .clipShape(Capsule())
+                PlaceFactPill(title: visiblePlace.userPlace.status.displayTitle, systemImage: visiblePlace.userPlace.status == .been ? "checkmark.circle.fill" : "circle.dashed")
+                PlaceFactPill(title: visiblePlace.userPlace.visibility.displayTitle, systemImage: "eye.fill")
+                PlaceFactPill(title: visiblePlace.userPlace.sourceType.replacingOccurrences(of: "_", with: " "), systemImage: "tray.full.fill")
             }
         }
-        .padding(WanderTheme.spacing3)
-        .background(WanderTheme.surfaceBone.color)
-        .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
-        .shadow(color: WanderTheme.textInk.color.opacity(0.14), radius: 20, x: 0, y: 10)
+    }
+
+    private func saveButton(size: CGFloat, iconSize: CGFloat) -> some View {
+        Button(action: onSave) {
+            Image(systemName: "plus")
+                .font(.system(size: iconSize, weight: .black))
+                .frame(width: size, height: size)
+                .background(WanderTheme.terracotta.color)
+                .foregroundStyle(WanderTheme.textOnAction.color)
+                .clipShape(Circle())
+        }
+        .accessibilityLabel("Save to my map")
+    }
+}
+
+private struct SocialProofRow: View {
+    let savers: [LocalProfile]
+    let currentUserID: String
+    let visibility: PlaceVisibility
+
+    var body: some View {
+        HStack(spacing: WanderTheme.spacing2) {
+            Facepile(profiles: savers, currentUserID: currentUserID)
+            Text(proofText)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(WanderTheme.textMuted.color)
+                .lineLimit(1)
+            Spacer()
+            Text(visibility.displayTitle)
+                .font(.system(size: 13, weight: .bold))
+                .padding(.horizontal, WanderTheme.spacing3)
+                .padding(.vertical, WanderTheme.spacing1)
+                .background(WanderTheme.surfaceSand.color)
+                .clipShape(Capsule())
+        }
+    }
+
+    private var proofText: String {
+        guard let first = savers.first else { return "saved on Wander" }
+        let name = first.id == currentUserID ? "you" : first.displayName
+        guard savers.count > 1 else { return "\(name) saved it" }
+        return "\(name) +\(savers.count - 1) others saved it"
+    }
+}
+
+private struct Facepile: View {
+    let profiles: [LocalProfile]
+    let currentUserID: String
+
+    var body: some View {
+        HStack(spacing: -8) {
+            ForEach(Array(profiles.prefix(3).enumerated()), id: \.element.id) { index, profile in
+                WanderAvatar(initials: profile.initials, size: 26, color: color(for: profile))
+                    .zIndex(Double(3 - index))
+            }
+        }
+        .frame(minWidth: profiles.isEmpty ? 0 : 26 + CGFloat(max(0, min(profiles.count, 3) - 1)) * 18, alignment: .leading)
+    }
+
+    private func color(for profile: LocalProfile) -> Color {
+        if profile.id == currentUserID { return WanderTheme.terracotta.color }
+        return profile.handle == "ryan" ? WanderTheme.avatarRyan.color : WanderTheme.pinSocial.color
+    }
+}
+
+private struct PlaceFactPill: View {
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(spacing: WanderTheme.spacing1) {
+            Image(systemName: systemImage)
+                .font(.system(size: 11, weight: .bold))
+            Text(title)
+                .lineLimit(1)
+        }
+        .font(.system(size: 12, weight: .bold))
+        .padding(.horizontal, WanderTheme.spacing3)
+        .frame(height: 34)
+        .background(WanderTheme.surfaceSand.color)
+        .clipShape(Capsule())
     }
 }
 

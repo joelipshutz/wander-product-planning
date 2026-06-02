@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wander Map Filter State Options</title>
+  <style>
+    :root {
+      --canvas-warm: #f3dfca;
+      --surface-bone: #fff7ea;
+      --surface-raised: #ffffff;
+      --surface-sand: #efe3d0;
+      --text-ink: #2c2118;
+      --text-muted: #7b6555;
+      --text-faint: #a89482;
+      --border-hairline: #dbc2aa;
+      --terracotta: #d46f4d;
+      --terracotta-dark: #a94f35;
+      --sky: #69b8d7;
+      --sage: #6f8f5f;
+      --mustard: #e3b64b;
+      --font-display: "Funnel Display", "Avenir Next", ui-rounded, system-ui, sans-serif;
+      --font-body: "Funnel Sans", "Avenir Next", ui-rounded, system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #ead4bc;
+      color: var(--text-ink);
+      font-family: var(--font-body);
+    }
+
+    .page {
+      width: 1400px;
+      min-height: 960px;
+      padding: 48px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 48px;
+      align-items: flex-start;
+      margin-bottom: 34px;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 720px;
+      font-family: var(--font-display);
+      font-size: 56px;
+      line-height: .95;
+      letter-spacing: 0;
+    }
+
+    .sub {
+      margin-top: 14px;
+      max-width: 780px;
+      color: var(--text-muted);
+      font-size: 22px;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+
+    .rec {
+      width: 430px;
+      padding: 22px 24px;
+      border-radius: 28px;
+      background: var(--surface-bone);
+      border: 2px solid rgba(44, 33, 24, .12);
+      box-shadow: 0 14px 32px rgba(44, 33, 24, .12);
+      font-size: 20px;
+      line-height: 1.22;
+      font-weight: 850;
+    }
+
+    .rec b { color: var(--terracotta-dark); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 20px;
+    }
+
+    .option {
+      min-height: 640px;
+      display: flex;
+      flex-direction: column;
+      padding: 22px;
+      border-radius: 34px;
+      background: rgba(255, 247, 234, .62);
+      border: 2px solid rgba(123, 101, 85, .16);
+      box-shadow: 0 10px 26px rgba(44, 33, 24, .08);
+    }
+
+    .recommended {
+      outline: 5px solid rgba(212, 111, 77, .34);
+      background: rgba(255, 247, 234, .82);
+    }
+
+    .eyebrow {
+      color: var(--terracotta-dark);
+      font-size: 13px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 6px 0 8px;
+      font-family: var(--font-display);
+      font-size: 27px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .note {
+      min-height: 74px;
+      margin: 0 0 22px;
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1.22;
+      font-weight: 720;
+    }
+
+    .state-label {
+      margin: 20px 0 8px;
+      color: var(--text-faint);
+      font-size: 12px;
+      font-weight: 950;
+      text-transform: uppercase;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      min-height: 116px;
+      padding: 16px;
+      border-radius: 24px;
+      background:
+        linear-gradient(45deg, transparent 48%, rgba(198,178,157,.32) 50%, transparent 52%) 0 0 / 54px 54px,
+        radial-gradient(circle at 22% 25%, rgba(111, 143, 95, .18), transparent 28%),
+        #f8f4e8;
+      border: 1px solid rgba(219, 194, 170, .7);
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 42px;
+      padding: 0 15px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 900;
+      white-space: nowrap;
+      border: 2px solid transparent;
+      box-shadow: 0 6px 14px rgba(44,33,24,.10);
+    }
+
+    .chip .icon {
+      width: 16px;
+      height: 16px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 50%;
+      font-size: 10px;
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .tokens {
+      margin-top: auto;
+      padding-top: 22px;
+      display: grid;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.22;
+      font-weight: 720;
+    }
+
+    code {
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.55);
+      color: var(--text-ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+
+    .opt1 .active {
+      background: var(--text-ink);
+      color: var(--surface-bone);
+      border-color: var(--text-ink);
+    }
+    .opt1 .inactive {
+      background: var(--surface-raised);
+      color: var(--text-muted);
+      border-color: var(--border-hairline);
+      box-shadow: none;
+    }
+
+    .opt2 .active {
+      background: var(--surface-raised);
+      color: var(--text-ink);
+      border-color: var(--terracotta);
+      box-shadow: inset 0 -5px 0 rgba(212,111,77,.18), 0 7px 16px rgba(44,33,24,.10);
+    }
+    .opt2 .active .icon {
+      background: var(--terracotta);
+      color: white;
+    }
+    .opt2 .inactive {
+      background: rgba(255,247,234,.72);
+      color: var(--text-muted);
+      border-color: rgba(123,101,85,.45);
+      box-shadow: none;
+      opacity: .82;
+    }
+    .opt2 .inactive .icon {
+      border: 2px solid currentColor;
+    }
+
+    .opt3 .active {
+      background: var(--terracotta);
+      color: white;
+      border-color: var(--terracotta-dark);
+    }
+    .opt3 .active .icon {
+      background: rgba(255,255,255,.24);
+      color: white;
+    }
+    .opt3 .inactive {
+      background: rgba(255,247,234,.72);
+      color: var(--text-muted);
+      border-color: rgba(123,101,85,.58);
+      border-style: dashed;
+      box-shadow: none;
+    }
+
+    .opt4 .active {
+      background: var(--surface-raised);
+      color: var(--text-ink);
+      border-color: var(--text-ink);
+      box-shadow: 0 8px 18px rgba(44,33,24,.14);
+    }
+    .opt4 .active .icon {
+      background: var(--text-ink);
+      color: white;
+    }
+    .opt4 .inactive {
+      background: rgba(239,227,208,.62);
+      color: var(--text-muted);
+      border-color: transparent;
+      box-shadow: inset 0 0 0 1px rgba(123,101,85,.24);
+    }
+    .opt4 .inactive .icon {
+      background: rgba(123,101,85,.22);
+      color: transparent;
+    }
+
+    .opt5 .active {
+      background: var(--text-ink);
+      color: var(--surface-bone);
+      border-color: var(--mustard);
+      box-shadow: 0 0 0 4px rgba(227,182,75,.22), 0 8px 18px rgba(44,33,24,.16);
+    }
+    .opt5 .active .icon {
+      background: var(--mustard);
+      color: var(--text-ink);
+    }
+    .opt5 .inactive {
+      background: transparent;
+      color: var(--text-muted);
+      border-color: rgba(123,101,85,.5);
+      border-style: dashed;
+      box-shadow: none;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <h1>Map filter active / inactive states</h1>
+        <div class="sub">Focused color + border options only. Same component size and labels. Test is whether active vs inactive is obvious at a glance over map texture.</div>
+      </div>
+      <div class="rec"><b>Rec: Option 2.</b> Active has terracotta ring + white fill, inactive recedes. It is clear without making every selected chip a heavy black blob.</div>
+    </header>
+
+    <section class="grid">
+      <article class="option opt1">
+        <div class="eyebrow">Baseline</div>
+        <h2>1. Ink fill</h2>
+        <p class="note">Current direction, cleaned up: active is dark, inactive is white outline.</p>
+        <div class="state-label">Active</div>
+        <div class="row">
+          <span class="chip active"><span class="icon">✓</span>you</span>
+          <span class="chip active"><span class="icon">✓</span>been</span>
+        </div>
+        <div class="state-label">Inactive</div>
+        <div class="row">
+          <span class="chip inactive"><span class="icon"></span>friends</span>
+          <span class="chip inactive"><span class="icon"></span>wanna</span>
+        </div>
+        <div class="tokens">
+          <div>Active: <code>textInk fill</code></div>
+          <div>Inactive: <code>raised fill + hairline</code></div>
+        </div>
+      </article>
+
+      <article class="option opt2 recommended">
+        <div class="eyebrow">Recommended</div>
+        <h2>2. Terracotta ring</h2>
+        <p class="note">Feels on-brand and clearer than fill-only. Active pops; inactive sits back.</p>
+        <div class="state-label">Active</div>
+        <div class="row">
+          <span class="chip active"><span class="icon">✓</span>you</span>
+          <span class="chip active"><span class="icon">✓</span>been</span>
+        </div>
+        <div class="state-label">Inactive</div>
+        <div class="row">
+          <span class="chip inactive"><span class="icon"></span>friends</span>
+          <span class="chip inactive"><span class="icon"></span>wanna</span>
+        </div>
+        <div class="tokens">
+          <div>Active: <code>white fill + terracotta border</code></div>
+          <div>Inactive: <code>bone fill + muted border</code></div>
+        </div>
+      </article>
+
+      <article class="option opt3">
+        <div class="eyebrow">Loud</div>
+        <h2>3. Terracotta fill</h2>
+        <p class="note">Most obvious active state, but too CTA-like when many filters are active.</p>
+        <div class="state-label">Active</div>
+        <div class="row">
+          <span class="chip active"><span class="icon">✓</span>you</span>
+          <span class="chip active"><span class="icon">✓</span>been</span>
+        </div>
+        <div class="state-label">Inactive</div>
+        <div class="row">
+          <span class="chip inactive"><span class="icon"></span>friends</span>
+          <span class="chip inactive"><span class="icon"></span>wanna</span>
+        </div>
+        <div class="tokens">
+          <div>Active: <code>terracotta fill</code></div>
+          <div>Inactive: <code>dashed muted outline</code></div>
+        </div>
+      </article>
+
+      <article class="option opt4">
+        <div class="eyebrow">Quiet</div>
+        <h2>4. Dot + outline</h2>
+        <p class="note">Good density. More subtle; might still need learning.</p>
+        <div class="state-label">Active</div>
+        <div class="row">
+          <span class="chip active"><span class="icon">✓</span>you</span>
+          <span class="chip active"><span class="icon">✓</span>been</span>
+        </div>
+        <div class="state-label">Inactive</div>
+        <div class="row">
+          <span class="chip inactive"><span class="icon"></span>friends</span>
+          <span class="chip inactive"><span class="icon"></span>wanna</span>
+        </div>
+        <div class="tokens">
+          <div>Active: <code>white fill + ink border</code></div>
+          <div>Inactive: <code>sand fill + no shadow</code></div>
+        </div>
+      </article>
+
+      <article class="option opt5">
+        <div class="eyebrow">High contrast</div>
+        <h2>5. Ink + gold halo</h2>
+        <p class="note">Strongest separation from map texture. Slightly heavier visually.</p>
+        <div class="state-label">Active</div>
+        <div class="row">
+          <span class="chip active"><span class="icon">✓</span>you</span>
+          <span class="chip active"><span class="icon">✓</span>been</span>
+        </div>
+        <div class="state-label">Inactive</div>
+        <div class="row">
+          <span class="chip inactive"><span class="icon"></span>friends</span>
+          <span class="chip inactive"><span class="icon"></span>wanna</span>
+        </div>
+        <div class="tokens">
+          <div>Active: <code>ink fill + mustard ring</code></div>
+          <div>Inactive: <code>transparent + dashed border</code></div>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

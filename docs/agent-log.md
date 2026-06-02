@@ -216,3 +216,77 @@ Completion checkpoint:
 - Result: 21 tests, 0 failures.
 - Latest passing result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.01_17-06-34--0700.xcresult`.
 - Remaining local caveat: `Wander.xcodeproj/project.pbxproj` still has the unrelated unstaged local signing/team diff and should remain uncommitted unless Joe asks.
+
+## 2026-06-02 - Codex - Map Filter Label Alternatives
+
+Agent: Codex
+Branch: `main`
+Starting commit: `7d58068`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` has the same unrelated unstaged local signing/team diff and should remain untouched.
+
+Goal: quickly mock alternate active/inactive treatments for the Map filter/label chips because the current selected state is not clear enough. Produce a reviewable HTML/PNG artifact, not production SwiftUI changes yet.
+
+Expected files to touch:
+
+- `preview/map-filter-label-alts/index.html`
+- `preview/map-filter-label-alts/map-filter-label-alts.png` if rendering succeeds
+- `docs/agent-log.md`
+
+Checkpoint:
+
+- Joe clarified this should be a focused color/border state study, not full phone mocks.
+- Added focused artifact: `preview/map-filter-label-alts/states.html`.
+- Rendered PNG: `preview/map-filter-label-alts/map-filter-state-options.png`.
+- Recommendation in the mock: Option 2, active = white fill + terracotta ring/check, inactive = faded bone fill + muted border/hollow icon.
+
+## 2026-06-02 - Codex - M2 Visual Acceptance Pass
+
+Agent: Codex
+Branch: `main`
+Starting commit: `7d58068`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` has the same unrelated unstaged local signing/team diff. Existing uncommitted work includes the map filter state mock artifacts and this log.
+
+Goal: implement Joe's approved M2 visual feedback before M3: map filter active ring states, place labels on map, selected/tapped pin state, selected place expanded screen for Larchmont Noodles, facepile/social proof instead of "`Name`'s tip", simpler screen titles, Profile organization cleanup, and Discover hierarchy with places above filters plus my/friends place toggle.
+
+Expected files to touch:
+
+- `Wander/Features/Map/MapScreen.swift`
+- `Wander/Features/Discover/DiscoverScreen.swift`
+- `Wander/Features/Profile/ProfileScreen.swift`
+- `Wander/Features/Settings/SettingsScreen.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- `Wander/Services/DiscoverModels.swift`
+- `Wander/App/WanderRootView.swift` only if QA launch support needs a selected map state
+- `docs/decisions.md`
+- `docs/agent-log.md`
+
+Completion checkpoint:
+
+- Locked M2 visual decisions in `docs/decisions.md`.
+- Map:
+  - Active filters now keep the bone/sand chip fill and add a terracotta ring/icon.
+  - Removed the `friends` map filter chip per Joe; map scope now shows `you`, `social`, `been`, `wanna`.
+  - Added vertical padding to the chip rail so active outlines do not clip.
+  - Added map place labels and selected/tapped pin styling.
+  - Added expandable selected place sheet and QA launch args for Larchmont Noodles.
+  - Replaced "`Name`'s tip" with facepile/social proof copy like "Ryan saved it".
+- Discover:
+  - Simplified title to `discover`.
+  - People section stays near the top under search.
+  - Places are the primary content above filters.
+  - Added `my places` / `friends' places` toggle and matching store scope.
+- Profile:
+  - Simplified title to `profile`.
+  - Removed bio quote from the owner header.
+  - Moved following/followers/friends into a lower `people` section.
+- Settings:
+  - Simplified title to `settings`.
+- Tests: `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: 22 tests, 0 failures.
+- Latest passing result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.02_11-08-03--0700.xcresult`.
+- Visual screenshots captured before final Joe stop:
+  - `DerivedData/visual-sweep/m2-visual-acceptance-map-larchmont-expanded-iphone16plus.png`
+  - `DerivedData/visual-sweep/m2-visual-acceptance-discover-iphone16plus.png`
+  - `DerivedData/visual-sweep/m2-visual-acceptance-profile-iphone16plus.png`
+  - `DerivedData/visual-sweep/m2-visual-acceptance-settings-iphone16plus.png`
+- Remaining local caveat: `Wander.xcodeproj/project.pbxproj` still has the unrelated unstaged local signing/team diff and should remain uncommitted unless Joe asks.

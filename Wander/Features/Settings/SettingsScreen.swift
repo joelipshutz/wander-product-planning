@@ -20,16 +20,9 @@ struct SettingsScreen: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
-            Text("SETTINGS")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(WanderTheme.textMuted.color)
-            Text("keep your map yours")
-                .font(.system(size: 26, weight: .black))
-            Text("Account, visibility, contacts, blocked users, and sync status live here - not in a fifth tab.")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(WanderTheme.textMuted.color)
-        }
+        Text("settings")
+            .font(.system(size: 30, weight: .black, design: .rounded))
+            .lineLimit(1)
     }
 
     private var visibilitySection: some View {

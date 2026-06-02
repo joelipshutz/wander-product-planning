@@ -27,6 +27,27 @@ struct DiscoverResults {
     let profiles: [ProfileShell]
 }
 
+enum DiscoverPlaceScope: String, CaseIterable, Identifiable, Equatable {
+    case myPlaces = "my_places"
+    case friendsPlaces = "friends_places"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .myPlaces: "my places"
+        case .friendsPlaces: "friends' places"
+        }
+    }
+
+    var ownerScopes: Set<String> {
+        switch self {
+        case .myPlaces: ["you"]
+        case .friendsPlaces: ["following", "friends"]
+        }
+    }
+}
+
 protocol LLMFilterParser {
     func parse(query: String, schema: DiscoverFilterSchema) async throws -> DiscoverFilters
 }

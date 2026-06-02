@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wander Map Filter Label Alts</title>
+  <style>
+    :root {
+      --canvas-warm: #f3dfca;
+      --surface-bone: #fff7ea;
+      --surface-raised: #ffffff;
+      --surface-sand: #efe3d0;
+      --text-ink: #2c2118;
+      --text-muted: #7b6555;
+      --text-faint: #a89482;
+      --border: #dbc2aa;
+      --terracotta: #d46f4d;
+      --terracotta-dark: #a94f35;
+      --sky: #69b8d7;
+      --sage: #6f8f5f;
+      --mustard: #e3b64b;
+      --off: rgba(255, 247, 234, .82);
+      --shadow: 0 18px 46px rgba(44, 33, 24, .18);
+      --font-display: "Funnel Display", "Avenir Next", ui-rounded, system-ui, sans-serif;
+      --font-body: "Funnel Sans", "Avenir Next", ui-rounded, system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #ead4bc;
+      color: var(--text-ink);
+      font-family: var(--font-body);
+    }
+
+    .page {
+      width: 1600px;
+      min-height: 1180px;
+      padding: 42px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 50px;
+      line-height: .96;
+      letter-spacing: 0;
+    }
+
+    .sub {
+      margin-top: 12px;
+      max-width: 760px;
+      color: var(--text-muted);
+      font-size: 20px;
+      line-height: 1.28;
+      font-weight: 650;
+    }
+
+    .verdict {
+      width: 430px;
+      padding: 18px 20px;
+      border-radius: 28px;
+      background: var(--surface-bone);
+      border: 2px solid rgba(44, 33, 24, .12);
+      box-shadow: 0 10px 28px rgba(44, 33, 24, .12);
+      font-size: 18px;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+
+    .verdict b { color: var(--terracotta-dark); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 26px;
+      align-items: start;
+    }
+
+    .alt {
+      display: grid;
+      gap: 14px;
+    }
+
+    .alt-title {
+      min-height: 94px;
+      padding: 0 2px;
+    }
+
+    .eyebrow {
+      color: var(--terracotta-dark);
+      font-size: 13px;
+      font-weight: 850;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin: 4px 0 6px;
+      font-family: var(--font-display);
+      font-size: 28px;
+      letter-spacing: 0;
+      line-height: 1;
+    }
+
+    .why {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 15px;
+      font-weight: 650;
+      line-height: 1.2;
+    }
+
+    .phone {
+      width: 338px;
+      height: 732px;
+      padding: 14px;
+      border-radius: 54px;
+      background: #14110e;
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+
+    .screen {
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      border-radius: 42px;
+      background: var(--canvas-warm);
+    }
+
+    .notch {
+      position: absolute;
+      z-index: 8;
+      top: 13px;
+      left: 50%;
+      width: 112px;
+      height: 35px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: #000;
+    }
+
+    .status {
+      position: absolute;
+      z-index: 8;
+      top: 22px;
+      left: 28px;
+      right: 28px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .map {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(32deg, transparent 49%, rgba(180, 170, 156, .38) 50%, transparent 51%) 0 0 / 92px 92px,
+        linear-gradient(118deg, transparent 49%, rgba(180, 170, 156, .32) 50%, transparent 51%) 0 0 / 78px 78px,
+        radial-gradient(circle at 18% 22%, rgba(111, 143, 95, .22) 0 12%, transparent 13%),
+        radial-gradient(circle at 78% 22%, rgba(105, 184, 215, .13) 0 12%, transparent 13%),
+        radial-gradient(circle at 68% 72%, rgba(111, 143, 95, .18) 0 14%, transparent 15%),
+        #f8f4e8;
+    }
+
+    .road {
+      position: absolute;
+      height: 7px;
+      width: 470px;
+      border-radius: 999px;
+      background: rgba(198, 178, 157, .38);
+      transform: rotate(var(--rot));
+      left: var(--x);
+      top: var(--y);
+    }
+
+    .controls {
+      position: relative;
+      z-index: 4;
+      padding: 58px 16px 0;
+    }
+
+    .search {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.94);
+      border: 1.5px solid var(--border);
+      box-shadow: 0 8px 24px rgba(44, 33, 24, .10);
+      color: var(--text-faint);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .avatar {
+      margin-left: auto;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--sky);
+      color: white;
+      font-weight: 850;
+      font-size: 12px;
+    }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      overflow: hidden;
+      padding: 1px 0 8px;
+    }
+
+    .chip {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      white-space: nowrap;
+      font-size: 12px;
+      font-weight: 850;
+      border: 1.4px solid transparent;
+    }
+
+    .chip small {
+      display: block;
+      margin-top: 1px;
+      font-size: 9px;
+      line-height: 1;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: inherit;
+      opacity: .78;
+    }
+
+    .chip.stack {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 1px;
+      padding: 7px 12px 6px;
+    }
+
+    .chip .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 4px rgba(255,255,255,.24);
+    }
+
+    .chip .slash {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      position: relative;
+    }
+
+    .chip .slash:after {
+      content: "";
+      position: absolute;
+      top: 6px;
+      left: 1px;
+      width: 12px;
+      height: 2px;
+      border-radius: 999px;
+      background: currentColor;
+      transform: rotate(-35deg);
+    }
+
+    .chip .check {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,.2);
+      font-size: 10px;
+    }
+
+    .current .chip.on {
+      background: var(--text-ink);
+      color: var(--surface-bone);
+    }
+
+    .current .chip.off {
+      background: var(--surface-sand);
+      color: var(--text-ink);
+      border-color: rgba(255,255,255,.55);
+    }
+
+    .explicit .chip.on {
+      background: var(--text-ink);
+      color: var(--surface-bone);
+      box-shadow: 0 7px 16px rgba(44, 33, 24, .22);
+    }
+
+    .explicit .chip.off {
+      background: rgba(255,247,234,.76);
+      color: var(--text-muted);
+      border: 1.7px dashed rgba(123,101,85,.62);
+      opacity: .92;
+    }
+
+    .grouped .chips {
+      flex-wrap: wrap;
+      gap: 6px;
+      overflow: visible;
+    }
+
+    .group-label {
+      width: 100%;
+      margin: 3px 0 -2px;
+      color: var(--text-muted);
+      font-size: 9px;
+      font-weight: 950;
+      text-transform: uppercase;
+    }
+
+    .grouped .chip.on {
+      background: var(--text-ink);
+      color: var(--surface-bone);
+    }
+
+    .grouped .chip.off {
+      background: rgba(255,247,234,.70);
+      color: var(--text-muted);
+      border-color: rgba(123,101,85,.35);
+    }
+
+    .toggle .chip {
+      min-width: 76px;
+      justify-content: center;
+      background: rgba(255,247,234,.86);
+      border-color: rgba(123,101,85,.35);
+      color: var(--text-muted);
+      position: relative;
+    }
+
+    .toggle .chip.on {
+      color: var(--text-ink);
+      background: var(--surface-raised);
+      border-color: var(--terracotta);
+      box-shadow: inset 0 -4px 0 rgba(212,111,77,.18), 0 5px 14px rgba(44,33,24,.10);
+    }
+
+    .toggle .chip.on .dot { background: var(--terracotta); }
+    .toggle .chip.off .dot { background: transparent; border: 2px solid currentColor; box-shadow: none; }
+
+    .pin {
+      position: absolute;
+      z-index: 2;
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: white;
+      color: var(--text-ink);
+      box-shadow: 0 6px 14px rgba(44,33,24,.20);
+      border: 4px solid var(--terracotta);
+      font-size: 17px;
+    }
+
+    .pin.social { border-color: var(--sky); }
+    .pin.wanna { border-style: dashed; }
+    .pin.one { left: 64px; top: 318px; }
+    .pin.two { left: 192px; top: 286px; }
+    .pin.three { left: 226px; top: 412px; }
+    .pin.four { left: 112px; top: 454px; }
+
+    .sheet {
+      position: absolute;
+      z-index: 5;
+      left: 18px;
+      right: 18px;
+      bottom: 86px;
+      padding: 14px;
+      border-radius: 26px;
+      background: rgba(255, 247, 234, .96);
+      box-shadow: 0 12px 28px rgba(44,33,24,.16);
+    }
+
+    .grab {
+      width: 42px;
+      height: 5px;
+      border-radius: 999px;
+      background: #c9aa8d;
+      margin: 0 auto 10px;
+    }
+
+    .place {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .thumb {
+      width: 42px;
+      height: 42px;
+      flex: none;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #f7ddd0;
+      color: var(--terracotta);
+      font-size: 20px;
+    }
+
+    .name {
+      font-size: 17px;
+      font-weight: 950;
+      line-height: 1.05;
+    }
+
+    .meta {
+      margin-top: 3px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .save {
+      margin-left: auto;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--terracotta);
+      color: white;
+      font-size: 28px;
+      font-weight: 900;
+    }
+
+    .nav {
+      position: absolute;
+      z-index: 6;
+      left: 18px;
+      right: 18px;
+      bottom: 16px;
+      height: 62px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .90);
+      border: 1px solid rgba(219,194,170,.6);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      align-items: center;
+      text-align: center;
+      color: #9c876f;
+      font-size: 10px;
+      font-weight: 850;
+    }
+
+    .nav b {
+      display: block;
+      font-size: 20px;
+      line-height: 1;
+      margin-bottom: 3px;
+    }
+
+    .nav .active { color: var(--terracotta); }
+
+    .callout {
+      min-height: 104px;
+      padding: 16px 18px;
+      border-radius: 24px;
+      background: rgba(255, 247, 234, .72);
+      border: 1.5px solid rgba(123, 101, 85, .16);
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1.22;
+      font-weight: 700;
+    }
+
+    .callout strong {
+      color: var(--text-ink);
+    }
+
+    .recommend {
+      outline: 4px solid rgba(212, 111, 77, .36);
+      outline-offset: 7px;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <h1>Map filter label alts</h1>
+        <div class="sub">Goal: make it impossible to confuse active filters with passive labels. Same map, same selected state: you + social + friends + been are included; wanna is hidden.</div>
+      </div>
+      <div class="verdict"><b>Recommendation: Alt B.</b> It keeps the current pill language but adds checkmarks for shown layers, a slash + "hidden" copy for inactive layers, and dashed inactive treatment.</div>
+    </header>
+
+    <section class="grid">
+      <article class="alt current">
+        <div class="alt-title">
+          <div class="eyebrow">Current-ish</div>
+          <h2>A. Fill only</h2>
+          <p class="why">Clean, but selected vs label can read ambiguous on top of a busy map.</p>
+        </div>
+        <div class="phone">
+          <div class="screen">
+            <div class="map"></div>
+            <div class="road" style="--x:-120px;--y:204px;--rot:21deg"></div>
+            <div class="road" style="--x:40px;--y:356px;--rot:-34deg"></div>
+            <div class="road" style="--x:-60px;--y:502px;--rot:8deg"></div>
+            <div class="notch"></div><div class="status"><span>10:14</span><span>5G 82</span></div>
+            <div class="controls">
+              <div class="search">⌕ search a place, vibe, or username... <span class="avatar">JL</span></div>
+              <div class="chips">
+                <span class="chip on">⌖ you</span>
+                <span class="chip on">👥 social</span>
+                <span class="chip on">⚙ friends</span>
+                <span class="chip on">● been</span>
+                <span class="chip off">○ wanna</span>
+              </div>
+            </div>
+            <div class="pin one">☕</div><div class="pin social two">🥾</div><div class="pin social three">🍜</div><div class="pin wanna four">🍸</div>
+            <div class="sheet"><div class="grab"></div><div class="place"><div class="thumb">🥾</div><div><div class="name">Griffith Observatory Trail</div><div class="meta">saved from Maya · been</div></div><div class="save">+</div></div></div>
+            <div class="nav"><div class="active"><b>▰</b>Map</div><div><b>+</b>Add</div><div><b>⌕</b>Discover</div><div><b>●</b>Profile</div></div>
+          </div>
+        </div>
+        <div class="callout"><strong>Issue:</strong> dark means selected only after the user learns it. Off chips still look like normal labels because they are filled, warm, and prominent.</div>
+      </article>
+
+      <article class="alt explicit">
+        <div class="alt-title">
+          <div class="eyebrow">Recommended</div>
+          <h2>B. Included / hidden</h2>
+          <p class="why">Most explicit without making chips too tall. Active state reads through icon, fill, copy, and border style.</p>
+        </div>
+        <div class="phone recommend">
+          <div class="screen">
+            <div class="map"></div>
+            <div class="road" style="--x:-120px;--y:204px;--rot:21deg"></div>
+            <div class="road" style="--x:40px;--y:356px;--rot:-34deg"></div>
+            <div class="road" style="--x:-60px;--y:502px;--rot:8deg"></div>
+            <div class="notch"></div><div class="status"><span>10:14</span><span>5G 82</span></div>
+            <div class="controls">
+              <div class="search">⌕ search a place, vibe, or username... <span class="avatar">JL</span></div>
+              <div class="chips">
+                <span class="chip on"><span class="check">✓</span> you</span>
+                <span class="chip on"><span class="check">✓</span> social</span>
+                <span class="chip on"><span class="check">✓</span> friends</span>
+                <span class="chip on"><span class="check">✓</span> been</span>
+                <span class="chip off"><span class="slash"></span> hidden: wanna</span>
+              </div>
+            </div>
+            <div class="pin one">☕</div><div class="pin social two">🥾</div><div class="pin social three">🍜</div><div class="pin wanna four">🍸</div>
+            <div class="sheet"><div class="grab"></div><div class="place"><div class="thumb">🥾</div><div><div class="name">Griffith Observatory Trail</div><div class="meta">saved from Maya · been</div></div><div class="save">+</div></div></div>
+            <div class="nav"><div class="active"><b>▰</b>Map</div><div><b>+</b>Add</div><div><b>⌕</b>Discover</div><div><b>●</b>Profile</div></div>
+          </div>
+        </div>
+        <div class="callout"><strong>Why this works:</strong> users can scan shown vs hidden without remembering the design system. It also maps cleanly to VoiceOver labels.</div>
+      </article>
+
+      <article class="alt grouped">
+        <div class="alt-title">
+          <div class="eyebrow">Structured</div>
+          <h2>C. Scope + status rows</h2>
+          <p class="why">Clarifies what type of filter each chip is, but costs vertical space.</p>
+        </div>
+        <div class="phone">
+          <div class="screen">
+            <div class="map"></div>
+            <div class="road" style="--x:-120px;--y:204px;--rot:21deg"></div>
+            <div class="road" style="--x:40px;--y:356px;--rot:-34deg"></div>
+            <div class="road" style="--x:-60px;--y:502px;--rot:8deg"></div>
+            <div class="notch"></div><div class="status"><span>10:14</span><span>5G 82</span></div>
+            <div class="controls">
+              <div class="search">⌕ search a place, vibe, or username... <span class="avatar">JL</span></div>
+              <div class="chips">
+                <div class="group-label">whose places</div>
+                <span class="chip on">✓ you</span>
+                <span class="chip on">✓ social</span>
+                <span class="chip on">✓ friends</span>
+                <div class="group-label">place status</div>
+                <span class="chip on">✓ been</span>
+                <span class="chip off">hidden: wanna</span>
+              </div>
+            </div>
+            <div class="pin one">☕</div><div class="pin social two">🥾</div><div class="pin social three">🍜</div><div class="pin wanna four">🍸</div>
+            <div class="sheet"><div class="grab"></div><div class="place"><div class="thumb">🥾</div><div><div class="name">Griffith Observatory Trail</div><div class="meta">saved from Maya · been</div></div><div class="save">+</div></div></div>
+            <div class="nav"><div class="active"><b>▰</b>Map</div><div><b>+</b>Add</div><div><b>⌕</b>Discover</div><div><b>●</b>Profile</div></div>
+          </div>
+        </div>
+        <div class="callout"><strong>Tradeoff:</strong> strong mental model, weaker map-first feel. Use if users struggle with mixing scope filters and status filters.</div>
+      </article>
+
+      <article class="alt toggle">
+        <div class="alt-title">
+          <div class="eyebrow">Compact</div>
+          <h2>D. Toggle dots</h2>
+          <p class="why">Smallest row. State is visible, but less explicit than B.</p>
+        </div>
+        <div class="phone">
+          <div class="screen">
+            <div class="map"></div>
+            <div class="road" style="--x:-120px;--y:204px;--rot:21deg"></div>
+            <div class="road" style="--x:40px;--y:356px;--rot:-34deg"></div>
+            <div class="road" style="--x:-60px;--y:502px;--rot:8deg"></div>
+            <div class="notch"></div><div class="status"><span>10:14</span><span>5G 82</span></div>
+            <div class="controls">
+              <div class="search">⌕ search a place, vibe, or username... <span class="avatar">JL</span></div>
+              <div class="chips">
+                <span class="chip on"><span class="dot"></span>you</span>
+                <span class="chip on"><span class="dot"></span>social</span>
+                <span class="chip on"><span class="dot"></span>friends</span>
+                <span class="chip on"><span class="dot"></span>been</span>
+                <span class="chip off"><span class="dot"></span>wanna</span>
+              </div>
+            </div>
+            <div class="pin one">☕</div><div class="pin social two">🥾</div><div class="pin social three">🍜</div><div class="pin wanna four">🍸</div>
+            <div class="sheet"><div class="grab"></div><div class="place"><div class="thumb">🥾</div><div><div class="name">Griffith Observatory Trail</div><div class="meta">saved from Maya · been</div></div><div class="save">+</div></div></div>
+            <div class="nav"><div class="active"><b>▰</b>Map</div><div><b>+</b>Add</div><div><b>⌕</b>Discover</div><div><b>●</b>Profile</div></div>
+          </div>
+        </div>
+        <div class="callout"><strong>Tradeoff:</strong> good density for the real app, but users may still need to infer that hollow dot means hidden.</div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

@@ -9,11 +9,13 @@ struct ProfileScreen: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
+                    pageTitle
                     ownerHeader
                     statsGrid
                     monthCard
                     draftsSection
                     recentSection
+                    peopleSection
                 }
                 .padding(WanderTheme.spacing4)
                 .padding(.bottom, WanderTheme.spacing8)
@@ -30,8 +32,14 @@ struct ProfileScreen: View {
         }
     }
 
+    private var pageTitle: some View {
+        Text("profile")
+            .font(.system(size: 30, weight: .black, design: .rounded))
+            .lineLimit(1)
+    }
+
     private var ownerHeader: some View {
-        VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
             HStack(alignment: .top) {
                 WanderAvatar(initials: store.currentUser.initials, size: 56, color: WanderTheme.terracotta.color)
 
@@ -56,11 +64,6 @@ struct ProfileScreen: View {
                 }
                 .accessibilityLabel("Settings")
             }
-
-            Text(store.currentUser.bio ?? "always down for a detour")
-                .font(.system(size: 15))
-                .italic()
-                .foregroundStyle(WanderTheme.textMuted.color)
         }
         .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceBone.color)
@@ -71,12 +74,6 @@ struct ProfileScreen: View {
         HStack(spacing: WanderTheme.spacing3) {
             StatTile(value: "\(store.stats.been)", label: "BEEN", color: WanderTheme.terracotta.color, fill: WanderTheme.terracottaTint.color)
             StatTile(value: "\(store.stats.wanna)", label: "WANNA", color: WanderTheme.stateWarning.color, fill: WanderTheme.sunTint.color)
-            Button {
-                listMode = .following
-            } label: {
-                StatTile(value: "\(store.stats.friends)", label: "FRIENDS", color: WanderTheme.stateInfo.color, fill: WanderTheme.skyTint.color)
-            }
-            .buttonStyle(.plain)
         }
     }
 
@@ -95,7 +92,7 @@ struct ProfileScreen: View {
                 Text("\(store.currentUserVisiblePlaces.count)")
                     .font(.system(size: 38, weight: .black))
                     .foregroundStyle(WanderTheme.terracotta.color)
-                Text("saved places so far. mostly coffee + a couple from friends' tips.")
+                Text("saved places this month.")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(WanderTheme.textMuted.color)
                 Spacer()
@@ -142,15 +139,44 @@ struct ProfileScreen: View {
                 Text("recent")
                     .font(.system(size: 17, weight: .black))
                 Spacer()
-                Button("following") {
-                    listMode = .following
-                }
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(WanderTheme.terracotta.color)
             }
 
             ForEach(store.currentUserVisiblePlaces) { visiblePlace in
                 ProfilePlaceRow(visiblePlace: visiblePlace)
+            }
+        }
+    }
+
+    private var peopleSection: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
+            Text("people")
+                .font(.system(size: 17, weight: .black))
+
+            ConnectionRow(
+                title: "following",
+                subtitle: "people whose places can show up",
+                count: store.following(of: store.currentUser.id).count,
+                systemImage: "person.2.fill"
+            ) {
+                listMode = .following
+            }
+
+            ConnectionRow(
+                title: "followers",
+                subtitle: "people who can see Everyone places",
+                count: store.followers(of: store.currentUser.id).count,
+                systemImage: "person.crop.circle.badge.checkmark"
+            ) {
+                listMode = .followers
+            }
+
+            ConnectionRow(
+                title: "friends",
+                subtitle: "mutual follows",
+                count: store.stats.friends,
+                systemImage: "person.2.badge.gearshape.fill"
+            ) {
+                listMode = .friends
             }
         }
     }
@@ -274,6 +300,7 @@ struct ProfileDetailView: View {
 private enum GraphListMode: String, Identifiable {
     case followers
     case following
+    case friends
 
     var id: String { rawValue }
 }
@@ -288,6 +315,8 @@ private struct GraphListScreen: View {
             return store.followers(of: store.currentUser.id)
         case .following:
             return store.following(of: store.currentUser.id)
+        case .friends:
+            return store.following(of: store.currentUser.id).filter { store.relationship(to: $0.id) == .mutual }
         }
     }
 
@@ -317,6 +346,47 @@ private struct GraphListScreen: View {
             .wanderScreen()
             .navigationTitle(mode.rawValue.capitalized)
         }
+    }
+}
+
+private struct ConnectionRow: View {
+    let title: String
+    let subtitle: String
+    let count: Int
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: WanderTheme.spacing3) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(WanderTheme.terracotta.color)
+                    .frame(width: 40, height: 40)
+                    .background(WanderTheme.terracottaTint.color)
+                    .clipShape(Circle())
+
+                VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .bold))
+                    Text(subtitle)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(WanderTheme.textMuted.color)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Text("\(count)")
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(WanderTheme.textInk.color)
+                    .frame(minWidth: 30, alignment: .trailing)
+            }
+            .padding(WanderTheme.spacing3)
+            .background(WanderTheme.surfaceBone.color)
+            .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+        }
+        .buttonStyle(.plain)
     }
 }
 
