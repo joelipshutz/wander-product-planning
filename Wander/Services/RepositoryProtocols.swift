@@ -132,6 +132,11 @@ protocol UserPlaceRepository {
 }
 
 @MainActor
+protocol SocialPlaceSaveRepository {
+    func saveVisiblePlace(placeID: String, sourceUserPlaceID: String) async throws -> SaveResult
+}
+
+@MainActor
 protocol DiscoverRepository {
     func parseFilters(query: String) async throws -> DiscoverFilters
     func search(filters: DiscoverFilters) async throws -> DiscoverResults

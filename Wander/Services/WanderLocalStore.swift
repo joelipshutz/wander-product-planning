@@ -37,6 +37,8 @@ final class WanderStore: ObservableObject {
     @Published private(set) var follows: [LocalFollow]
     @Published private(set) var blocks: [LocalBlock]
     @Published private(set) var unresolvedDrafts: [UnresolvedDraft] = []
+    @Published private(set) var remoteVisiblePlaceCache: [VisiblePlace] = []
+    @Published private(set) var lastRemoteError: String?
     @Published var defaultVisibility: PlaceVisibility
 
     let contactProvider: FakeContactProvider
@@ -83,6 +85,10 @@ final class WanderStore: ObservableObject {
     }
 
     func visiblePlaces(filters: PlaceFilters = PlaceFilters()) -> [VisiblePlace] {
+        mergeVisiblePlaces(localVisiblePlaces(filters: filters) + remoteVisiblePlaces(filters: filters))
+    }
+
+    private func localVisiblePlaces(filters: PlaceFilters = PlaceFilters()) -> [VisiblePlace] {
         userPlaces.compactMap { userPlace -> VisiblePlace? in
             guard userPlace.deletedAt == nil,
                   let place = places.first(where: { $0.id == userPlace.placeID }),
@@ -115,6 +121,36 @@ final class WanderStore: ObservableObject {
 
             return VisiblePlace(id: userPlace.id, place: place, userPlace: userPlace, owner: owner)
         }
+    }
+
+    private func remoteVisiblePlaces(filters: PlaceFilters) -> [VisiblePlace] {
+        remoteVisiblePlaceCache.filter { visiblePlace in
+            guard filters.statuses.isEmpty || filters.statuses.contains(visiblePlace.userPlace.status) else { return false }
+            guard filters.categories.isEmpty || filters.categories.contains(visiblePlace.place.category) else { return false }
+
+            guard !filters.ownerScopes.isEmpty else { return true }
+
+            let isMine = visiblePlace.owner.id == currentUser.id
+            let relationship = relationship(to: visiblePlace.owner.id)
+            let isFriend = relationship == .mutual
+            let isFollowing = relationship == .follower || relationship == .mutual
+            return (filters.ownerScopes.contains("you") && isMine)
+                || (filters.ownerScopes.contains("friends") && isFriend)
+                || (filters.ownerScopes.contains("following") && isFollowing && !isMine)
+                || (filters.ownerScopes.contains("social") && !isMine)
+        }
+    }
+
+    private func mergeVisiblePlaces(_ places: [VisiblePlace]) -> [VisiblePlace] {
+        var seen = Set<String>()
+        var merged: [VisiblePlace] = []
+
+        for visiblePlace in places where !seen.contains(visiblePlace.id) {
+            seen.insert(visiblePlace.id)
+            merged.append(visiblePlace)
+        }
+
+        return merged
     }
 
     func visiblePlaces(for profileID: String) -> [VisiblePlace] {
@@ -212,7 +248,7 @@ final class WanderStore: ObservableObject {
         return (try? await parser.parse(query: query, schema: schema)) ?? DiscoverFilters(query: query)
     }
 
-    func discover(query: String, scope: DiscoverPlaceScope = .everyone) async -> DiscoverResults {
+    func discover(query: String, scope: DiscoverPlaceScope = .everyone, backend: WanderBackend? = nil) async -> DiscoverResults {
         let filters = await parseDiscover(query: query)
         var placeFilters = PlaceFilters()
         placeFilters.statuses = filters.statuses
@@ -233,7 +269,19 @@ final class WanderStore: ObservableObject {
         }
 
         let places = visiblePlaces(filters: placeFilters)
-        let profiles = searchProfiles(handleQuery: query)
+        var profiles = searchProfiles(handleQuery: query)
+        let normalizedProfileQuery = normalizedHandleQuery(query)
+
+        if normalizedProfileQuery.count >= 2, let backend {
+            do {
+                let remoteProfiles = try await backend.searchProfiles(handleQuery: normalizedProfileQuery)
+                profiles = mergeProfileShells(profiles + remoteProfiles)
+                lastRemoteError = nil
+            } catch {
+                lastRemoteError = remoteErrorMessage(error)
+            }
+        }
+
         return DiscoverResults(places: places, profiles: profiles)
     }
 
@@ -360,6 +408,30 @@ final class WanderStore: ObservableObject {
         )
     }
 
+    @discardableResult
+    func saveVisiblePlace(_ visiblePlace: VisiblePlace, status: PlaceStatus = .wannaGo, backend: WanderBackend?) async -> SaveResult {
+        let localResult = saveVisiblePlace(visiblePlace, status: status)
+
+        guard let backend else {
+            return localResult
+        }
+
+        do {
+            let remoteResult = try await backend.saveVisiblePlace(
+                placeID: visiblePlace.place.id,
+                sourceUserPlaceID: visiblePlace.userPlace.id
+            )
+            markUserPlace(localOrServerID: localResult.userPlaceID, serverID: remoteResult.userPlaceID, syncState: .synced)
+            lastRemoteError = nil
+            return remoteResult
+        } catch {
+            let message = remoteErrorMessage(error)
+            markUserPlace(localOrServerID: localResult.userPlaceID, syncState: .failed, error: message)
+            lastRemoteError = message
+            return SaveResult(userPlaceID: localResult.userPlaceID, syncState: .failed)
+        }
+    }
+
     func follow(userID: String, source: FollowSource = .profile) {
         guard userID != currentUser.id,
               !isBlockedBetweenCurrentUser(and: userID),
@@ -377,8 +449,43 @@ final class WanderStore: ObservableObject {
         )
     }
 
+    func follow(userID: String, source: FollowSource = .profile, backend: WanderBackend?) async {
+        let follow = upsertFollow(userID: userID, source: source)
+
+        guard let follow, let backend else {
+            return
+        }
+
+        do {
+            try await backend.follow(userID: userID)
+            follow.syncStateRaw = SyncState.synced.rawValue
+            follow.lastSyncError = nil
+            follow.serverUpdatedAt = .now
+            lastRemoteError = nil
+            objectWillChange.send()
+        } catch {
+            follow.syncStateRaw = SyncState.failed.rawValue
+            follow.lastSyncError = remoteErrorMessage(error)
+            lastRemoteError = follow.lastSyncError
+            objectWillChange.send()
+        }
+    }
+
     func unfollow(userID: String) {
         follows.removeAll { $0.followerUserID == currentUser.id && $0.followedUserID == userID }
+    }
+
+    func unfollow(userID: String, backend: WanderBackend?) async {
+        if let backend {
+            do {
+                try await backend.unfollow(userID: userID)
+                lastRemoteError = nil
+            } catch {
+                lastRemoteError = remoteErrorMessage(error)
+            }
+        }
+
+        unfollow(userID: userID)
     }
 
     func block(userID: String) {
@@ -400,8 +507,56 @@ final class WanderStore: ObservableObject {
         )
     }
 
+    func block(userID: String, backend: WanderBackend?) async {
+        let block = upsertBlock(userID: userID)
+
+        guard let block, let backend else {
+            return
+        }
+
+        do {
+            try await backend.block(userID: userID)
+            block.syncStateRaw = SyncState.synced.rawValue
+            block.lastSyncError = nil
+            block.serverUpdatedAt = .now
+            lastRemoteError = nil
+            objectWillChange.send()
+        } catch {
+            block.syncStateRaw = SyncState.failed.rawValue
+            block.lastSyncError = remoteErrorMessage(error)
+            lastRemoteError = block.lastSyncError
+            objectWillChange.send()
+        }
+    }
+
     func unblock(userID: String) {
         blocks.removeAll { $0.blockerUserID == currentUser.id && $0.blockedUserID == userID }
+    }
+
+    func unblock(userID: String, backend: WanderBackend?) async {
+        if let backend {
+            do {
+                try await backend.unblock(userID: userID)
+                lastRemoteError = nil
+            } catch {
+                lastRemoteError = remoteErrorMessage(error)
+            }
+        }
+
+        unblock(userID: userID)
+    }
+
+    func refreshRemoteVisiblePlaces(in viewport: MapViewport, backend: WanderBackend?) async {
+        guard let backend else {
+            return
+        }
+
+        do {
+            remoteVisiblePlaceCache = try await backend.visiblePlaces(in: viewport)
+            lastRemoteError = nil
+        } catch {
+            lastRemoteError = remoteErrorMessage(error)
+        }
     }
 
     func blockedProfiles() -> [ProfileShell] {
@@ -425,6 +580,85 @@ final class WanderStore: ObservableObject {
             (block.blockerUserID == currentUser.id && block.blockedUserID == userID)
                 || (block.blockerUserID == userID && block.blockedUserID == currentUser.id)
         }
+    }
+
+    private func upsertFollow(userID: String, source: FollowSource) -> LocalFollow? {
+        guard userID != currentUser.id,
+              !isBlockedBetweenCurrentUser(and: userID)
+        else { return nil }
+
+        if let existing = follows.first(where: { $0.followerUserID == currentUser.id && $0.followedUserID == userID }) {
+            return existing
+        }
+
+        let follow = LocalFollow(
+            localID: "local_follow_\(currentUser.id)_\(userID)",
+            followerUserID: currentUser.id,
+            followedUserID: userID,
+            source: source,
+            syncState: .pendingCreate
+        )
+        follows.append(follow)
+        return follow
+    }
+
+    private func upsertBlock(userID: String) -> LocalBlock? {
+        guard userID != currentUser.id else { return nil }
+
+        follows.removeAll { follow in
+            (follow.followerUserID == currentUser.id && follow.followedUserID == userID)
+                || (follow.followerUserID == userID && follow.followedUserID == currentUser.id)
+        }
+
+        if let existing = blocks.first(where: { $0.blockerUserID == currentUser.id && $0.blockedUserID == userID }) {
+            return existing
+        }
+
+        let block = LocalBlock(
+            localID: "local_block_\(currentUser.id)_\(userID)",
+            blockerUserID: currentUser.id,
+            blockedUserID: userID,
+            syncState: .pendingCreate
+        )
+        blocks.append(block)
+        return block
+    }
+
+    private func markUserPlace(localOrServerID: String, serverID: String? = nil, syncState: SyncState, error: String? = nil) {
+        guard let userPlace = userPlaces.first(where: { $0.id == localOrServerID || $0.localID == localOrServerID || $0.serverID == localOrServerID }) else {
+            return
+        }
+
+        if let serverID {
+            userPlace.serverID = serverID
+        }
+        userPlace.syncStateRaw = syncState.rawValue
+        userPlace.lastSyncError = error
+        userPlace.serverUpdatedAt = syncState == .synced ? .now : userPlace.serverUpdatedAt
+        objectWillChange.send()
+    }
+
+    private func mergeProfileShells(_ shells: [ProfileShell]) -> [ProfileShell] {
+        var seen = Set<String>()
+        var merged: [ProfileShell] = []
+
+        for shell in shells where shell.id != currentUser.id && !isBlockedBetweenCurrentUser(and: shell.id) && !seen.contains(shell.id) {
+            seen.insert(shell.id)
+            merged.append(shell)
+        }
+
+        return merged
+    }
+
+    private func normalizedHandleQuery(_ query: String) -> String {
+        query
+            .lowercased()
+            .replacingOccurrences(of: "@", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func remoteErrorMessage(_ error: Error) -> String {
+        String(describing: error)
     }
 
     private func upsertPlace(from candidate: PlaceCandidate, sourceType: AddSourceType) -> LocalPlace {

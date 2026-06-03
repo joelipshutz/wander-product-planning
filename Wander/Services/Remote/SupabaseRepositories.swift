@@ -111,7 +111,7 @@ struct SupabasePlaceRepository: PlaceRepository {
     }
 }
 
-struct SupabaseUserPlaceRepository: UserPlaceRepository {
+struct SupabaseUserPlaceRepository: UserPlaceRepository, SocialPlaceSaveRepository {
     private let rpc: RemoteProcedureCalling
 
     init(rpc: RemoteProcedureCalling) {

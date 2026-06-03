@@ -3,6 +3,7 @@ import SwiftUI
 struct DiscoverScreen: View {
     @EnvironmentObject private var store: WanderStore
     @EnvironmentObject private var auth: AuthSessionStore
+    @EnvironmentObject private var backend: WanderBackend
     @State private var query = ""
     @State private var results = DiscoverResults(places: [], profiles: [])
     @State private var contacts: [ContactMatch] = []
@@ -51,6 +52,7 @@ struct DiscoverScreen: View {
                 ProfileDetailView(profileID: profile.id)
                     .environmentObject(store)
                     .environmentObject(auth)
+                    .environmentObject(backend)
             }
             .alert("Saved to your map", isPresented: Binding(get: { savedMessage != nil }, set: { if !$0 { savedMessage = nil } })) {
                 Button("OK", role: .cancel) { savedMessage = nil }
@@ -111,8 +113,10 @@ struct DiscoverScreen: View {
                             } follow: {
                                 if let userID = contact.userID {
                                     auth.requireSignIn(for: .followPeople) {
-                                        store.follow(userID: userID, source: .contacts)
-                                        Task { await refresh() }
+                                        Task {
+                                            await store.follow(userID: userID, source: .contacts, backend: backend)
+                                            await refresh()
+                                        }
                                     }
                                 }
                             }
@@ -123,8 +127,10 @@ struct DiscoverScreen: View {
                                 selectedProfile = SelectedProfile(id: profile.id)
                             } follow: {
                                 auth.requireSignIn(for: .followPeople) {
-                                    store.follow(userID: profile.id, source: .username)
-                                    Task { await refresh() }
+                                    Task {
+                                        await store.follow(userID: profile.id, source: .username, backend: backend)
+                                        await refresh()
+                                    }
                                 }
                             }
                         }
@@ -160,8 +166,10 @@ struct DiscoverScreen: View {
                 ForEach(results.places) { visiblePlace in
                     DiscoverPlaceRow(visiblePlace: visiblePlace) {
                         auth.requireSignIn(for: .socialSave) {
-                            let result = store.saveVisiblePlace(visiblePlace)
-                            savedMessage = result.syncState == .pendingCreate ? "Queued locally. Sign in later to sync." : "Saved."
+                            Task {
+                                let result = await store.saveVisiblePlace(visiblePlace, backend: backend)
+                                savedMessage = result.syncState == .synced ? "Saved." : "Queued locally. We'll retry sync."
+                            }
                         }
                     } openProfile: {
                         selectedProfile = SelectedProfile(id: visiblePlace.owner.id)
@@ -172,7 +180,7 @@ struct DiscoverScreen: View {
     }
 
     private func refresh() async {
-        results = await store.discover(query: query, scope: selectedScope)
+        results = await store.discover(query: query, scope: selectedScope, backend: backend)
     }
 }
 

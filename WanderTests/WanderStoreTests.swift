@@ -183,4 +183,132 @@ final class WanderStoreTests: XCTestCase {
         XCTAssertEqual(friends.places.map(\.owner.id), ["user_ryan"])
         XCTAssertEqual(Set(everyone.places.map(\.owner.id)), ["user_joe", "user_maya", "user_ryan"])
     }
+
+    func testDiscoverMergesRemoteProfileSearch() async {
+        let store = makeStore()
+        let profileRepository = FakeProfileRepository(
+            shells: [
+                ProfileShell(
+                    id: "user_sofia",
+                    handle: "sofia",
+                    displayName: "Sofia Rivera",
+                    avatarURL: nil,
+                    bio: nil,
+                    relationship: .nonFollower
+                )
+            ]
+        )
+        let backend = WanderBackend(profileRepository: profileRepository)
+
+        let results = await store.discover(query: "@so", backend: backend)
+
+        XCTAssertEqual(results.profiles.map(\.handle), ["sofia"])
+        XCTAssertEqual(profileRepository.queries, ["so"])
+    }
+
+    func testRemoteSocialSaveMarksLocalCopySynced() async {
+        let store = makeStore()
+        let socialSaveRepository = FakeSocialPlaceSaveRepository(result: SaveResult(userPlaceID: "up_remote_saved", syncState: .synced))
+        let backend = WanderBackend(socialPlaceSaveRepository: socialSaveRepository)
+        let socialPlace = store.visiblePlaces().first { $0.owner.id == "user_maya" }!
+
+        let result = await store.saveVisiblePlace(socialPlace, backend: backend)
+
+        XCTAssertEqual(result, SaveResult(userPlaceID: "up_remote_saved", syncState: .synced))
+        XCTAssertEqual(socialSaveRepository.requests, [FakeSocialPlaceSaveRepository.Request(placeID: "place_griffith", sourceUserPlaceID: "up_maya_griffith")])
+        XCTAssertTrue(store.currentUserVisiblePlaces.contains { $0.userPlace.serverID == "up_remote_saved" && $0.userPlace.syncState == .synced })
+    }
+
+    func testRemoteFollowFailureLeavesFailedLocalFollow() async {
+        let store = makeStore()
+        let followRepository = FakeFollowRepository(error: WanderRemoteError.invalidResponse("network down"))
+        let backend = WanderBackend(followRepository: followRepository)
+
+        await store.follow(userID: "user_sofia", source: .username, backend: backend)
+
+        let follow = store.follows.first { $0.followedUserID == "user_sofia" }
+        XCTAssertEqual(follow?.syncStateRaw, SyncState.failed.rawValue)
+        XCTAssertEqual(followRepository.followedUserIDs, ["user_sofia"])
+        XCTAssertNotNil(follow?.lastSyncError)
+    }
+}
+
+@MainActor
+private final class FakeProfileRepository: ProfileRepository {
+    private let shells: [ProfileShell]
+    private(set) var queries: [String] = []
+
+    init(shells: [ProfileShell]) {
+        self.shells = shells
+    }
+
+    func currentProfile() async throws -> LocalProfile? {
+        nil
+    }
+
+    func profile(id: String) async throws -> ProfileViewState {
+        throw WanderRemoteError.notImplemented("fake profile")
+    }
+
+    func searchProfiles(handleQuery: String) async throws -> [ProfileShell] {
+        queries.append(handleQuery)
+        return shells
+    }
+}
+
+@MainActor
+private final class FakeFollowRepository: FollowRepository {
+    private let error: Error?
+    private(set) var followedUserIDs: [String] = []
+    private(set) var unfollowedUserIDs: [String] = []
+
+    init(error: Error? = nil) {
+        self.error = error
+    }
+
+    func follow(userID: String) async throws {
+        followedUserIDs.append(userID)
+        if let error {
+            throw error
+        }
+    }
+
+    func unfollow(userID: String) async throws {
+        unfollowedUserIDs.append(userID)
+        if let error {
+            throw error
+        }
+    }
+
+    func followers(userID: String) async throws -> [ProfileShell] {
+        []
+    }
+
+    func following(userID: String) async throws -> [ProfileShell] {
+        []
+    }
+
+    func relationship(to userID: String) async throws -> ViewerRelationship {
+        .nonFollower
+    }
+}
+
+@MainActor
+private final class FakeSocialPlaceSaveRepository: SocialPlaceSaveRepository {
+    struct Request: Equatable {
+        let placeID: String
+        let sourceUserPlaceID: String
+    }
+
+    private let result: SaveResult
+    private(set) var requests: [Request] = []
+
+    init(result: SaveResult) {
+        self.result = result
+    }
+
+    func saveVisiblePlace(placeID: String, sourceUserPlaceID: String) async throws -> SaveResult {
+        requests.append(Request(placeID: placeID, sourceUserPlaceID: sourceUserPlaceID))
+        return result
+    }
 }

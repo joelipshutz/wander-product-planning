@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileScreen: View {
     @EnvironmentObject private var store: WanderStore
     @EnvironmentObject private var auth: AuthSessionStore
+    @EnvironmentObject private var backend: WanderBackend
     @State private var showsSettings = false
     @State private var listMode: GraphListMode?
     @State private var selectedPeopleMode: GraphListMode = .following
@@ -27,11 +28,13 @@ struct ProfileScreen: View {
                 SettingsScreen()
                     .environmentObject(store)
                     .environmentObject(auth)
+                    .environmentObject(backend)
             }
             .sheet(item: $listMode) { mode in
                 GraphListScreen(mode: mode)
                     .environmentObject(store)
                     .environmentObject(auth)
+                    .environmentObject(backend)
             }
         }
     }
@@ -194,6 +197,7 @@ struct ProfileScreen: View {
 struct ProfileDetailView: View {
     @EnvironmentObject private var store: WanderStore
     @EnvironmentObject private var auth: AuthSessionStore
+    @EnvironmentObject private var backend: WanderBackend
     let profileID: String
     @State private var showBlockConfirm = false
 
@@ -227,7 +231,9 @@ struct ProfileDetailView: View {
             .confirmationDialog("Block this person?", isPresented: $showBlockConfirm, titleVisibility: .visible) {
                 Button("Block", role: .destructive) {
                     auth.requireSignIn(for: .manageBlocks) {
-                        store.block(userID: profileID)
+                        Task {
+                            await store.block(userID: profileID, backend: backend)
+                        }
                     }
                 }
                 Button("Cancel", role: .cancel) {}
@@ -277,13 +283,17 @@ struct ProfileDetailView: View {
                 if state.shell.relationship == .nonFollower && !state.isBlocked {
                     WanderPrimaryButton(title: "follow", systemImage: "person.badge.plus") {
                         auth.requireSignIn(for: .followPeople) {
-                            store.follow(userID: state.shell.id)
+                            Task {
+                                await store.follow(userID: state.shell.id, backend: backend)
+                            }
                         }
                     }
                 } else if state.shell.relationship != .owner && !state.isBlocked {
                     Button {
                         auth.requireSignIn(for: .followPeople) {
-                            store.unfollow(userID: state.shell.id)
+                            Task {
+                                await store.unfollow(userID: state.shell.id, backend: backend)
+                            }
                         }
                     } label: {
                         Text(state.shell.relationship == .mutual ? "friend" : "following")
@@ -340,6 +350,7 @@ private enum GraphListMode: String, CaseIterable, Identifiable {
 private struct GraphListScreen: View {
     @EnvironmentObject private var store: WanderStore
     @EnvironmentObject private var auth: AuthSessionStore
+    @EnvironmentObject private var backend: WanderBackend
     let mode: GraphListMode
 
     private var profiles: [LocalProfile] {
@@ -369,7 +380,13 @@ private struct GraphListScreen: View {
                         Spacer()
                         Button(store.relationship(to: profile.id) == .nonFollower ? "follow" : "unfollow") {
                             auth.requireSignIn(for: .followPeople) {
-                                store.relationship(to: profile.id) == .nonFollower ? store.follow(userID: profile.id) : store.unfollow(userID: profile.id)
+                                Task {
+                                    if store.relationship(to: profile.id) == .nonFollower {
+                                        await store.follow(userID: profile.id, backend: backend)
+                                    } else {
+                                        await store.unfollow(userID: profile.id, backend: backend)
+                                    }
+                                }
                             }
                         }
                         .font(.system(size: 13, weight: .bold))

@@ -3,6 +3,7 @@ import SwiftUI
 @MainActor
 struct WanderRootView: View {
     @EnvironmentObject private var auth: AuthSessionStore
+    @EnvironmentObject private var backend: WanderBackend
     @State private var selectedTab: WanderTab
     @State private var initialPresentation: WanderInitialPresentation?
     @StateObject private var store: WanderStore
@@ -48,6 +49,7 @@ struct WanderRootView: View {
                 SettingsScreen()
                     .environmentObject(store)
                     .environmentObject(auth)
+                    .environmentObject(backend)
             }
         }
         .task {

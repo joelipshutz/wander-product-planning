@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsScreen: View {
     @EnvironmentObject private var store: WanderStore
     @EnvironmentObject private var auth: AuthSessionStore
+    @EnvironmentObject private var backend: WanderBackend
 
     var body: some View {
         NavigationStack {
@@ -73,7 +74,9 @@ struct SettingsScreen: View {
                         Spacer()
                         Button("unblock") {
                             auth.requireSignIn(for: .manageBlocks) {
-                                store.unblock(userID: profile.id)
+                                Task {
+                                    await store.unblock(userID: profile.id, backend: backend)
+                                }
                             }
                         }
                         .font(.system(size: 13, weight: .bold))

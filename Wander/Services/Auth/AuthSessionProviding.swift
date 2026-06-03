@@ -93,7 +93,7 @@ protocol AuthSessionProviding: AnyObject {
 }
 
 @MainActor
-final class AuthSessionStore: ObservableObject {
+final class AuthSessionStore: ObservableObject, AuthSessionProviding {
     @Published private(set) var state: AuthState
     @Published var activeGate: AuthGateRequest?
     @Published var isPresentingNativeAuth = false

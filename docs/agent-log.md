@@ -592,3 +592,48 @@ Completion checkpoint:
 - Latest passing result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.02_14-47-32--0700.xcresult`.
 - Files changed for the commit include `project.yml`, generated `Wander.xcodeproj` package references/SwiftPM lockfile, backend config/auth/remote service files, auth gates across M2 UI surfaces, and the three new test files.
 - Known caveat: project signing/team settings are local-machine state and should remain uncommitted if Xcode reintroduces them.
+
+## 2026-06-02 18:54 PDT - Codex - M3 Remote Wiring Continuation
+
+Agent: Codex
+Branch: `main`
+Starting commit: `1051878`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` has only the expected uncommitted local `DEVELOPMENT_TEAM = Y7TVK75RZ8` signing diff and should remain uncommitted.
+
+Goal: continue the existing M3 plan by moving from service-boundary scaffolding toward live app behavior. Add a backend container/fallback path so signed-in social actions can attempt Supabase RPCs without views importing Clerk/Supabase, keep local-first behavior when signed out/offline, and document local secret setup for the smoke test.
+
+Expected files to touch:
+
+- `Wander/App/WanderApp.swift`
+- `Wander/App/WanderRootView.swift`
+- `Wander/App/WanderBackend.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- `Wander/Services/Remote/SupabaseRepositories.swift`
+- `WanderTests/RemoteRepositoryTests.swift`
+- `WanderTests/AuthSessionTests.swift` if auth store behavior needs a regression test
+- `docs/setup.md`
+- `docs/agent-log.md`
+
+Initial findings:
+
+- Mission Control is still unavailable on `localhost:4000`.
+- GBrain timed out waiting for the PGLite lock, so this pass is using checked-in Wander docs as source of truth.
+- The M3 exit criteria still missing in-app are: sign-in smoke test with local publishable keys, profile mirror confirmation from the app, local saved-place sync, and visible social pin fetch.
+
+Completion checkpoint:
+
+- Added `WanderBackend` as the app-level remote repository container.
+- `AuthSessionStore` now conforms to `AuthSessionProviding`, so Supabase RPC transport can get Clerk-issued Supabase tokens without views importing Clerk/Supabase.
+- Wired Map/Discover/Profile/Settings social actions through remote-aware `WanderStore` methods:
+  - remote profile search can merge into Discover username results
+  - remote visible places can refresh into a cache for the Map surface
+  - follow/unfollow/block/unblock attempt remote calls when signed in/configured
+  - social save attempts `save_visible_place` and marks local copy `synced` on success or `failed` on remote failure
+- Preserved local-first behavior for signed-out/offline flows and left full retry/claim queue for M4.
+- Updated `docs/setup.md` with the local-only build setting injection pattern for live Clerk/Supabase smoke tests.
+- Ran `xcodegen generate`.
+- Full test command:
+  `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: 35 tests, 0 failures.
+- Latest passing result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.02_19-03-34--0700.xcresult`.
+- Remaining known gap: live sign-in/profile-mirror smoke test still needs to be run with local publishable keys injected into the simulator build.

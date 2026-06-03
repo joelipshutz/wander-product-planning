@@ -48,6 +48,23 @@ Do not commit incidental signing/team changes from Xcode unless intentional.
 xcodebuild build -project Wander.xcodeproj -scheme Wander -destination 'generic/platform=iOS Simulator' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO
 ```
 
+For a live Clerk/Supabase simulator smoke test, pass the public client keys as build settings from the local-only env file. Do not commit these values to `project.yml` or the generated project:
+
+```bash
+set -a
+source /Users/joelipshutz/.openclaw/workspace/.env.keys
+set +a
+xcodebuild build \
+  -project Wander.xcodeproj \
+  -scheme Wander \
+  -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' \
+  -derivedDataPath DerivedData \
+  WANDER_CLERK_PUBLISHABLE_KEY="$WANDER_CLERK_PUBLISHABLE_KEY" \
+  WANDER_SUPABASE_PUBLISHABLE_KEY="$WANDER_SUPABASE_ANON_KEY"
+```
+
+`WANDER_SUPABASE_URL` and `WANDER_CLERK_FRONTEND_API` are already checked in as non-secret project defaults for the Wander dev project.
+
 ## Test
 
 ```bash

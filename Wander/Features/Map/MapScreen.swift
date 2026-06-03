@@ -4,6 +4,7 @@ import SwiftUI
 struct MapScreen: View {
     @EnvironmentObject private var store: WanderStore
     @EnvironmentObject private var auth: AuthSessionStore
+    @EnvironmentObject private var backend: WanderBackend
     @State private var selectedPlaceID: String?
     @State private var isPlaceSheetExpanded: Bool
     @State private var mapQuery = ""
@@ -66,6 +67,10 @@ struct MapScreen: View {
         visiblePlaces.first { $0.id == selectedPlaceID } ?? visiblePlaces.first
     }
 
+    private var currentViewport: MapViewport {
+        MapViewport(minLatitude: 33.95, minLongitude: -118.45, maxLatitude: 34.2, maxLongitude: -118.12)
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             Map(position: $position) {
@@ -123,7 +128,9 @@ struct MapScreen: View {
                         isExpanded: $isPlaceSheetExpanded
                     ) {
                         auth.requireSignIn(for: .socialSave) {
-                            _ = store.saveVisiblePlace(selectedPlace)
+                            Task {
+                                _ = await store.saveVisiblePlace(selectedPlace, backend: backend)
+                            }
                         }
                     }
                     .padding(.horizontal, WanderTheme.spacing3)
@@ -134,6 +141,15 @@ struct MapScreen: View {
         .background(WanderTheme.canvasWarm.color)
         .onAppear {
             resolveInitialSelection()
+        }
+        .task {
+            await store.refreshRemoteVisiblePlaces(in: currentViewport, backend: backend)
+        }
+        .onChange(of: auth.isSignedIn) { _, isSignedIn in
+            guard isSignedIn else { return }
+            Task {
+                await store.refreshRemoteVisiblePlaces(in: currentViewport, backend: backend)
+            }
         }
         .onChange(of: visiblePlaceIDs) { _, ids in
             if let current = selectedPlaceID, !ids.contains(current) {
