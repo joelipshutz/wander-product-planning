@@ -694,3 +694,44 @@ Completion checkpoint:
   - remote attributes hydration
   - remote relationship/filter hydration
   - explicit user-visible sync error/retry UI for failed follow/block/social-save
+
+## 2026-06-02 21:08 PDT - Codex - M3 Live Smoke
+
+Agent: Codex
+Branch: `main`
+Starting commit: `4b57c3e`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` still has only the expected uncommitted local signing/team diff and should remain uncommitted.
+
+Goal: run the M3 live Clerk + Supabase smoke path before adding more M4 sync work. Verify whether the current iOS token path can satisfy Supabase RLS/RPCs, then test the app/backend paths for profile/search/follow/block/social-save as far as local credentials and simulator access allow.
+
+Expected files to touch:
+
+- `docs/agent-log.md`
+- Potentially `Wander/Services/Auth/ClerkAuthService.swift`, setup docs, or tests if the smoke exposes a fixable token/RPC/config mismatch.
+
+Initial findings:
+
+- Mission Control is unavailable on `localhost:4000`.
+- GBrain lookup is still slow/locked; proceeding from repo docs and checked-in setup state.
+- The app currently requests `Clerk.shared.auth.getToken()` without an explicit template, so the first smoke target is token acceptance by Supabase RLS/RPCs.
+
+Checkpoint:
+
+- Created temporary smoke runner at `/private/tmp/wander-m3-live-smoke.mjs` to avoid committing secrets or test-only code.
+- The first run failed in the sandbox with `getaddrinfo ENOTFOUND api.clerk.com`; reran with approved network access.
+- Hosted smoke results:
+  - Clerk disposable user creation passed.
+  - Clerk -> Svix -> Supabase Edge Function profile mirroring passed.
+  - Clerk default session token minted successfully and decoded locally with:
+    - `sub=<viewer Clerk user id>`
+    - `role=authenticated`
+    - `iss=https://growing-pheasant-22.clerk.accounts.dev`
+    - `alg=RS256`
+    - `kid=ins_3Eb3Je6FO3qfUDIt5n3aTHMxYN1`
+  - Clerk JWKS at `https://growing-pheasant-22.clerk.accounts.dev/.well-known/jwks.json` returned HTTP 200 and contains that `kid`.
+  - Supabase service-role seed setup passed.
+  - First authenticated public RPC call with the Clerk token failed before RLS with `401 PGRST301 No suitable key was found to decode the JWT`.
+  - Reran `supabase config push`; CLI reported remote API/DB/Auth/Storage config all up to date.
+  - Reran the smoke after config push; same `PGRST301` Clerk token decode failure.
+  - Control request using Supabase anon JWT against the same public RPC reached `42501 permission denied for function search_profiles_by_handle`, confirming PostgREST/RPC exposure is live and Supabase can decode its own JWT.
+- Conclusion: do not proceed to M4 sync or simulator remote-action debugging yet. The current blocker is hosted Supabase Clerk third-party auth verification/key registration, not Swift app code or public RPC wrapper exposure.
