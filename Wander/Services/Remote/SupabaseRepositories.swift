@@ -67,7 +67,7 @@ struct SupabaseBlockRepository: BlockRepository {
     }
 
     func unblock(userID: String) async throws {
-        throw WanderRemoteError.notImplemented("unblock_user RPC")
+        let _: EmptyRPCResponse = try await rpc.call("unblock_user", params: ProfileIDParams(profileID: userID))
     }
 
     func blockedProfiles() async throws -> [ProfileShell] {

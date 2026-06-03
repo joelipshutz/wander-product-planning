@@ -204,9 +204,54 @@ final class WanderStoreTests: XCTestCase {
 
         XCTAssertEqual(results.profiles.map(\.handle), ["sofia"])
         XCTAssertEqual(profileRepository.queries, ["so"])
+        XCTAssertNotNil(store.profileState(for: "user_sofia"))
     }
 
     func testRemoteSocialSaveMarksLocalCopySynced() async {
+        let store = makeStore()
+        let socialSaveRepository = FakeSocialPlaceSaveRepository(result: SaveResult(userPlaceID: "up_remote_saved", syncState: .synced))
+        let backend = WanderBackend(socialPlaceSaveRepository: socialSaveRepository)
+        let placeID = "11111111-1111-4111-8111-111111111111"
+        let sourceUserPlaceID = "22222222-2222-4222-8222-222222222222"
+        let socialPlace = VisiblePlace(
+            id: sourceUserPlaceID,
+            place: LocalPlace(
+                localID: "remote_place_griffith",
+                serverID: placeID,
+                canonicalName: "Remote Griffith",
+                category: "hike",
+                latitude: 34.119,
+                longitude: -118.300,
+                syncState: .synced
+            ),
+            userPlace: LocalUserPlace(
+                localID: "remote_up_maya_griffith",
+                serverID: sourceUserPlaceID,
+                userID: "user_maya",
+                placeID: placeID,
+                status: .been,
+                visibility: .followers,
+                note: "server row",
+                sourceType: "manual",
+                syncState: .synced
+            ),
+            owner: LocalProfile(
+                localID: "remote_profile_maya",
+                serverID: "user_maya",
+                handle: "maya",
+                displayName: "Maya",
+                syncState: .synced
+            )
+        )
+
+        let result = await store.saveVisiblePlace(socialPlace, backend: backend)
+
+        XCTAssertEqual(result, SaveResult(userPlaceID: "up_remote_saved", syncState: .synced))
+        XCTAssertEqual(socialSaveRepository.requests, [FakeSocialPlaceSaveRepository.Request(placeID: placeID, sourceUserPlaceID: sourceUserPlaceID)])
+        XCTAssertTrue(store.currentUserVisiblePlaces.contains { $0.userPlace.serverID == "up_remote_saved" && $0.userPlace.syncState == .synced })
+    }
+
+    func testSocialSaveDoesNotCallRemoteForFixtureIDs() async {
         let store = makeStore()
         let socialSaveRepository = FakeSocialPlaceSaveRepository(result: SaveResult(userPlaceID: "up_remote_saved", syncState: .synced))
         let backend = WanderBackend(socialPlaceSaveRepository: socialSaveRepository)
@@ -214,9 +259,8 @@ final class WanderStoreTests: XCTestCase {
 
         let result = await store.saveVisiblePlace(socialPlace, backend: backend)
 
-        XCTAssertEqual(result, SaveResult(userPlaceID: "up_remote_saved", syncState: .synced))
-        XCTAssertEqual(socialSaveRepository.requests, [FakeSocialPlaceSaveRepository.Request(placeID: "place_griffith", sourceUserPlaceID: "up_maya_griffith")])
-        XCTAssertTrue(store.currentUserVisiblePlaces.contains { $0.userPlace.serverID == "up_remote_saved" && $0.userPlace.syncState == .synced })
+        XCTAssertEqual(result.syncState, .pendingCreate)
+        XCTAssertTrue(socialSaveRepository.requests.isEmpty)
     }
 
     func testRemoteFollowFailureLeavesFailedLocalFollow() async {
@@ -230,6 +274,33 @@ final class WanderStoreTests: XCTestCase {
         XCTAssertEqual(follow?.syncStateRaw, SyncState.failed.rawValue)
         XCTAssertEqual(followRepository.followedUserIDs, ["user_sofia"])
         XCTAssertNotNil(follow?.lastSyncError)
+    }
+
+    func testRemoteUnfollowFailureKeepsFailedLocalFollow() async {
+        let store = makeStore()
+        let followRepository = FakeFollowRepository(error: WanderRemoteError.invalidResponse("network down"))
+        let backend = WanderBackend(followRepository: followRepository)
+
+        await store.unfollow(userID: "user_maya", backend: backend)
+
+        let follow = store.follows.first { $0.followedUserID == "user_maya" }
+        XCTAssertEqual(follow?.syncStateRaw, SyncState.failed.rawValue)
+        XCTAssertEqual(followRepository.unfollowedUserIDs, ["user_maya"])
+        XCTAssertNotNil(follow?.lastSyncError)
+    }
+
+    func testRemoteUnblockFailureKeepsFailedLocalBlock() async {
+        let store = makeStore()
+        store.block(userID: "user_maya")
+        let blockRepository = FakeBlockRepository(error: WanderRemoteError.invalidResponse("network down"))
+        let backend = WanderBackend(blockRepository: blockRepository)
+
+        await store.unblock(userID: "user_maya", backend: backend)
+
+        let block = store.blocks.first { $0.blockedUserID == "user_maya" }
+        XCTAssertEqual(block?.syncStateRaw, SyncState.failed.rawValue)
+        XCTAssertEqual(blockRepository.unblockedUserIDs, ["user_maya"])
+        XCTAssertNotNil(block?.lastSyncError)
     }
 }
 
@@ -290,6 +361,39 @@ private final class FakeFollowRepository: FollowRepository {
 
     func relationship(to userID: String) async throws -> ViewerRelationship {
         .nonFollower
+    }
+}
+
+@MainActor
+private final class FakeBlockRepository: BlockRepository {
+    private let error: Error?
+    private(set) var blockedUserIDs: [String] = []
+    private(set) var unblockedUserIDs: [String] = []
+
+    init(error: Error? = nil) {
+        self.error = error
+    }
+
+    func block(userID: String) async throws {
+        blockedUserIDs.append(userID)
+        if let error {
+            throw error
+        }
+    }
+
+    func unblock(userID: String) async throws {
+        unblockedUserIDs.append(userID)
+        if let error {
+            throw error
+        }
+    }
+
+    func blockedProfiles() async throws -> [ProfileShell] {
+        []
+    }
+
+    func isBlocked(userID: String) async throws -> Bool {
+        false
     }
 }
 

@@ -128,6 +128,16 @@ final class RemoteRepositoryTests: XCTestCase {
         XCTAssertEqual(rpc.calls[0].body["input_place_id"] as? String, "place_1")
         XCTAssertEqual(rpc.calls[0].body["input_source_user_place_id"] as? String, "up_source")
     }
+
+    func testUnblockCallsExpectedRPC() async throws {
+        let rpc = RecordingRPC()
+        let repository = SupabaseBlockRepository(rpc: rpc)
+
+        try await repository.unblock(userID: "user_ryan")
+
+        XCTAssertEqual(rpc.calls.map(\.name), ["unblock_user"])
+        XCTAssertEqual(rpc.calls[0].body["profile_id"] as? String, "user_ryan")
+    }
 }
 
 @MainActor

@@ -637,3 +637,60 @@ Completion checkpoint:
 - Result: 35 tests, 0 failures.
 - Latest passing result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.02_19-03-34--0700.xcresult`.
 - Remaining known gap: live sign-in/profile-mirror smoke test still needs to be run with local publishable keys injected into the simulator build.
+
+## 2026-06-02 20:54 PDT - Codex - M3 Extra-High Audit
+
+Agent: Codex
+Branch: `main`
+Starting commit: `89bca2f`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` has only the expected uncommitted local `DEVELOPMENT_TEAM = Y7TVK75RZ8` signing diff and should remain uncommitted.
+
+Goal: audit the M3 auth/remote wiring before live Clerk/Supabase smoke testing or deeper M4 sync work. Focus on code/SQL contract shape, Clerk token assumptions, local-first sync transitions, UI state/error gaps, and test coverage.
+
+Parallel audit helpers:
+
+- Backend contract audit: compare Swift RPC names/params/DTOs to Supabase migrations/functions.
+- iOS app wiring audit: inspect environment object injection, auth/session behavior, async social actions, local-first state, and test gaps.
+
+Expected files to touch:
+
+- `docs/agent-log.md`
+- Potentially `docs/open-questions.md` or implementation files only if the audit finds a clear mismatch that is safer to fix immediately.
+
+Initial findings:
+
+- Mission Control remains unavailable on `localhost:4000`.
+- GBrain lookup is slow/locked again; this audit is using repo docs and code as source of truth.
+
+Completion checkpoint:
+
+- Parallel backend audit found:
+  - app RPCs lived only under private `app.*`, while PostgREST exposes `public` by default.
+  - `save_visible_place` returned `public.user_places` but Swift expected `{ "user_place_id": ... }`.
+  - `unblock_user` had an app surface but no SQL/RPC implementation.
+  - `block_user` likely could not delete reciprocal follow rows under the existing delete RLS policy.
+  - Clerk default token path still needs live verification.
+- Parallel iOS audit found:
+  - social-save could call remote with local fixture IDs instead of backend UUIDs.
+  - remote profile search shells were not cached, so tapping a remote-only search result could open a blank profile sheet.
+  - failed unfollow/unblock removed local state even if remote mutation failed.
+  - remote attributes, remote relationship filtering, and visible error/retry UI need later cleanup.
+- Fixes made:
+  - Added migration `20260602210000_public_app_rpc_wrappers.sql`.
+  - Added public PostgREST wrappers for app-facing RPCs and a JSON response shape for `public.save_visible_place`.
+  - Added `app.unblock_user` / `public.unblock_user`.
+  - Redefined `app.block_user` as a guarded `security definer` so hard block cleanup can remove both follow directions.
+  - Wired `SupabaseBlockRepository.unblock`.
+  - Changed remote social-save to require real UUID `serverID`s and pass server IDs, not fixture IDs.
+  - Cached remote profile shells from Discover search.
+  - Changed remote unfollow/unblock failures to keep local rows marked `failed` instead of deleting them.
+- Applied the new migration to hosted Supabase with `npx supabase db push --linked`; migration `20260602210000_public_app_rpc_wrappers.sql` completed successfully.
+- Full test command:
+  `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: 39 tests, 0 failures.
+- Latest passing result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.02_20-59-22--0700.xcresult`.
+- Remaining known gaps before expanding M4:
+  - live Clerk token/Supabase RLS smoke test
+  - remote attributes hydration
+  - remote relationship/filter hydration
+  - explicit user-visible sync error/retry UI for failed follow/block/social-save

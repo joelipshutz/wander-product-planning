@@ -18,8 +18,11 @@ These are the known unresolved questions and risks. Some are intentionally defer
 |---|---|---|
 | Where does profile mirroring happen? | Resolved: backend webhook from Clerk/Svix into Supabase `profiles`. | Edge Function `clerk-profile-webhook` handles `user.created`, `user.updated`, and `user.deleted`. Real create/delete webhook path verified on 2026-06-02. |
 | How are Supabase RLS policies tested going forward? | Keep repo SQL tests and run them through standard Supabase CLI once Docker is installed. Until then, use hosted Postgres plus a temporary `pg` runner. | Current hosted SQL tests passed: 29 pgTAP assertions, 0 failures. |
-| Do we create Supabase migrations in this repo? | Yes. | New Supabase project exists and is linked; migrations `20260602131500`, `20260602140304`, and `20260602143000` are applied remotely. |
+| Do we create Supabase migrations in this repo? | Yes. | New Supabase project exists and is linked; migrations `20260602131500`, `20260602140304`, `20260602143000`, and `20260602210000` are applied remotely. |
 | Do hosted Supabase auth settings need review before alpha? | Yes. | `npx supabase config push` pushed generated local auth defaults plus Clerk config to the new dev project. Fine for M3, but review before alpha. |
+| Does Clerk's default iOS token work for Supabase RLS? | Verify in live smoke before more sync work. | Swift currently calls `Clerk.shared.auth.getToken()` with no explicit template. Confirm Supabase accepts it and `auth.jwt()->>'sub'` equals the Clerk user id; if not, request the configured Supabase token template explicitly. |
+| How should remote row attributes hydrate local UI? | Defer to the next remote data slice. | Current remote `attributes` decode but are not upserted into `placeAttributes`, so expanded map sheets/social-save copies may omit backend answers until hydration is implemented. |
+| How should remote relationship/filter metadata hydrate local UI? | Push filters to RPC and/or return viewer relationship in DTO. | Current remote visible-place cache still applies some local relationship filtering, which can hide backend-authorized rows if local follow cache is stale. |
 | Which analytics provider? | Keep vendor-neutral interface; choose provider later. | PostHog is likely but not locked. |
 
 ## Needs Answer Before M5
@@ -47,5 +50,6 @@ These are the known unresolved questions and risks. Some are intentionally defer
 - Xcode project signing settings may churn when opened locally. Keep `project.yml` source-of-truth and avoid committing incidental signing changes.
 - RLS mistakes are high-risk because privacy is part of the product wedge.
 - Fake local visibility must not be treated as security. Supabase policy tests are required.
+- App-facing Supabase RPCs must stay available through `public.*` wrappers unless `app` is explicitly added to exposed PostgREST schemas.
 - Link/photo/social extraction is a moat only if it reduces capture work; it is not the first product wedge by itself.
 - The Clerk CLI disposable-user test stored `username` differently than the flag passed in that command. The current webhook mirrors Clerk's stored `username`; product username claim/edit UX still needs to be explicit later.

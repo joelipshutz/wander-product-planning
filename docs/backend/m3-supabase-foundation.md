@@ -10,6 +10,7 @@ This is the backend contract started for M3. It should be reviewed and run befor
   - `supabase/migrations/20260602131500_m3_foundation.sql`
   - `supabase/migrations/20260602140304_clerk_profile_mirroring.sql`
   - `supabase/migrations/20260602143000_public_clerk_profile_mirror_rpc.sql`
+  - `supabase/migrations/20260602210000_public_app_rpc_wrappers.sql`
 - Tests:
   - `supabase/tests/rls_visibility.sql`
   - `supabase/tests/clerk_profile_mirroring.sql`
@@ -32,7 +33,7 @@ Created on 2026-06-02:
 
 Local-only secrets/config were stored in `/Users/joelipshutz/.openclaw/workspace/.env.keys`.
 
-The migrations were pushed to the hosted Supabase project on 2026-06-02.
+The migrations were pushed to the hosted Supabase project on 2026-06-02, including the public app RPC wrapper migration added during the M3 audit.
 
 Webhook status:
 
@@ -195,14 +196,26 @@ Implemented in the migration:
 - `app.follow_user(profile_id, source)`
 - `app.unfollow_user(profile_id)`
 - `app.block_user(profile_id)`
+- `app.unblock_user(profile_id)`
 - `app.save_visible_place(input_place_id, input_source_user_place_id)`
 - `app.claim_guest_records(local_records)`
+- `public.visible_places_in_view(...)` authenticated PostgREST wrapper
+- `public.search_profiles_by_handle(query)` authenticated PostgREST wrapper
+- `public.profile_visible_places(...)` authenticated PostgREST wrapper
+- `public.follow_user(profile_id, source)` authenticated PostgREST wrapper
+- `public.unfollow_user(profile_id)` authenticated PostgREST wrapper
+- `public.block_user(profile_id)` authenticated PostgREST wrapper
+- `public.unblock_user(profile_id)` authenticated PostgREST wrapper
+- `public.save_visible_place(input_place_id, input_source_user_place_id)` authenticated PostgREST wrapper returning `{ "user_place_id": ... }` for iOS
+- `public.claim_guest_records(local_records)` authenticated PostgREST wrapper
 
 Notes:
 
+- The hosted/local API exposes `public`, not the private `app` schema. iOS calls the `public.*` wrapper names through PostgREST; core logic stays under `app.*`.
 - `visible_places_in_view` and `profile_visible_places` return joined place/profile rows with attached attributes.
 - `save_visible_place` copies the visible source place into the caller's map as `wanna_go`, including source attribution and attached attributes.
 - `claim_guest_records` is a stub until the sync worker/merge path is designed.
+- `block_user` is a guarded `security definer` so it can remove both directions of the follow edge when a hard block is created.
 
 ## Test Coverage Draft
 
@@ -233,7 +246,8 @@ Still needed:
 - Logged-out/anon behavior.
 - Delete/tombstone behavior.
 - `save_visible_place` copy behavior.
-- `follow_user`, `unfollow_user`, and `block_user` mutation behavior.
+- `follow_user`, `unfollow_user`, `block_user`, and `unblock_user` mutation behavior.
+- Public wrapper RPC behavior for the app-facing functions.
 - Standard Supabase CLI test runner once Docker/OrbStack/Colima is available.
 
 ## Notes From Project Setup
