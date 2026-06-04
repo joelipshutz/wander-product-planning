@@ -151,15 +151,13 @@ Clerk user profile mirroring is wired through Svix:
 
 The Svix signing secret and function service credentials are stored local-only and in Supabase Edge Function secrets. Do not commit them.
 
-Live Clerk/Supabase smoke status as of 2026-06-02:
+Live Clerk/Supabase smoke status as of 2026-06-04:
 
 - Clerk disposable user creation works.
 - Clerk profile mirroring through Svix -> Edge Function -> Supabase works.
 - Clerk default session token includes `sub`, `role=authenticated`, `iss=https://growing-pheasant-22.clerk.accounts.dev`, `alg=RS256`, and a `kid` present in Clerk JWKS.
-- Hosted Supabase still rejects that Clerk token with `PGRST301 No suitable key was found to decode the JWT`.
-- The same public RPC reached function-grant denial with the Supabase anon JWT, so public RPC exposure works; the blocker is hosted Clerk third-party token verification.
-
-Do not treat M3 auth/remote smoke as passed until Supabase accepts the Clerk session token and the app can call authenticated RPCs.
+- Hosted Supabase accepts the Clerk token after adding the Clerk provider connection with domain `https://growing-pheasant-22.clerk.accounts.dev`.
+- Full hosted API smoke passed for profile search, follow, visible places, social save, block, unblock, and unfollow.
 
 ## Visual QA
 

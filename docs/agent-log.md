@@ -758,3 +758,32 @@ Checkpoint:
   - JWKS URI: `https://growing-pheasant-22.clerk.accounts.dev/.well-known/jwks.json`
   - JWKS contains `kid=ins_3Eb3Je6FO3qfUDIt5n3aTHMxYN1`
 - Conclusion: CLI config push is not resolving hosted PostgREST's Clerk verifier. Next action is to add/verify the Clerk provider row in Supabase Dashboard under Authentication -> Sign In / Providers, or use the authenticated browser to do that UI step.
+
+## 2026-06-04 08:27 PDT - Codex - M3 Auth Provider Retest
+
+Agent: Codex
+Branch: `main`
+Starting commit: `8517e08`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` still has only the expected local signing/team diff and should remain uncommitted.
+
+Goal: rerun the hosted Clerk-to-Supabase smoke after Joe added the Clerk provider connection in the Supabase dashboard using the `https://growing-pheasant-22.clerk.accounts.dev` domain.
+
+Expected files to touch:
+
+- `docs/agent-log.md`
+- Potentially setup/open-question docs if the smoke result changes M3 status.
+
+Completion checkpoint:
+
+- Created temporary smoke runner at `/private/tmp/wander-m3-live-smoke.mjs`; no secrets or runner code committed.
+- Hosted smoke passed after the Supabase Clerk connection was added:
+  - Clerk disposable user creation passed.
+  - Clerk profile mirroring passed.
+  - Default Clerk session token had `alg=RS256`, `kid=ins_3Eb3Je6FO3qfUDIt5n3aTHMxYN1`, `iss=https://growing-pheasant-22.clerk.accounts.dev`, `role=authenticated`, and `sub` matched the viewer Clerk user id.
+  - Supabase accepted the Clerk token.
+  - Authenticated RPCs passed: `search_profiles_by_handle`, `follow_user`, `visible_places_in_view`, `save_visible_place`, `block_user`, `unblock_user`, and `unfollow_user`.
+- Updated `docs/open-questions.md`, `docs/backend/m3-supabase-foundation.md`, and `docs/setup.md` from blocked to passed.
+- Ran simulator build with local public Clerk/Supabase keys injected:
+  `xcodebuild build -project Wander.xcodeproj -scheme Wander -destination "platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6" -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO ...`
+- Result: build succeeded.
+- Next: app-level simulator smoke for actual Clerk sign-in UI and remote-backed social actions.

@@ -102,8 +102,13 @@ Official docs checked on 2026-06-02:
 
 Remaining setup work:
 
-- Fix hosted Supabase Auth third-party Clerk token verification. 2026-06-02 live smoke confirmed the default Clerk session token has `sub`, `role=authenticated`, `iss=https://growing-pheasant-22.clerk.accounts.dev`, `alg=RS256`, and a `kid` published by Clerk JWKS, but PostgREST rejects it with `PGRST301 No suitable key was found to decode the JWT`. `supabase config push` reports remote Auth config up to date, and the same RPC with the Supabase anon JWT reaches the function grant check, so this is a Clerk third-party verifier/key registration issue rather than RPC exposure.
 - Review hosted Supabase Auth settings before alpha because `npx supabase config push` pushed generated local auth defaults plus Clerk config.
+
+Verified hosted auth status:
+
+- 2026-06-04 live smoke passed after adding the Supabase Clerk provider connection with domain `https://growing-pheasant-22.clerk.accounts.dev`.
+- Default Clerk session tokens are accepted by Supabase PostgREST/RLS.
+- Authenticated RPCs passed for profile search, follow, visible places, social save, block, unblock, and unfollow.
 
 ## Profile Mirroring
 
