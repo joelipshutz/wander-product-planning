@@ -844,3 +844,33 @@ Conclusion:
 
 - Not ready to upload to TestFlight from CLI yet.
 - Next setup steps: add/use a Wander-specific App Store Connect app/bundle config, install or create an Apple Distribution signing identity/provisioning path for `com.grayline.wander`, add a release export/upload lane, fix Info.plist version build settings, then archive/upload.
+
+## 2026-06-04 10:32 PDT - Codex - Simulator Auth Config And Sign-Out Visibility
+
+Agent: Codex
+Branch: `main`
+Starting commit: `e01ca73`
+Starting status: local `main` is ahead of `origin/main` by the TestFlight readiness log commit; `Wander.xcodeproj/project.pbxproj` still has the local signing/team diff.
+
+Goal: fix Joe's simulator screenshot showing `Missing Clerk publishable key.` in Settings, then continue TestFlight setup.
+
+Findings:
+
+- The Settings sign-out implementation exists, but the simulator app was built without `WANDER_CLERK_PUBLISHABLE_KEY`.
+- With missing Clerk config, `ClerkAuthService` sets auth state to `.unavailable("Missing Clerk publishable key.")`, so the account card cannot show the signed-in state or sign-out control.
+- Immediate fix path: rebuild/install the simulator app with the local-only public Clerk/Supabase client keys injected via an xcconfig so the values are not printed in command output.
+- UI improvement path: make Settings show a full-width account action button instead of relying on the small trailing `sign out` button.
+
+Completion checkpoint:
+
+- Updated Settings account UI so signed-in state shows a full-width `sign out` button and signed-out state shows a matching full-width `sign in` button.
+- Added unavailable-state helper copy so missing auth config points to the local auth-config rebuild issue.
+- Created temporary local auth xcconfig at `/private/tmp/wander-live-auth.xcconfig` from local env values; do not commit this file.
+- First sandboxed configured test run failed due Xcode cache/CoreSimulator permissions and printed build settings; reran quietly with elevated Xcode access for subsequent runs.
+- Fixed one compile issue from the UI tweak (`WanderTheme.cream` -> `WanderTheme.textOnAction`).
+- Ran configured full test suite:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData -xcconfig /private/tmp/wander-live-auth.xcconfig CODE_SIGNING_ALLOWED=NO`
+- Result: passed.
+- Built configured simulator app and installed/launched it on iPhone 17 Pro simulator `066417CD-C3D5-4209-BA1F-46152B1A6AAC` into Settings.
+- Verification screenshot: `/private/tmp/wander-settings-auth.png`; Settings now shows `Signed out` and a large `sign in` button instead of `Missing Clerk publishable key.`
+- Expected behavior: after sign-in, the same account card shows the large `sign out` button.

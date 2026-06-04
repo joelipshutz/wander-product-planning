@@ -34,7 +34,7 @@ struct SettingsScreen: View {
 
             switch auth.state {
             case .signedIn(let session):
-                HStack(spacing: WanderTheme.spacing3) {
+                HStack(alignment: .center, spacing: WanderTheme.spacing3) {
                     WanderAvatar(
                         initials: initials(for: session),
                         size: 40,
@@ -49,24 +49,29 @@ struct SettingsScreen: View {
                             .lineLimit(1)
                     }
                     Spacer()
-                    Button {
-                        Task {
-                            try? await auth.signOut()
-                        }
-                    } label: {
-                        HStack(spacing: WanderTheme.spacing1) {
-                            if auth.isSigningOut {
-                                ProgressView()
-                                    .controlSize(.small)
-                            }
-                            Text(auth.isSigningOut ? "signing out" : "sign out")
-                        }
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(WanderTheme.stateError.color)
-                        .frame(minHeight: WanderTheme.tapMinimum)
-                    }
-                    .disabled(auth.isSigningOut)
                 }
+
+                Button {
+                    Task {
+                        try? await auth.signOut()
+                    }
+                } label: {
+                    HStack(spacing: WanderTheme.spacing2) {
+                        if auth.isSigningOut {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                        }
+                        Text(auth.isSigningOut ? "signing out" : "sign out")
+                    }
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(WanderTheme.stateError.color)
+                    .frame(maxWidth: .infinity, minHeight: WanderTheme.tapMinimum)
+                    .background(WanderTheme.stateError.color.opacity(0.10))
+                    .clipShape(Capsule())
+                }
+                .disabled(auth.isSigningOut)
 
                 if let signOutError = auth.signOutError {
                     Text(signOutError)
@@ -89,12 +94,20 @@ struct SettingsScreen: View {
                             .foregroundStyle(WanderTheme.textMuted.color)
                     }
                     Spacer()
-                    Button("sign in") {
-                        auth.beginSignIn()
+                }
+
+                Button {
+                    auth.beginSignIn()
+                } label: {
+                    HStack(spacing: WanderTheme.spacing2) {
+                        Image(systemName: "person.crop.circle.badge.plus")
+                        Text("sign in")
                     }
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(WanderTheme.terracotta.color)
-                    .frame(minHeight: WanderTheme.tapMinimum)
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(WanderTheme.textOnAction.color)
+                    .frame(maxWidth: .infinity, minHeight: WanderTheme.tapMinimum)
+                    .background(WanderTheme.terracotta.color)
+                    .clipShape(Capsule())
                 }
             case .loading:
                 HStack {
@@ -104,9 +117,14 @@ struct SettingsScreen: View {
                         .foregroundStyle(WanderTheme.textMuted.color)
                 }
             case .unavailable(let message):
-                Text(message)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(WanderTheme.stateError.color)
+                VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
+                    Text(message)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(WanderTheme.stateError.color)
+                    Text("Rebuild with local auth config to sign in or out.")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(WanderTheme.textMuted.color)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
