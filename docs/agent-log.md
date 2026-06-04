@@ -820,3 +820,27 @@ Completion checkpoint:
   `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
 - Result: passed, 41 tests, 0 failures. Result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.04_10-21-43--0700.xcresult`.
 - Known remaining local diff: `Wander.xcodeproj/project.pbxproj` signing/team settings, intentionally uncommitted.
+
+## 2026-06-04 10:24 PDT - Codex - TestFlight Readiness Check
+
+Agent: Codex
+Branch: `main`
+Starting commit: `1517a4b`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` still has only the expected local `DEVELOPMENT_TEAM = Y7TVK75RZ8` diff.
+
+Goal: answer whether the current Wander repo can be pushed to TestFlight from this machine.
+
+Findings:
+
+- The app target bundle id is `com.grayline.wander`.
+- `project.yml` intentionally has no committed `DEVELOPMENT_TEAM`; local generated project state has team `Y7TVK75RZ8`, still uncommitted.
+- Local code-signing identity check returned `0 valid identities found`, so this machine cannot currently produce a signed App Store/TestFlight archive from CLI.
+- Existing local App Store Connect env key `ASC_BUNDLE_ID` is not `com.grayline.wander`, so the current ASC env appears to be for another app/workflow and should not be reused blindly for Wander uploads.
+- No repo TestFlight lane exists yet: no `ExportOptions.plist`, `Fastfile`, `.ipa`, or `.xcarchive` was found.
+- Release hygiene issue: `project.yml` says `MARKETING_VERSION = 0.1`, but `Wander/Resources/Info.plist` hardcodes `CFBundleShortVersionString` to `1.0`; fix before first TestFlight upload so versioning is predictable.
+- Sandbox-only `xcodebuild -list`/`-showBuildSettings` checks failed on cache/CoreSimulator permissions; this does not change the signing conclusion.
+
+Conclusion:
+
+- Not ready to upload to TestFlight from CLI yet.
+- Next setup steps: add/use a Wander-specific App Store Connect app/bundle config, install or create an Apple Distribution signing identity/provisioning path for `com.grayline.wander`, add a release export/upload lane, fix Info.plist version build settings, then archive/upload.
