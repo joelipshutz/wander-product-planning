@@ -923,3 +923,34 @@ Completion checkpoint:
 - Reran `xcodegen generate`.
 - Reran tests after the final generated project/plist changes: passed.
 - Rebuilt the final signed archive at `/private/tmp/Wander-0.1.xcarchive`: passed.
+
+## 2026-06-04 11:03 PDT - Codex - TestFlight Upload Retry
+
+Agent: Codex
+Branch: `main`
+Starting commit: `5cee10c`
+Starting status: local `main` matches `origin/main`.
+
+Goal: rerun App Store Connect upload after Joe created the `com.grayline.wander` app record.
+
+Expected files to touch:
+
+- `docs/agent-log.md`
+
+Plan:
+
+- Reuse `/private/tmp/Wander-0.1.xcarchive` from the successful signed archive.
+- Recreate upload export options if needed.
+- Run `xcodebuild -exportArchive` with `destination=upload`.
+- Log the upload result or the next exact Apple validation blocker.
+
+Completion checkpoint:
+
+- Recreated `/private/tmp/WanderExportUpload.plist`.
+- Ran:
+  `xcodebuild -quiet -exportArchive -archivePath /private/tmp/Wander-0.1.xcarchive -exportPath /private/tmp/WanderTestFlightUpload -exportOptionsPlist /private/tmp/WanderExportUpload.plist -allowProvisioningUpdates`
+- App Store Connect found the newly-created `com.grayline.wander` app record.
+- Apple package analysis passed.
+- Upload reached 100% and completed successfully.
+- Final Xcode output: `Uploaded Wander`.
+- Current state: build uploaded to App Store Connect and is processing before it can be used in TestFlight.
