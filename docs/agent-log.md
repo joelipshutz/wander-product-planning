@@ -874,3 +874,52 @@ Completion checkpoint:
 - Built configured simulator app and installed/launched it on iPhone 17 Pro simulator `066417CD-C3D5-4209-BA1F-46152B1A6AAC` into Settings.
 - Verification screenshot: `/private/tmp/wander-settings-auth.png`; Settings now shows `Signed out` and a large `sign in` button instead of `Missing Clerk publishable key.`
 - Expected behavior: after sign-in, the same account card shows the large `sign out` button.
+
+## 2026-06-04 10:41 PDT - Codex - TestFlight Archive Attempt
+
+Agent: Codex
+Branch: `main`
+Starting commit: `1a9887b`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` still has the local signing/team diff.
+
+Goal: attempt to prepare and upload a Wander TestFlight build after fixing the simulator auth configuration issue.
+
+Expected files to touch:
+
+- `Wander/Resources/Info.plist`
+- `docs/agent-log.md`
+
+Initial findings:
+
+- Release metadata hygiene issue: `Info.plist` hardcoded `CFBundleShortVersionString` to `1.0` while `project.yml` uses `MARKETING_VERSION = 0.1`.
+- Fixed `Info.plist` to read `$(MARKETING_VERSION)` and `$(CURRENT_PROJECT_VERSION)` so archives use project build settings.
+- Next step is a signed `xcodebuild archive` with local public auth config injected through `/private/tmp/wander-live-auth.xcconfig`, automatic signing, and team `Y7TVK75RZ8`.
+
+Checkpoint:
+
+- Signed archive succeeded at `/private/tmp/Wander-0.1.xcarchive`.
+- Export/upload attempt failed before package upload with `IDEDistribution.DistributionAppRecordProviderError.missingApp(bundleId: "com.grayline.wander")`.
+- Distribution logs showed App Store Connect auth worked and queried provider `7f20b667-afd3-456b-b2bc-ca94ab295484`, but returned zero apps for `com.grayline.wander`.
+- Conclusion: signing is now good enough to archive; the current blocker is that no App Store Connect app record exists for `com.grayline.wander`.
+- Added release prep for the next attempt:
+  - `TARGETED_DEVICE_FAMILY = 1`
+  - `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`
+  - `UIRequiresFullScreen = true`
+  - generated a temporary/simple AppIcon asset catalog for validation unblock; replace with final brand icon later.
+
+Completion checkpoint:
+
+- Added tracked `Wander/Config/Auth.xcconfig`, ignored `Wander/Config/LocalAuth.xcconfig`, and project wiring so normal Xcode builds can use local public Clerk/Supabase client keys without committing key values.
+- Created local ignored `Wander/Config/LocalAuth.xcconfig` from `/Users/joelipshutz/.openclaw/workspace/.env.keys`.
+- Regenerated `Wander.xcodeproj` from `project.yml`; `DEVELOPMENT_TEAM = Y7TVK75RZ8` is now intentional project configuration.
+- Verified no local public client key values are present in tracked files.
+- Ran regenerated-project tests:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: passed.
+- Fresh signed archive succeeded at `/private/tmp/Wander-0.1.xcarchive` after the icon/full-screen/project config changes.
+- Updated `docs/setup.md` with local auth config setup and the App Store Connect app-record blocker.
+- Exact remaining TestFlight step: create an App Store Connect iOS app record for `com.grayline.wander` (suggested name `Wander`, SKU `wander-ios`). Then rerun upload.
+- Follow-up correction: XcodeGen rewrites `Wander/Resources/Info.plist`, so version/full-screen keys now live in `project.yml` `info.properties`.
+- Reran `xcodegen generate`.
+- Reran tests after the final generated project/plist changes: passed.
+- Rebuilt the final signed archive at `/private/tmp/Wander-0.1.xcarchive`: passed.

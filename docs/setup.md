@@ -26,6 +26,18 @@ If you are working in Joe's local workspace, the repo path is:
 
 `project.yml` is the source of truth for the Xcode project.
 
+For local live-auth builds, create the ignored auth config first:
+
+```bash
+set -a
+source /Users/joelipshutz/.openclaw/workspace/.env.keys
+set +a
+cat > Wander/Config/LocalAuth.xcconfig <<EOF
+WANDER_CLERK_PUBLISHABLE_KEY = $WANDER_CLERK_PUBLISHABLE_KEY
+WANDER_SUPABASE_PUBLISHABLE_KEY = $WANDER_SUPABASE_ANON_KEY
+EOF
+```
+
 ```bash
 xcodegen generate
 ```
@@ -48,22 +60,19 @@ Do not commit incidental signing/team changes from Xcode unless intentional.
 xcodebuild build -project Wander.xcodeproj -scheme Wander -destination 'generic/platform=iOS Simulator' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO
 ```
 
-For a live Clerk/Supabase simulator smoke test, pass the public client keys as build settings from the local-only env file. Do not commit these values to `project.yml` or the generated project:
+For a live Clerk/Supabase simulator smoke test, make sure `Wander/Config/LocalAuth.xcconfig` exists, then build normally:
 
 ```bash
-set -a
-source /Users/joelipshutz/.openclaw/workspace/.env.keys
-set +a
 xcodebuild build \
   -project Wander.xcodeproj \
   -scheme Wander \
   -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' \
-  -derivedDataPath DerivedData \
-  WANDER_CLERK_PUBLISHABLE_KEY="$WANDER_CLERK_PUBLISHABLE_KEY" \
-  WANDER_SUPABASE_PUBLISHABLE_KEY="$WANDER_SUPABASE_ANON_KEY"
+  -derivedDataPath DerivedData
 ```
 
 `WANDER_SUPABASE_URL` and `WANDER_CLERK_FRONTEND_API` are already checked in as non-secret project defaults for the Wander dev project.
+
+Do not commit `Wander/Config/LocalAuth.xcconfig`; it is intentionally ignored.
 
 ## Test
 
@@ -171,6 +180,24 @@ For UI work:
 Current known visual failure:
 
 - Map screen is undersized/letterboxed and the controls are too large/crowded on the simulator screenshot Joe shared on 2026-06-01.
+
+## TestFlight
+
+Current status as of 2026-06-04:
+
+- Signed archive succeeds locally for `com.grayline.wander`.
+- Upload is blocked until App Store Connect has an app record for bundle id `com.grayline.wander`.
+
+Create the App Store Connect app record with:
+
+- Platform: iOS
+- Name: Wander
+- Primary language: English (U.S.)
+- Bundle ID: `com.grayline.wander`
+- SKU: `wander-ios`
+- User access: Full Access unless Joe wants restricted roles
+
+After the app record exists, rerun the archive/export upload from Xcode Organizer or CLI.
 
 ## Main Files To Read First
 
