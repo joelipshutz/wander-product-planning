@@ -54,4 +54,43 @@ final class AuthSessionTests: XCTestCase {
 
         XCTAssertEqual(token, "token")
     }
+
+    func testSignOutClearsSession() async throws {
+        let provider = PreviewAuthSessionProvider(
+            state: .signedIn(AuthSession(userID: "user_123", displayName: "Joe", handle: "joe")),
+            token: "token"
+        )
+        let store = AuthSessionStore(provider: provider)
+
+        try await store.signOut()
+
+        XCTAssertEqual(store.state, .signedOut)
+        XCTAssertFalse(store.isSigningOut)
+        XCTAssertNil(store.signOutError)
+        XCTAssertFalse(store.isPresentingNativeAuth)
+        XCTAssertNil(store.activeGate)
+    }
+
+    func testFailedSignOutKeepsSessionAndSurfacesError() async {
+        let session = AuthSession(userID: "user_123", displayName: "Joe", handle: "joe")
+        let provider = PreviewAuthSessionProvider(
+            state: .signedIn(session),
+            token: "token",
+            signOutError: AuthSessionError.tokenUnavailable
+        )
+        let store = AuthSessionStore(provider: provider)
+
+        do {
+            try await store.signOut()
+            XCTFail("Expected sign out to throw")
+        } catch let error as AuthSessionError {
+            XCTAssertEqual(error, .tokenUnavailable)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        XCTAssertEqual(store.state, .signedIn(session))
+        XCTAssertFalse(store.isSigningOut)
+        XCTAssertEqual(store.signOutError, "Could not sign out. Try again.")
+    }
 }

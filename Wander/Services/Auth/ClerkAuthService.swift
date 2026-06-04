@@ -53,6 +53,18 @@ final class ClerkAuthService: AuthSessionProviding {
         #endif
     }
 
+    func signOut() async throws {
+        #if canImport(ClerkKit)
+        guard configuration.isClerkConfigured else {
+            throw AuthSessionError.notConfigured
+        }
+        try await Clerk.shared.auth.signOut()
+        state = .signedOut
+        #else
+        throw AuthSessionError.notConfigured
+        #endif
+    }
+
     func supabaseAccessToken() async throws -> String {
         #if canImport(ClerkKit)
         guard configuration.isClerkConfigured else {

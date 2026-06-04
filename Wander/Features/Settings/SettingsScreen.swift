@@ -10,6 +10,7 @@ struct SettingsScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
                     header
+                    accountSection
                     visibilitySection
                     blockedSection
                     groupedRows
@@ -25,6 +26,93 @@ struct SettingsScreen: View {
         Text("settings")
             .font(.system(size: 30, weight: .black, design: .rounded))
             .lineLimit(1)
+    }
+
+    private var accountSection: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
+            SettingsSectionTitle("account")
+
+            switch auth.state {
+            case .signedIn(let session):
+                HStack(spacing: WanderTheme.spacing3) {
+                    WanderAvatar(
+                        initials: initials(for: session),
+                        size: 40,
+                        color: WanderTheme.pinSocial.color
+                    )
+                    VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
+                        Text(session.displayName ?? "Signed in")
+                            .font(.system(size: 15, weight: .bold))
+                        Text(session.handle.map { "@\($0)" } ?? session.userID)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(WanderTheme.textMuted.color)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    Button {
+                        Task {
+                            try? await auth.signOut()
+                        }
+                    } label: {
+                        HStack(spacing: WanderTheme.spacing1) {
+                            if auth.isSigningOut {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                            Text(auth.isSigningOut ? "signing out" : "sign out")
+                        }
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(WanderTheme.stateError.color)
+                        .frame(minHeight: WanderTheme.tapMinimum)
+                    }
+                    .disabled(auth.isSigningOut)
+                }
+
+                if let signOutError = auth.signOutError {
+                    Text(signOutError)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(WanderTheme.stateError.color)
+                }
+            case .signedOut:
+                HStack(spacing: WanderTheme.spacing3) {
+                    Image(systemName: "person.crop.circle")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(WanderTheme.terracotta.color)
+                        .frame(width: 38, height: 38)
+                        .background(WanderTheme.terracottaTint.color)
+                        .clipShape(Circle())
+                    VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
+                        Text("Signed out")
+                            .font(.system(size: 15, weight: .bold))
+                        Text("Sign in to sync and follow people.")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(WanderTheme.textMuted.color)
+                    }
+                    Spacer()
+                    Button("sign in") {
+                        auth.beginSignIn()
+                    }
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(WanderTheme.terracotta.color)
+                    .frame(minHeight: WanderTheme.tapMinimum)
+                }
+            case .loading:
+                HStack {
+                    ProgressView()
+                    Text("Checking account...")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(WanderTheme.textMuted.color)
+                }
+            case .unavailable(let message):
+                Text(message)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(WanderTheme.stateError.color)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(WanderTheme.spacing3)
+        .background(WanderTheme.surfaceBone.color)
+        .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
     }
 
     private var visibilitySection: some View {
@@ -93,13 +181,17 @@ struct SettingsScreen: View {
 
     private var groupedRows: some View {
         VStack(spacing: WanderTheme.spacing3) {
-            SettingsRow(title: "Profile and account", subtitle: "@\(store.currentUser.handle)", systemImage: "person.crop.circle")
             SettingsRow(title: "Contacts", subtitle: "planned native permission later", systemImage: "person.crop.rectangle.stack")
             SettingsRow(title: "Notifications", subtitle: "after first save", systemImage: "bell")
             SettingsRow(title: "Data and sync", subtitle: "\(store.pendingSyncCount) pending local item\(store.pendingSyncCount == 1 ? "" : "s")", systemImage: "arrow.triangle.2.circlepath") {
                 auth.presentGate(for: .syncPending)
             }
         }
+    }
+
+    private func initials(for session: AuthSession) -> String {
+        let source = session.displayName ?? session.handle ?? session.userID
+        return String(source.prefix(2)).uppercased()
     }
 }
 

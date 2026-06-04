@@ -787,3 +787,36 @@ Completion checkpoint:
   `xcodebuild build -project Wander.xcodeproj -scheme Wander -destination "platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6" -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO ...`
 - Result: build succeeded.
 - Next: app-level simulator smoke for actual Clerk sign-in UI and remote-backed social actions.
+
+## 2026-06-04 10:18 PDT - Codex - Settings Sign Out
+
+Agent: Codex
+Branch: `main`
+Starting commit: `7c30e20`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` still has only the expected local signing/team diff and should remain uncommitted.
+
+Goal: add a real sign-out path so simulator/device testing can leave Joe's restored Clerk session and exercise signed-out/sign-in flows.
+
+Expected files to touch:
+
+- `Wander/Services/Auth/AuthSessionProviding.swift`
+- `Wander/Services/Auth/ClerkAuthService.swift`
+- `Wander/Features/Settings/SettingsScreen.swift`
+- `WanderTests/AuthSessionTests.swift`
+- `docs/agent-log.md`
+
+Initial findings:
+
+- Current app has sign-in gates but no sign-out or account-switch surface.
+- Clerk iOS SDK exposes `try await Clerk.shared.auth.signOut()`.
+
+Completion checkpoint:
+
+- Added `signOut()` to the auth session boundary and implemented it through `Clerk.shared.auth.signOut()`.
+- Added Settings account state UI: signed-in identity summary, sign-out action with loading/error state, signed-out sign-in action, and loading/unavailable fallbacks.
+- Added auth session tests for successful sign-out clearing the session and failed sign-out preserving the active session while surfacing an error.
+- First test compile failed because Settings referenced a non-existent `WanderTheme.sky` token; fixed to use the existing social-pin token.
+- Ran full test suite:
+  `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: passed, 41 tests, 0 failures. Result bundle: `DerivedData/Logs/Test/Test-Wander-2026.06.04_10-21-43--0700.xcresult`.
+- Known remaining local diff: `Wander.xcodeproj/project.pbxproj` signing/team settings, intentionally uncommitted.

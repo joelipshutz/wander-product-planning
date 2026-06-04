@@ -89,6 +89,7 @@ protocol AuthSessionProviding: AnyObject {
     var state: AuthState { get }
     var canPresentNativeAuth: Bool { get }
     func refreshSession() async
+    func signOut() async throws
     func supabaseAccessToken() async throws -> String
 }
 
@@ -97,6 +98,8 @@ final class AuthSessionStore: ObservableObject, AuthSessionProviding {
     @Published private(set) var state: AuthState
     @Published var activeGate: AuthGateRequest?
     @Published var isPresentingNativeAuth = false
+    @Published private(set) var isSigningOut = false
+    @Published private(set) var signOutError: String?
 
     private let provider: AuthSessionProviding
 
@@ -146,6 +149,24 @@ final class AuthSessionStore: ObservableObject, AuthSessionProviding {
     func supabaseAccessToken() async throws -> String {
         try await provider.supabaseAccessToken()
     }
+
+    func signOut() async throws {
+        isSigningOut = true
+        signOutError = nil
+        defer { isSigningOut = false }
+
+        do {
+            try await provider.signOut()
+            state = provider.state
+            activeGate = nil
+            isPresentingNativeAuth = false
+        } catch {
+            await provider.refreshSession()
+            state = provider.state
+            signOutError = "Could not sign out. Try again."
+            throw error
+        }
+    }
 }
 
 @MainActor
@@ -153,11 +174,13 @@ final class PreviewAuthSessionProvider: AuthSessionProviding {
     private(set) var state: AuthState
     let canPresentNativeAuth: Bool
     private let token: String?
+    private let signOutError: Error?
 
-    init(state: AuthState = .signedOut, canPresentNativeAuth: Bool = false, token: String? = nil) {
+    init(state: AuthState = .signedOut, canPresentNativeAuth: Bool = false, token: String? = nil, signOutError: Error? = nil) {
         self.state = state
         self.canPresentNativeAuth = canPresentNativeAuth
         self.token = token
+        self.signOutError = signOutError
     }
 
     func setState(_ state: AuthState) {
@@ -165,6 +188,13 @@ final class PreviewAuthSessionProvider: AuthSessionProviding {
     }
 
     func refreshSession() async {}
+
+    func signOut() async throws {
+        if let signOutError {
+            throw signOutError
+        }
+        state = .signedOut
+    }
 
     func supabaseAccessToken() async throws -> String {
         guard state.isSignedIn else { throw AuthSessionError.notSignedIn }
