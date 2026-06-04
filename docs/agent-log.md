@@ -735,3 +735,26 @@ Checkpoint:
   - Reran the smoke after config push; same `PGRST301` Clerk token decode failure.
   - Control request using Supabase anon JWT against the same public RPC reached `42501 permission denied for function search_profiles_by_handle`, confirming PostgREST/RPC exposure is live and Supabase can decode its own JWT.
 - Conclusion: do not proceed to M4 sync or simulator remote-action debugging yet. The current blocker is hosted Supabase Clerk third-party auth verification/key registration, not Swift app code or public RPC wrapper exposure.
+
+## 2026-06-04 - Codex - M3 Auth Provider Follow-Up
+
+Agent: Codex
+Branch: `main`
+Starting commit: `ce1c316`
+Starting status: local `main` matches `origin/main`; `Wander.xcodeproj/project.pbxproj` still has only the expected local signing/team diff and should remain uncommitted.
+
+Goal: answer whether the Clerk/Supabase verifier blocker can be fixed through CLI, and clarify whether Supabase OAuth Server must be enabled.
+
+Checkpoint:
+
+- Verified current docs: the relevant hosted Supabase path is **Authentication -> Sign In / Providers -> Add provider -> Clerk**, not the OAuth Server page.
+- OAuth Server being enabled is unrelated to accepting Clerk third-party JWTs.
+- Re-ran `supabase config push --project-ref rugmtlgufrhlxwfkumhw`; CLI reported remote Auth config up to date.
+- Re-ran the hosted Clerk-token smoke after explicit config push; Supabase still returned `401 PGRST301 No suitable key was found to decode the JWT`.
+- Ran `npx supabase@latest config push --project-ref rugmtlgufrhlxwfkumhw` using Supabase CLI `2.105.0`; it also reported remote Auth config up to date.
+- Re-ran the hosted Clerk-token smoke again after latest CLI push; same `PGRST301` failure.
+- Checked Clerk OIDC discovery and JWKS:
+  - OIDC issuer: `https://growing-pheasant-22.clerk.accounts.dev`
+  - JWKS URI: `https://growing-pheasant-22.clerk.accounts.dev/.well-known/jwks.json`
+  - JWKS contains `kid=ins_3Eb3Je6FO3qfUDIt5n3aTHMxYN1`
+- Conclusion: CLI config push is not resolving hosted PostgREST's Clerk verifier. Next action is to add/verify the Clerk provider row in Supabase Dashboard under Authentication -> Sign In / Providers, or use the authenticated browser to do that UI step.
