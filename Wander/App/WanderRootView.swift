@@ -7,11 +7,14 @@ struct WanderRootView: View {
     @State private var selectedTab: WanderTab
     @State private var initialPresentation: WanderInitialPresentation?
     @StateObject private var store: WanderStore
+    private let fixtureMode: WanderFixtureMode
 
     init(initialTab: WanderTab? = nil, initialPresentation: WanderInitialPresentation? = nil) {
+        let fixtureMode = Self.resolvedFixtureMode()
+        self.fixtureMode = fixtureMode
         _selectedTab = State(initialValue: initialTab ?? Self.resolvedInitialTab())
         _initialPresentation = State(initialValue: initialPresentation ?? Self.resolvedInitialPresentation())
-        _store = StateObject(wrappedValue: WanderStore(fixtures: WanderFixtures.seed()))
+        _store = StateObject(wrappedValue: WanderStore(fixtures: Self.resolvedFixtures(mode: fixtureMode)))
     }
 
     var body: some View {
@@ -54,11 +57,23 @@ struct WanderRootView: View {
         }
         .task {
             await auth.refreshSession()
+            applyAuthStateIfNeeded(auth.state)
         }
         .onChange(of: auth.isPresentingNativeAuth) { _, isPresenting in
             guard !isPresenting else { return }
-            Task { await auth.refreshSession() }
+            Task {
+                await auth.refreshSession()
+                applyAuthStateIfNeeded(auth.state)
+            }
         }
+        .onChange(of: auth.state) { _, state in
+            applyAuthStateIfNeeded(state)
+        }
+    }
+
+    private func applyAuthStateIfNeeded(_ state: AuthState) {
+        guard fixtureMode == .empty else { return }
+        store.apply(authState: state)
     }
 
     static func resolvedInitialTab(from arguments: [String] = ProcessInfo.processInfo.arguments) -> WanderTab {
@@ -77,6 +92,28 @@ struct WanderRootView: View {
     static func resolvedInitialPresentation(from arguments: [String] = ProcessInfo.processInfo.arguments) -> WanderInitialPresentation? {
         arguments.contains("-WanderOpenSettings") ? .settings : nil
     }
+
+    static func resolvedFixtureMode(from arguments: [String] = ProcessInfo.processInfo.arguments) -> WanderFixtureMode {
+        arguments.contains("-WanderUseDemoFixtures") ? .demo : .empty
+    }
+
+    static func resolvedFixtures(from arguments: [String] = ProcessInfo.processInfo.arguments) -> WanderFixtures {
+        resolvedFixtures(mode: resolvedFixtureMode(from: arguments))
+    }
+
+    static func resolvedFixtures(mode: WanderFixtureMode) -> WanderFixtures {
+        switch mode {
+        case .empty:
+            WanderFixtures.empty()
+        case .demo:
+            WanderFixtures.seed()
+        }
+    }
+}
+
+enum WanderFixtureMode: Equatable {
+    case empty
+    case demo
 }
 
 enum WanderInitialPresentation: String, Identifiable {

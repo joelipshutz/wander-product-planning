@@ -16,8 +16,16 @@ struct AuthSession: Equatable, Identifiable {
     let userID: String
     let displayName: String?
     let handle: String?
+    let email: String?
 
     var id: String { userID }
+
+    init(userID: String, displayName: String?, handle: String?, email: String? = nil) {
+        self.userID = userID
+        self.displayName = displayName
+        self.handle = handle
+        self.email = email
+    }
 }
 
 enum AuthGateIntent: String, Equatable, Identifiable {

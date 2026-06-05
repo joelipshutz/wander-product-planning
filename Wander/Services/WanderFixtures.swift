@@ -12,6 +12,27 @@ struct WanderFixtures {
     let contactProvider: FakeContactProvider
 
     @MainActor
+    static func empty() -> WanderFixtures {
+        let currentUser = LocalProfile(
+            localID: "local_profile_current",
+            handle: "you",
+            displayName: "You",
+            syncState: .localOnly
+        )
+
+        return WanderFixtures(
+            currentUser: currentUser,
+            profiles: [currentUser],
+            places: [],
+            userPlaces: [],
+            placeAttributes: [],
+            follows: [],
+            blocks: [],
+            contactProvider: FakeContactProvider(seededMatches: [])
+        )
+    }
+
+    @MainActor
     static func seed() -> WanderFixtures {
         let currentUser = LocalProfile(localID: "local_profile_joe", serverID: "user_joe", handle: "joe", displayName: "Joe", bio: "Coffee, hikes, good tables.", syncState: .synced)
         let maya = LocalProfile(localID: "local_profile_maya", serverID: "user_maya", handle: "maya", displayName: "Maya", homeArea: "LA", syncState: .synced)

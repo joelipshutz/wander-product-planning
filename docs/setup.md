@@ -1,6 +1,6 @@
 # Setup
 
-Last updated: 2026-06-02
+Last updated: 2026-06-04
 
 ## Requirements
 
@@ -87,6 +87,16 @@ Known good result on 2026-06-01:
 ```
 
 If CoreSimulator or Swift plugin server errors happen in a sandbox, rerun from a normal terminal or with approved elevated access.
+
+## Fixture Mode
+
+Default app launches use an empty local store. Do not seed demo people or places for normal simulator, device, or TestFlight builds.
+
+Use this launch argument only for screenshots, local demos, or tests that intentionally need Joe/Maya/Ryan fixture data:
+
+```text
+-WanderUseDemoFixtures
+```
 
 ## Supabase
 
@@ -186,18 +196,10 @@ Current known visual failure:
 Current status as of 2026-06-04:
 
 - Signed archive succeeds locally for `com.grayline.wander`.
-- Upload is blocked until App Store Connect has an app record for bundle id `com.grayline.wander`.
-
-Create the App Store Connect app record with:
-
-- Platform: iOS
-- Name: Wander
-- Primary language: English (U.S.)
-- Bundle ID: `com.grayline.wander`
-- SKU: `wander-ios`
-- User access: Full Access unless Joe wants restricted roles
-
-After the app record exists, rerun the archive/export upload from Xcode Organizer or CLI.
+- App Store Connect app record exists for bundle id `com.grayline.wander`.
+- Builds `0.1 (1)`, `0.1 (2)`, and `0.1 (3)` uploaded successfully and began App Store Connect processing.
+- Increment `CURRENT_PROJECT_VERSION` in `project.yml` before each additional TestFlight upload, then run `xcodegen generate`.
+- If Xcode Accounts cannot be used for upload, pass the local App Store Connect API key to `xcodebuild -exportArchive` with `-authenticationKeyPath`, `-authenticationKeyID`, and `-authenticationKeyIssuerID`.
 
 ## Main Files To Read First
 

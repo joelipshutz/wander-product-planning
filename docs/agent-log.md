@@ -954,3 +954,59 @@ Completion checkpoint:
 - Upload reached 100% and completed successfully.
 - Final Xcode output: `Uploaded Wander`.
 - Current state: build uploaded to App Store Connect and is processing before it can be used in TestFlight.
+
+## 2026-06-04 17:49 PDT - Codex - M4 Fixture Opt-In Start
+
+Agent: Codex
+Branch: `main`
+Starting commit: `ac9850d`
+Starting status: local `main` matches `origin/main`.
+
+Goal: start M4 by removing seeded demo people/places from default app launches. Joe confirmed TestFlight sign-in works, but external testers should not see Joe/Maya/Ryan/Woodcat fixture data unless a demo/test mode is explicitly requested.
+
+Expected files to touch:
+
+- `Wander/Services/WanderFixtures.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- `Wander/Services/Auth/AuthSessionProviding.swift`
+- `Wander/Services/Auth/ClerkAuthService.swift`
+- `Wander/App/WanderRootView.swift`
+- `WanderTests/NavigationContractTests.swift`
+- `WanderTests/WanderStoreTests.swift`
+- `docs/agent-log.md`
+
+Plan:
+
+- Add an empty/default fixture set with a generic local profile.
+- Keep the existing seeded fixture set for tests and screenshots.
+- Make `WanderRootView` choose fixtures from a launch argument; default to empty.
+- Add a launch flag for seeded demo fixtures.
+- Sync the local current profile shell from the authenticated Clerk session when present.
+
+Completion checkpoint:
+
+- Added `WanderFixtures.empty()` and changed `WanderRootView` to use empty fixtures by default.
+- Preserved seeded Joe/Maya/Ryan fixture data behind the explicit `-WanderUseDemoFixtures` launch argument for screenshots/local demos/tests, and prevented auth refresh from overwriting seeded demo mode.
+- Added session email to `AuthSession` and mapped Clerk `primaryEmailAddress` into the local profile shell.
+- Added `WanderStore.apply(authState:)` so signed-in users see a local profile derived from the Clerk session instead of fixture Joe, and signed-out/default launches stay generic.
+- Added tests for default-empty fixture mode, explicit demo-fixture mode, empty local stores, and signed-in profile-shell hydration.
+- First sandboxed test run failed on CoreSimulator/SwiftPM cache permissions only.
+- Elevated test run found one test compile issue (`VisiblePlace` is not `Equatable`); changed that assertion to `isEmpty`.
+- Reran full test suite:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: passed.
+- Bumped `CURRENT_PROJECT_VERSION` from `1` to `2` in `project.yml` and regenerated `Wander.xcodeproj` with `xcodegen generate`.
+- Reran the full test suite after regeneration; result: passed.
+- Built signed archive:
+  `/private/tmp/Wander-0.1-build2.xcarchive`
+- Result: archive succeeded.
+- First `xcodebuild -exportArchive` upload attempt failed before packaging with `Failed to Use Accounts`; distribution logs said Xcode could not find App Store Connect access for team `Y7TVK75RZ8`.
+- Retried export/upload with the local App Store Connect API key via `-authenticationKeyPath`, `-authenticationKeyID`, and `-authenticationKeyIssuerID`.
+- Result: App Store Connect analysis passed, upload reached 100%, and Xcode output ended with `Uploaded Wander`.
+- Made one follow-up root-flow correction so demo fixture mode stays stable after signed-out auth refresh.
+- Bumped `CURRENT_PROJECT_VERSION` from `2` to `3`, regenerated `Wander.xcodeproj`, and reran the full test suite; result: passed.
+- Built signed archive:
+  `/private/tmp/Wander-0.1-build3.xcarchive`
+- Uploaded build `0.1 (3)` through `xcodebuild -exportArchive` with the App Store Connect API key.
+- Result: App Store Connect analysis passed, upload reached 100%, and Xcode output ended with `Uploaded Wander`.
+- Current state: build `0.1 (3)` is uploaded and processing in App Store Connect. This build should remove fake seeded people/places from default/TestFlight launches while keeping sign-in available.

@@ -65,6 +65,17 @@ final class WanderStore: ObservableObject {
         self.defaultVisibility = fixtures.currentUser.defaultVisibility
     }
 
+    func apply(authState: AuthState) {
+        switch authState {
+        case .signedIn(let session):
+            apply(session: session)
+        case .signedOut, .unavailable:
+            applySignedOutProfile()
+        case .loading:
+            break
+        }
+    }
+
     var stats: ProfileStats {
         let mine = userPlaces.filter { $0.userID == currentUser.id && $0.deletedAt == nil }
         return ProfileStats(
@@ -610,6 +621,66 @@ final class WanderStore: ObservableObject {
             (block.blockerUserID == currentUser.id && block.blockedUserID == userID)
                 || (block.blockerUserID == userID && block.blockedUserID == currentUser.id)
         }
+    }
+
+    private func apply(session: AuthSession) {
+        let handle = normalizedSessionHandle(from: session)
+        let displayName = normalizedSessionDisplayName(from: session, fallbackHandle: handle)
+        let localID = "local_profile_current"
+        let profile = LocalProfile(
+            localID: localID,
+            serverID: session.userID,
+            handle: handle,
+            displayName: displayName,
+            syncState: .synced
+        )
+
+        currentUser = profile
+        profiles.removeAll { $0.localID == localID || $0.serverID == session.userID }
+        profiles.insert(profile, at: 0)
+        defaultVisibility = profile.defaultVisibility
+    }
+
+    private func applySignedOutProfile() {
+        let localID = "local_profile_current"
+        let profile = LocalProfile(
+            localID: localID,
+            handle: "you",
+            displayName: "You",
+            syncState: .localOnly
+        )
+
+        currentUser = profile
+        profiles.removeAll { $0.localID == localID }
+        profiles.insert(profile, at: 0)
+        defaultVisibility = profile.defaultVisibility
+    }
+
+    private func normalizedSessionHandle(from session: AuthSession) -> String {
+        if let handle = session.handle.map(slug), !handle.isEmpty {
+            return handle
+        }
+
+        if let emailLocalPart = session.email?.split(separator: "@").first.map(String.init),
+           !slug(emailLocalPart).isEmpty {
+            return slug(emailLocalPart)
+        }
+
+        let fallback = slug(session.userID)
+        return fallback.isEmpty ? "you" : fallback
+    }
+
+    private func normalizedSessionDisplayName(from session: AuthSession, fallbackHandle: String) -> String {
+        if let displayName = session.displayName?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !displayName.isEmpty {
+            return displayName
+        }
+
+        if let email = session.email?.trimmingCharacters(in: .whitespacesAndNewlines), !email.isEmpty {
+            return email
+        }
+
+        return fallbackHandle
     }
 
     private func upsertFollow(userID: String, source: FollowSource) -> LocalFollow? {

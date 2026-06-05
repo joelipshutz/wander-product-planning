@@ -7,6 +7,35 @@ final class WanderStoreTests: XCTestCase {
         WanderStore(fixtures: WanderFixtures.seed())
     }
 
+    func testEmptyFixturesStartWithoutDemoPeopleOrPlaces() {
+        let store = WanderStore(fixtures: WanderFixtures.empty())
+
+        XCTAssertEqual(store.currentUser.displayName, "You")
+        XCTAssertTrue(store.visiblePlaces().isEmpty)
+        XCTAssertEqual(store.following(of: store.currentUser.id), [])
+        XCTAssertEqual(store.followers(of: store.currentUser.id), [])
+    }
+
+    func testSignedInSessionUpdatesCurrentProfileShell() {
+        let store = WanderStore(fixtures: WanderFixtures.empty())
+
+        store.apply(
+            authState: .signedIn(
+                AuthSession(
+                    userID: "user_live",
+                    displayName: nil,
+                    handle: nil,
+                    email: "jolipshutz@gmail.com"
+                )
+            )
+        )
+
+        XCTAssertEqual(store.currentUser.id, "user_live")
+        XCTAssertEqual(store.currentUser.handle, "jolipshutz")
+        XCTAssertEqual(store.currentUser.displayName, "jolipshutz@gmail.com")
+        XCTAssertEqual(store.profiles.map(\.id), ["user_live"])
+    }
+
     func testSeededStoreShowsOwnAndVisibleSocialPlaces() {
         let store = makeStore()
 

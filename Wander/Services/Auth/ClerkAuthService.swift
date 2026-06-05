@@ -42,7 +42,8 @@ final class ClerkAuthService: AuthSessionProviding {
                 AuthSession(
                     userID: user.id,
                     displayName: name.isEmpty ? user.username : name,
-                    handle: user.username
+                    handle: user.username,
+                    email: user.primaryEmailAddress?.emailAddress
                 )
             )
         } else {
