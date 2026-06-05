@@ -292,6 +292,78 @@ final class WanderStoreTests: XCTestCase {
         XCTAssertTrue(socialSaveRepository.requests.isEmpty)
     }
 
+    func testRemoteOwnPlaceSaveMarksLocalRowsSynced() async {
+        let store = WanderStore(fixtures: WanderFixtures.empty())
+        store.apply(authState: .signedIn(AuthSession(userID: "user_live", displayName: "Joe", handle: "joe")))
+        let userPlaceRepository = FakeUserPlaceRepository(result: SaveResult(userPlaceID: "up_remote_maru", syncState: .synced, placeID: "place_remote_maru"))
+        let backend = WanderBackend(userPlaceRepository: userPlaceRepository)
+        let candidate = PlaceCandidate(
+            id: "mk_maru",
+            name: "Maru Coffee",
+            category: "coffee",
+            latitude: 34.045,
+            longitude: -118.235,
+            confidence: 0.92
+        )
+
+        let result = await store.saveCandidate(
+            candidate,
+            status: .been,
+            visibility: .followers,
+            note: "window table",
+            sourceType: .currentLocation,
+            attributes: [
+                PlaceAttributeDraft(questionKey: "rating_signal", valueType: "emoji_scale", stringValue: "great")
+            ],
+            backend: backend
+        )
+
+        XCTAssertEqual(result, SaveResult(userPlaceID: "up_remote_maru", syncState: .synced, placeID: "place_remote_maru"))
+        XCTAssertEqual(userPlaceRepository.savedDrafts.count, 1)
+        XCTAssertEqual(userPlaceRepository.savedDrafts[0].place.canonicalName, "Maru Coffee")
+        XCTAssertEqual(userPlaceRepository.savedDrafts[0].attributes.map(\.questionKey), ["rating_signal"])
+
+        let saved = store.currentUserVisiblePlaces.first { $0.place.canonicalName == "Maru Coffee" }
+        XCTAssertEqual(saved?.place.serverID, "place_remote_maru")
+        XCTAssertEqual(saved?.userPlace.serverID, "up_remote_maru")
+        XCTAssertEqual(saved?.userPlace.placeID, "place_remote_maru")
+        XCTAssertEqual(saved?.userPlace.syncState, .synced)
+        XCTAssertEqual(store.attributes(for: "up_remote_maru").map(\.questionKey), ["rating_signal"])
+    }
+
+    func testRemoteOwnPlaceSaveFailureLeavesFailedLocalRows() async {
+        let store = WanderStore(fixtures: WanderFixtures.empty())
+        store.apply(authState: .signedIn(AuthSession(userID: "user_live", displayName: "Joe", handle: "joe")))
+        let userPlaceRepository = FakeUserPlaceRepository(error: WanderRemoteError.invalidResponse("network down"))
+        let backend = WanderBackend(userPlaceRepository: userPlaceRepository)
+        let candidate = PlaceCandidate(
+            id: "manual_taco",
+            name: "Taco Table",
+            category: "restaurant",
+            latitude: 34.0522,
+            longitude: -118.2437,
+            confidence: 0.7
+        )
+
+        let result = await store.saveCandidate(
+            candidate,
+            status: .wannaGo,
+            visibility: .mutuals,
+            note: nil,
+            sourceType: .manual,
+            attributes: [],
+            backend: backend
+        )
+
+        XCTAssertEqual(result.syncState, .failed)
+        XCTAssertEqual(userPlaceRepository.savedDrafts.count, 1)
+
+        let saved = store.currentUserVisiblePlaces.first { $0.place.canonicalName == "Taco Table" }
+        XCTAssertEqual(saved?.userPlace.syncState, .failed)
+        XCTAssertNotNil(saved?.userPlace.lastSyncError)
+        XCTAssertNotNil(store.lastRemoteError)
+    }
+
     func testRemoteFollowFailureLeavesFailedLocalFollow() async {
         let store = makeStore()
         let followRepository = FakeFollowRepository(error: WanderRemoteError.invalidResponse("network down"))
@@ -444,4 +516,32 @@ private final class FakeSocialPlaceSaveRepository: SocialPlaceSaveRepository {
         requests.append(Request(placeID: placeID, sourceUserPlaceID: sourceUserPlaceID))
         return result
     }
+}
+
+@MainActor
+private final class FakeUserPlaceRepository: UserPlaceRepository {
+    private let result: SaveResult?
+    private let error: Error?
+    private(set) var savedDrafts: [UserPlaceDraft] = []
+
+    init(result: SaveResult? = nil, error: Error? = nil) {
+        self.result = result
+        self.error = error
+    }
+
+    func userPlaces(for userID: String, filters: PlaceFilters) async throws -> [VisiblePlace] {
+        []
+    }
+
+    func save(_ draft: UserPlaceDraft) async throws -> SaveResult {
+        savedDrafts.append(draft)
+        if let error {
+            throw error
+        }
+        return result ?? SaveResult(userPlaceID: "up_fake", syncState: .synced, placeID: "place_fake")
+    }
+
+    func updateVisibility(userPlaceID: String, visibility: PlaceVisibility) async throws {}
+
+    func delete(userPlaceID: String) async throws {}
 }

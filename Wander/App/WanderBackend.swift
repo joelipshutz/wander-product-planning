@@ -122,4 +122,12 @@ final class WanderBackend: ObservableObject {
             sourceUserPlaceID: sourceUserPlaceID
         )
     }
+
+    func saveUserPlace(_ draft: UserPlaceDraft) async throws -> SaveResult {
+        guard let userPlaceRepository else {
+            throw WanderRemoteError.notConfigured
+        }
+
+        return try await userPlaceRepository.save(draft)
+    }
 }

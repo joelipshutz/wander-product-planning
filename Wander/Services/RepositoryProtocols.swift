@@ -45,12 +45,31 @@ struct PlaceCandidate: Identifiable, Equatable {
     let confidence: Double
 }
 
+struct PlaceDraft: Equatable {
+    let localID: String
+    let serverID: String?
+    let canonicalName: String
+    let category: String
+    let address: String?
+    let locality: String?
+    let region: String?
+    let country: String?
+    let latitude: Double
+    let longitude: Double
+    let sourceProvider: String
+    let sourceProviderPlaceID: String?
+    let confidence: Double?
+}
+
 struct UserPlaceDraft: Equatable {
-    let placeID: String
+    let place: PlaceDraft
     let status: PlaceStatus
     let visibility: PlaceVisibility
     let note: String?
+    let ratingSignal: String?
+    let nearbyConfirmed: Bool
     let sourceType: String
+    let attributes: [PlaceAttributeDraft]
 }
 
 struct PlaceAttributeDraft: Equatable {
@@ -90,6 +109,13 @@ struct PlaceAttributeDraft: Equatable {
 struct SaveResult: Equatable {
     let userPlaceID: String
     let syncState: SyncState
+    let placeID: String?
+
+    init(userPlaceID: String, syncState: SyncState, placeID: String? = nil) {
+        self.userPlaceID = userPlaceID
+        self.syncState = syncState
+        self.placeID = placeID
+    }
 }
 
 @MainActor

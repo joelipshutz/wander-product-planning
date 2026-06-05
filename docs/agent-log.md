@@ -1063,3 +1063,61 @@ Completion checkpoint:
 - Uploaded build `0.1 (4)` through `xcodebuild -exportArchive` with the App Store Connect API key.
 - Result: App Store Connect analysis passed, upload reached 100%, and Xcode output ended with `Uploaded Wander`.
 - Current state: build `0.1 (4)` is uploaded and processing in App Store Connect. It includes the clean first-run avatar fix, but M4 QA is not green until direct signed-in own-place save is implemented and retested.
+
+## 2026-06-04 18:49 PDT - Codex - M4 Direct Own-Place Save Start
+
+Agent: Codex
+Branch: `main`
+Starting commit: `436488d`
+Starting status: local `main` matches `origin/main`.
+
+Goal: close the M4 QA blocker by implementing direct signed-in own-place save to Supabase for current-location/manual add.
+
+Mission Control: `http://localhost:4000/api/tasks` is still unreachable from this session, so this log is the active coordination record.
+
+Expected files to touch:
+
+- `supabase/migrations/*_save_own_place.sql`
+- `Wander/Services/RepositoryProtocols.swift`
+- `Wander/Services/Remote/SupabaseRepositories.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- `Wander/Features/Add/AddScreen.swift`
+- `WanderTests/RemoteRepositoryTests.swift`
+- `WanderTests/WanderStoreTests.swift`
+- `docs/agent-log.md`
+- `docs/roadmap.md`
+- `docs/setup.md`
+- `project.yml`
+- `Wander.xcodeproj/project.pbxproj`
+
+Plan:
+
+- Add a Supabase RPC for upserting a canonical place, current user's user_place row, and flexible question attributes.
+- Add the public PostgREST wrapper and grants.
+- Implement `SupabaseUserPlaceRepository.save(_:)`.
+- Wire signed-in Add flow to local-first save, then remote save with synced/failed local state.
+- Add contract tests for request shape and local success/failure fallback.
+- Run full tests, apply hosted migration if possible, then upload a new TestFlight build.
+
+Checkpoint:
+
+- Added migration `20260604185000_save_own_place.sql` with `app.save_own_place` plus public PostgREST wrapper.
+- Wired signed-in current-location/manual Add saves through local-first store save, `WanderBackend.saveUserPlace`, and `SupabaseUserPlaceRepository.save(_:)`.
+- Added tests for `save_own_place` RPC body shape and local success/failure sync marking.
+- Applied the hosted Supabase migration with `npx supabase db push --linked`; Supabase finished the migration successfully.
+- Ran the full Xcode test suite after the direct-save changes:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: passed.
+- Updated M4 docs to show direct-save is no longer the blocker; build `0.1 (5)` is the next TestFlight QA candidate.
+
+Completion checkpoint:
+
+- Bumped `CURRENT_PROJECT_VERSION` from `4` to `5` in `project.yml` and regenerated `Wander.xcodeproj` with `xcodegen generate`.
+- Reran the full Xcode test suite after regeneration:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: passed.
+- Built signed archive:
+  `/private/tmp/Wander-0.1-build5.xcarchive`
+- Uploaded build `0.1 (5)` through `xcodebuild -exportArchive` with the App Store Connect API key.
+- Result: App Store Connect analysis passed, upload reached 90%, and Xcode output ended with `Uploaded Wander`.
+- Current state: build `0.1 (5)` is uploaded and processing in App Store Connect. Next step is Joe device-smoke testing direct current-location/manual save on TestFlight after processing completes.

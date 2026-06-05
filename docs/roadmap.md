@@ -6,7 +6,7 @@ This is the durable milestone view. The detailed source plan is `docs/plans/2026
 
 ## Current Status
 
-M2 local product loop and visual pass are good enough for TestFlight iteration. M3 Clerk + Supabase foundation is in place: hosted schema/RLS/profile mirroring and iOS auth wiring are working. M4 is in QA, not accepted: remote visible places/profile search/follow/block/social-save paths are wired, but direct signed-in own-place save to Supabase is still not implemented.
+M2 local product loop and visual pass are good enough for TestFlight iteration. M3 Clerk + Supabase foundation is in place: hosted schema/RLS/profile mirroring and iOS auth wiring are working. M4 is in QA: remote visible places/profile search/follow/block/social-save paths are wired, and direct signed-in own-place save now has a Supabase RPC plus iOS local-first sync path.
 
 ## Milestones
 
@@ -17,16 +17,15 @@ M2 local product loop and visual pass are good enough for TestFlight iteration. 
 | M1.5 Contract lock | Done baseline | Freeze schema/RLS/local/UI contracts before M2. | See `docs/plans/2026-06-01-wander-m1-5-contract-lock.md`. |
 | M2 Core local product loop | Done baseline | Validate map/add/discover/profile/settings loop before backend. | Native UI has moved into TestFlight iteration. |
 | M3 Clerk + Supabase foundation | Done baseline | Real identity, schema, RLS, and policy tests. | Supabase/Clerk projects created, hosted tests passed, profile mirroring and iOS sign-in smoke passed. |
-| M4 Sync and remote repositories | In QA, blocked | Replace local-only store paths with local-first remote sync. | Remote visible places/profile search/follow/block/social-save paths are wired. Direct signed-in own-place save RPC/client path is still missing. |
+| M4 Sync and remote repositories | In QA | Replace local-only store paths with local-first remote sync. | Remote visible places/profile search/follow/block/social-save/direct-own-save paths are wired. Needs TestFlight device QA on build `0.1 (5)`. |
 | M5 Extraction and smart Discover | Planned | Backend extraction jobs and cheap LLM query parser. | Link/photo become real extraction lanes; LLM parser sends only raw phrase + schema. |
 | M6 Alpha readiness | Planned | End-to-end alpha loop and App Store/private beta prep. | QA, analytics, privacy copy, onboarding/auth gates, performance. |
 
 ## Immediate Next Steps
 
-1. Implement direct signed-in own-place save to Supabase for current-location/manual add.
-2. Add tests for the direct user-place save request/response path and failed-sync fallback.
-3. Re-run M4 QA: clean first-run, new signed-in account, existing signed-in account, sign out/sign back in.
-4. Upload the next TestFlight build after M4 QA is green.
+1. Device-smoke TestFlight build `0.1 (5)` once it finishes App Store Connect processing.
+2. Re-run M4 QA: clean first-run, new signed-in account, existing signed-in account, direct current-location/manual save, sign out/sign back in.
+3. If build `0.1 (5)` passes, mark M4 accepted and move to M5 extraction/query-parser planning.
 
 ## M2 Acceptance Criteria
 

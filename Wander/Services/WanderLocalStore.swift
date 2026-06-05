@@ -169,8 +169,9 @@ final class WanderStore: ObservableObject {
     }
 
     func attributes(for userPlaceID: String) -> [LocalPlaceAttribute] {
-        placeAttributes
-            .filter { $0.userPlaceID == userPlaceID }
+        let userPlaceIDs = matchingUserPlaceIDs(userPlaceID)
+        return placeAttributes
+            .filter { userPlaceIDs.contains($0.userPlaceID) }
             .sorted { $0.questionKey < $1.questionKey }
     }
 
@@ -368,6 +369,49 @@ final class WanderStore: ObservableObject {
             replaceAttributes(for: userPlace.id, with: attributes, syncState: .pendingCreate)
         }
         return SaveResult(userPlaceID: userPlace.id, syncState: userPlace.syncState)
+    }
+
+    @discardableResult
+    func saveCandidate(
+        _ candidate: PlaceCandidate,
+        status: PlaceStatus,
+        visibility: PlaceVisibility,
+        note: String?,
+        sourceType: AddSourceType,
+        attributes: [PlaceAttributeDraft]? = nil,
+        backend: WanderBackend?
+    ) async -> SaveResult {
+        let localResult = saveCandidate(
+            candidate,
+            status: status,
+            visibility: visibility,
+            note: note,
+            sourceType: sourceType,
+            attributes: attributes
+        )
+
+        guard let backend else {
+            return localResult
+        }
+
+        guard let draft = userPlaceDraft(for: localResult.userPlaceID) else {
+            return localResult
+        }
+
+        do {
+            let remoteResult = try await backend.saveUserPlace(draft)
+            if let placeID = remoteResult.placeID {
+                markPlace(localOrServerID: draft.place.localID, serverID: placeID, syncState: .synced)
+            }
+            markUserPlace(localOrServerID: localResult.userPlaceID, serverID: remoteResult.userPlaceID, syncState: .synced)
+            lastRemoteError = nil
+            return remoteResult
+        } catch {
+            let message = remoteErrorMessage(error)
+            markUserPlace(localOrServerID: localResult.userPlaceID, syncState: .failed, error: message)
+            lastRemoteError = message
+            return SaveResult(userPlaceID: localResult.userPlaceID, syncState: .failed)
+        }
     }
 
     @discardableResult
@@ -725,18 +769,110 @@ final class WanderStore: ObservableObject {
         return block
     }
 
+    private func userPlaceDraft(for userPlaceID: String) -> UserPlaceDraft? {
+        guard let userPlace = userPlaces.first(where: { $0.id == userPlaceID || $0.localID == userPlaceID || $0.serverID == userPlaceID }),
+              let place = places.first(where: { $0.id == userPlace.placeID || $0.localID == userPlace.placeID || $0.serverID == userPlace.placeID })
+        else {
+            return nil
+        }
+
+        let placeDraft = PlaceDraft(
+            localID: place.localID,
+            serverID: place.serverID,
+            canonicalName: place.canonicalName,
+            category: place.category,
+            address: place.address,
+            locality: place.locality,
+            region: place.region,
+            country: place.country,
+            latitude: place.latitude,
+            longitude: place.longitude,
+            sourceProvider: place.sourceProvider,
+            sourceProviderPlaceID: place.sourceProviderPlaceID,
+            confidence: place.confidence
+        )
+
+        let attributeDrafts = attributes(for: userPlace.id).map { attribute in
+            PlaceAttributeDraft(
+                questionKey: attribute.questionKey,
+                valueType: attribute.valueType,
+                valueJSON: attribute.valueJSON
+            )
+        }
+
+        return UserPlaceDraft(
+            place: placeDraft,
+            status: userPlace.status,
+            visibility: userPlace.visibility,
+            note: userPlace.note,
+            ratingSignal: userPlace.ratingSignal,
+            nearbyConfirmed: userPlace.nearbyConfirmed,
+            sourceType: userPlace.sourceType,
+            attributes: attributeDrafts
+        )
+    }
+
+    private func matchingUserPlaceIDs(_ userPlaceID: String) -> Set<String> {
+        guard let userPlace = userPlaces.first(where: { $0.id == userPlaceID || $0.localID == userPlaceID || $0.serverID == userPlaceID }) else {
+            return [userPlaceID]
+        }
+
+        var ids: Set<String> = [userPlaceID, userPlace.id, userPlace.localID]
+        if let serverID = userPlace.serverID {
+            ids.insert(serverID)
+        }
+        return ids
+    }
+
+    private func matchingPlaceIDs(_ placeID: String) -> Set<String> {
+        guard let place = places.first(where: { $0.id == placeID || $0.localID == placeID || $0.serverID == placeID }) else {
+            return [placeID]
+        }
+
+        var ids: Set<String> = [placeID, place.id, place.localID]
+        if let serverID = place.serverID {
+            ids.insert(serverID)
+        }
+        return ids
+    }
+
     private func markUserPlace(localOrServerID: String, serverID: String? = nil, syncState: SyncState, error: String? = nil) {
         guard let userPlace = userPlaces.first(where: { $0.id == localOrServerID || $0.localID == localOrServerID || $0.serverID == localOrServerID }) else {
             return
         }
 
+        let previousIDs = matchingUserPlaceIDs(localOrServerID)
         if let serverID {
             userPlace.serverID = serverID
         }
         userPlace.syncStateRaw = syncState.rawValue
         userPlace.lastSyncError = error
         userPlace.serverUpdatedAt = syncState == .synced ? .now : userPlace.serverUpdatedAt
+
+        let canonicalUserPlaceID = serverID ?? userPlace.id
+        for attribute in placeAttributes where previousIDs.contains(attribute.userPlaceID) {
+            attribute.userPlaceID = canonicalUserPlaceID
+            attribute.syncStateRaw = syncState.rawValue
+            attribute.lastSyncError = error
+            attribute.serverUpdatedAt = syncState == .synced ? .now : attribute.serverUpdatedAt
+        }
         objectWillChange.send()
+    }
+
+    private func markPlace(localOrServerID: String, serverID: String, syncState: SyncState, error: String? = nil) {
+        guard let place = places.first(where: { $0.id == localOrServerID || $0.localID == localOrServerID || $0.serverID == localOrServerID }) else {
+            return
+        }
+
+        let previousIDs = matchingPlaceIDs(localOrServerID)
+        place.serverID = serverID
+        place.syncStateRaw = syncState.rawValue
+        place.lastSyncError = error
+        place.serverUpdatedAt = syncState == .synced ? .now : place.serverUpdatedAt
+
+        for userPlace in userPlaces where previousIDs.contains(userPlace.placeID) {
+            userPlace.placeID = serverID
+        }
     }
 
     private func remoteSocialSaveIDs(for visiblePlace: VisiblePlace) -> (placeID: String, sourceUserPlaceID: String)? {

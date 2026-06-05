@@ -3,6 +3,7 @@ import SwiftUI
 struct AddScreen: View {
     @EnvironmentObject private var store: WanderStore
     @EnvironmentObject private var auth: AuthSessionStore
+    @EnvironmentObject private var backend: WanderBackend
     @State private var step: AddStep = .source
     @State private var candidates: [PlaceCandidate] = []
     @State private var selectedCandidateID: String?
@@ -214,19 +215,9 @@ struct AddScreen: View {
             }
 
             WanderPrimaryButton(title: "save to my map", systemImage: "checkmark") {
-                guard let selectedCandidate else { return }
-                savedResult = store.saveCandidate(
-                    selectedCandidate,
-                    status: selectedStatus,
-                    visibility: selectedVisibility,
-                    note: note.isEmpty ? nil : note,
-                    sourceType: selectedSource,
-                    attributes: attributeDrafts()
-                )
-                if !auth.isSignedIn {
-                    auth.presentGate(for: .syncPlace)
+                Task {
+                    await saveSelectedCandidate()
                 }
-                step = .saved
             }
         }
     }
@@ -249,7 +240,7 @@ struct AddScreen: View {
 
             if let savedResult {
                 VStack(spacing: WanderTheme.spacing2) {
-                    Text(savedResult.syncState == .pendingCreate ? "sync queued" : "saved")
+                    Text(syncStatusTitle(for: savedResult.syncState))
                         .font(.system(size: 13, weight: .bold))
                         .padding(.horizontal, WanderTheme.spacing3)
                         .padding(.vertical, WanderTheme.spacing2)
@@ -355,6 +346,43 @@ struct AddScreen: View {
             case .multiTag:
                 return PlaceAttributeDraft(questionKey: block.key, valueType: block.valueType, stringValues: values)
             }
+        }
+    }
+
+    @MainActor
+    private func saveSelectedCandidate() async {
+        guard let selectedCandidate else { return }
+
+        savedResult = await store.saveCandidate(
+            selectedCandidate,
+            status: selectedStatus,
+            visibility: selectedVisibility,
+            note: note.isEmpty ? nil : note,
+            sourceType: selectedSource,
+            attributes: attributeDrafts(),
+            backend: auth.isSignedIn ? backend : nil
+        )
+
+        if !auth.isSignedIn {
+            auth.presentGate(for: .syncPlace)
+        }
+        step = .saved
+    }
+
+    private func syncStatusTitle(for syncState: SyncState) -> String {
+        switch syncState {
+        case .synced:
+            "synced"
+        case .failed:
+            "sync failed"
+        case .pendingCreate, .pendingUpdate, .pendingDelete:
+            "sync queued"
+        case .localOnly:
+            "saved here"
+        case .serverDenied:
+            "needs review"
+        case .tombstoned:
+            "removed"
         }
     }
 

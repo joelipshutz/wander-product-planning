@@ -123,7 +123,11 @@ struct SupabaseUserPlaceRepository: UserPlaceRepository, SocialPlaceSaveReposito
     }
 
     func save(_ draft: UserPlaceDraft) async throws -> SaveResult {
-        throw WanderRemoteError.notImplemented("direct user place save RPC")
+        let result: SaveOwnPlaceResponse = try await rpc.call(
+            "save_own_place",
+            params: SaveOwnPlaceParams(draft: draft)
+        )
+        return SaveResult(userPlaceID: result.userPlaceID, syncState: .synced, placeID: result.placeID)
     }
 
     func updateVisibility(userPlaceID: String, visibility: PlaceVisibility) async throws {
@@ -200,5 +204,127 @@ private struct SaveVisiblePlaceResponse: Decodable {
 
     enum CodingKeys: String, CodingKey {
         case userPlaceID = "user_place_id"
+    }
+}
+
+private struct SaveOwnPlaceParams: Encodable {
+    let inputPlace: SaveOwnPlacePlaceParams
+    let inputUserPlace: SaveOwnPlaceUserPlaceParams
+    let inputAttributes: [SaveOwnPlaceAttributeParams]
+
+    init(draft: UserPlaceDraft) throws {
+        self.inputPlace = SaveOwnPlacePlaceParams(place: draft.place)
+        self.inputUserPlace = SaveOwnPlaceUserPlaceParams(draft: draft)
+        self.inputAttributes = try draft.attributes.map(SaveOwnPlaceAttributeParams.init)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case inputPlace = "input_place"
+        case inputUserPlace = "input_user_place"
+        case inputAttributes = "input_attributes"
+    }
+}
+
+private struct SaveOwnPlacePlaceParams: Encodable {
+    let canonicalName: String
+    let category: String
+    let address: String?
+    let locality: String?
+    let region: String?
+    let country: String?
+    let latitude: Double
+    let longitude: Double
+    let sourceProvider: String
+    let sourceProviderPlaceID: String?
+    let confidence: Double?
+
+    init(place: PlaceDraft) {
+        self.canonicalName = place.canonicalName
+        self.category = place.category
+        self.address = place.address
+        self.locality = place.locality
+        self.region = place.region
+        self.country = place.country
+        self.latitude = place.latitude
+        self.longitude = place.longitude
+        self.sourceProvider = place.sourceProvider
+        self.sourceProviderPlaceID = place.sourceProviderPlaceID ?? place.serverID ?? place.localID
+        self.confidence = place.confidence
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case canonicalName = "canonical_name"
+        case category
+        case address
+        case locality
+        case region
+        case country
+        case latitude
+        case longitude
+        case sourceProvider = "source_provider"
+        case sourceProviderPlaceID = "source_provider_place_id"
+        case confidence
+    }
+}
+
+private struct SaveOwnPlaceUserPlaceParams: Encodable {
+    let status: String
+    let visibility: String
+    let note: String?
+    let ratingSignal: String?
+    let nearbyConfirmed: Bool
+    let sourceType: String
+
+    init(draft: UserPlaceDraft) {
+        self.status = draft.status.rawValue
+        self.visibility = draft.visibility.rawValue
+        self.note = draft.note
+        self.ratingSignal = draft.ratingSignal
+        self.nearbyConfirmed = draft.nearbyConfirmed
+        self.sourceType = draft.sourceType
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case visibility
+        case note
+        case ratingSignal = "rating_signal"
+        case nearbyConfirmed = "nearby_confirmed"
+        case sourceType = "source_type"
+    }
+}
+
+private struct SaveOwnPlaceAttributeParams: Encodable {
+    let questionKey: String
+    let valueType: String
+    let value: JSONValue
+
+    init(draft: PlaceAttributeDraft) throws {
+        self.questionKey = draft.questionKey
+        self.valueType = draft.valueType
+        self.value = try Self.decodeValue(draft.valueJSON)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case questionKey = "question_key"
+        case valueType = "value_type"
+        case value
+    }
+
+    private static func decodeValue(_ valueJSON: String) throws -> JSONValue {
+        guard let data = valueJSON.data(using: .utf8) else {
+            throw WanderRemoteError.invalidResponse("Attribute value is not UTF-8 JSON")
+        }
+        return try JSONDecoder().decode(JSONValue.self, from: data)
+    }
+}
+
+private struct SaveOwnPlaceResponse: Decodable {
+    let userPlaceID: String
+    let placeID: String
+
+    enum CodingKeys: String, CodingKey {
+        case userPlaceID = "user_place_id"
+        case placeID = "place_id"
     }
 }

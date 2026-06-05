@@ -129,6 +129,60 @@ final class RemoteRepositoryTests: XCTestCase {
         XCTAssertEqual(rpc.calls[0].body["input_source_user_place_id"] as? String, "up_source")
     }
 
+    func testOwnPlaceSaveCallsExpectedRPCWithPlaceAndAttributes() async throws {
+        let rpc = RecordingRPC()
+        rpc.responses["save_own_place"] = #"{"user_place_id":"up_saved","place_id":"place_saved"}"#.data(using: .utf8)
+        let repository = SupabaseUserPlaceRepository(rpc: rpc)
+        let draft = UserPlaceDraft(
+            place: PlaceDraft(
+                localID: "local_place_maru",
+                serverID: nil,
+                canonicalName: "Maru Coffee",
+                category: "coffee",
+                address: nil,
+                locality: "Los Angeles",
+                region: "CA",
+                country: nil,
+                latitude: 34.045,
+                longitude: -118.235,
+                sourceProvider: "mapkit",
+                sourceProviderPlaceID: "mk_maru",
+                confidence: 0.92
+            ),
+            status: .been,
+            visibility: .followers,
+            note: "window table",
+            ratingSignal: "great",
+            nearbyConfirmed: true,
+            sourceType: "current_location",
+            attributes: [
+                PlaceAttributeDraft(questionKey: "rating_signal", valueType: "emoji_scale", stringValue: "great"),
+                PlaceAttributeDraft(questionKey: "coffee_tags", valueType: "multi_tag", stringValues: ["wifi solid", "quiet"])
+            ]
+        )
+
+        let result = try await repository.save(draft)
+
+        XCTAssertEqual(result, SaveResult(userPlaceID: "up_saved", syncState: .synced, placeID: "place_saved"))
+        XCTAssertEqual(rpc.calls.map(\.name), ["save_own_place"])
+
+        let body = rpc.rawBodies[0]
+        let place = body["input_place"] as? [String: Any]
+        XCTAssertEqual(place?["canonical_name"] as? String, "Maru Coffee")
+        XCTAssertEqual(place?["source_provider_place_id"] as? String, "mk_maru")
+        XCTAssertEqual(place?["latitude"] as? Double, 34.045)
+
+        let userPlace = body["input_user_place"] as? [String: Any]
+        XCTAssertEqual(userPlace?["status"] as? String, "been")
+        XCTAssertEqual(userPlace?["visibility"] as? String, "followers")
+        XCTAssertEqual(userPlace?["nearby_confirmed"] as? Bool, true)
+
+        let attributes = body["input_attributes"] as? [[String: Any]]
+        XCTAssertEqual(attributes?.map { $0["question_key"] as? String }, ["rating_signal", "coffee_tags"])
+        XCTAssertEqual(attributes?.first?["value"] as? String, "great")
+        XCTAssertEqual(attributes?[1]["value"] as? [String], ["wifi solid", "quiet"])
+    }
+
     func testUnblockCallsExpectedRPC() async throws {
         let rpc = RecordingRPC()
         let repository = SupabaseBlockRepository(rpc: rpc)
@@ -148,6 +202,7 @@ private final class RecordingRPC: RemoteProcedureCalling {
     }
 
     var responses: [String: Data] = [:]
+    private(set) var rawBodies: [[String: Any]] = []
     private(set) var calls: [Call] = []
 
     func call<Value: Decodable, Params: Encodable>(
@@ -155,7 +210,9 @@ private final class RecordingRPC: RemoteProcedureCalling {
         params: Params,
         decoder: JSONDecoder
     ) async throws -> Value {
-        calls.append(Call(name: name, body: try encodedBody(params)))
+        let body = try encodedObject(params)
+        rawBodies.append(body)
+        calls.append(Call(name: name, body: anyHashableBody(body)))
 
         if Value.self == EmptyRPCResponse.self {
             return EmptyRPCResponse() as! Value
@@ -168,12 +225,16 @@ private final class RecordingRPC: RemoteProcedureCalling {
         return try decoder.decode(Value.self, from: data)
     }
 
-    private func encodedBody<Params: Encodable>(_ params: Params) throws -> [String: AnyHashable] {
+    private func encodedObject<Params: Encodable>(_ params: Params) throws -> [String: Any] {
         let data = try JSONEncoder().encode(params)
         guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return [:]
         }
 
+        return object
+    }
+
+    private func anyHashableBody(_ object: [String: Any]) -> [String: AnyHashable] {
         return object.reduce(into: [:]) { result, element in
             if let value = element.value as? AnyHashable {
                 result[element.key] = value

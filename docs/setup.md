@@ -129,7 +129,7 @@ npx supabase db reset
 npx supabase test db supabase/tests/rls_visibility.sql
 ```
 
-The hosted migrations and Clerk profile webhook have been pushed/deployed. The current SQL tests passed against hosted Postgres through a temporary Node `pg` runner because the Supabase CLI pgTAP runner still requires Docker.
+The hosted migrations and Clerk profile webhook have been pushed/deployed. The latest hosted migration is `20260604185000_save_own_place.sql`, which adds the direct signed-in own-place save RPC used by the iOS add flow. The current SQL tests passed against hosted Postgres through a temporary Node `pg` runner because the Supabase CLI pgTAP runner still requires Docker.
 
 Current hosted SQL test status:
 
@@ -197,7 +197,7 @@ Current status as of 2026-06-04:
 
 - Signed archive succeeds locally for `com.grayline.wander`.
 - App Store Connect app record exists for bundle id `com.grayline.wander`.
-- Builds `0.1 (1)`, `0.1 (2)`, `0.1 (3)`, and `0.1 (4)` uploaded successfully and began App Store Connect processing.
+- Builds `0.1 (1)`, `0.1 (2)`, `0.1 (3)`, `0.1 (4)`, and `0.1 (5)` uploaded successfully and began App Store Connect processing. Build `0.1 (5)` is the M4 direct-save QA candidate.
 - Increment `CURRENT_PROJECT_VERSION` in `project.yml` before each additional TestFlight upload, then run `xcodegen generate`.
 - If Xcode Accounts cannot be used for upload, pass the local App Store Connect API key to `xcodebuild -exportArchive` with `-authenticationKeyPath`, `-authenticationKeyID`, and `-authenticationKeyIssuerID`.
 
