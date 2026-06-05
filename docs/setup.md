@@ -197,7 +197,7 @@ Current status as of 2026-06-04:
 
 - Signed archive succeeds locally for `com.grayline.wander`.
 - App Store Connect app record exists for bundle id `com.grayline.wander`.
-- Builds `0.1 (1)`, `0.1 (2)`, and `0.1 (3)` uploaded successfully and began App Store Connect processing.
+- Builds `0.1 (1)`, `0.1 (2)`, `0.1 (3)`, and `0.1 (4)` uploaded successfully and began App Store Connect processing.
 - Increment `CURRENT_PROJECT_VERSION` in `project.yml` before each additional TestFlight upload, then run `xcodegen generate`.
 - If Xcode Accounts cannot be used for upload, pass the local App Store Connect API key to `xcodebuild -exportArchive` with `-authenticationKeyPath`, `-authenticationKeyID`, and `-authenticationKeyIssuerID`.
 

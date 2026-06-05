@@ -1010,3 +1010,56 @@ Completion checkpoint:
 - Uploaded build `0.1 (3)` through `xcodebuild -exportArchive` with the App Store Connect API key.
 - Result: App Store Connect analysis passed, upload reached 100%, and Xcode output ended with `Uploaded Wander`.
 - Current state: build `0.1 (3)` is uploaded and processing in App Store Connect. This build should remove fake seeded people/places from default/TestFlight launches while keeping sign-in available.
+
+## 2026-06-04 18:19 PDT - Codex - M4 QA Pass Start
+
+Agent: Codex
+Branch: `main`
+Starting commit: `2261cd4`
+Starting status: local `main` matches `origin/main`.
+
+Goal: run the M4 QA pass after Joe confirmed the first TestFlight smoke and M4 remote-sync slice are done.
+
+Mission Control: `http://localhost:4000/api/tasks` is unreachable from this session, so this log is the active coordination record.
+
+Expected files to touch:
+
+- `docs/agent-log.md`
+- `docs/roadmap.md`
+- `Wander/Features/Map/MapScreen.swift`
+- `project.yml`
+- `Wander.xcodeproj/project.pbxproj`
+- `docs/setup.md`
+- possible small QA fixes if checks expose a concrete bug
+
+QA scope:
+
+- Fresh signed-out install behavior.
+- New signed-in account behavior.
+- Existing signed-in account behavior.
+- Sign out and sign back in behavior.
+- Build/test status and whether a new TestFlight upload is needed.
+
+Checkpoint:
+
+- Ran full Xcode test suite. First sandboxed run failed on CoreSimulator/SwiftPM cache permissions only. Elevated run passed:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Installed and launched the debug build on the previously-used iPhone 17 Pro simulator. It showed `JL`, but that simulator had a prior Clerk/keychain session, so it represented an existing-session path rather than true first-run.
+- Created a temporary clean simulator `Wander-M4-QA` (`4252EC90-35A5-4018-82AA-4BFEBAD0289B`) to verify true first-run behavior.
+- Clean first-run initially showed `JL` in the map search avatar even with no session. Root cause: `Wander/Features/Map/MapScreen.swift` hardcoded `WanderAvatar(initials: "JL", ...)`.
+- Fixed the map search avatar to use `store.currentUser.initials`. On clean first-run it now shows generic `Y` from the default `You` profile and no seeded Joe/Maya/Ryan/Woodcat place content.
+- Reran the full Xcode test suite after the avatar fix; result: passed.
+- QA blocker found: direct signed-in own-place remote save is still not implemented in `SupabaseUserPlaceRepository.save(_:)` (`notImplemented("direct user place save RPC")`). Current remote wiring covers visible places, profile search, follow/unfollow, block/unblock, and social save, but not direct add/save to Supabase.
+
+Completion checkpoint:
+
+- Updated `docs/roadmap.md` to mark M3 as done baseline and M4 as in QA/blocked on direct signed-in own-place save.
+- Bumped `CURRENT_PROJECT_VERSION` from `3` to `4` and regenerated `Wander.xcodeproj`.
+- Reran full Xcode test suite after regeneration:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: passed.
+- Built signed archive:
+  `/private/tmp/Wander-0.1-build4.xcarchive`
+- Uploaded build `0.1 (4)` through `xcodebuild -exportArchive` with the App Store Connect API key.
+- Result: App Store Connect analysis passed, upload reached 100%, and Xcode output ended with `Uploaded Wander`.
+- Current state: build `0.1 (4)` is uploaded and processing in App Store Connect. It includes the clean first-run avatar fix, but M4 QA is not green until direct signed-in own-place save is implemented and retested.

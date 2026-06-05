@@ -98,7 +98,7 @@ struct MapScreen: View {
 
             VStack(spacing: 0) {
                 VStack(spacing: WanderTheme.spacing2) {
-                    SearchBar(query: $mapQuery)
+                    SearchBar(query: $mapQuery, userInitials: store.currentUser.initials)
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: WanderTheme.spacing1) {
                             ForEach(MapFilter.allCases) { filter in
@@ -245,6 +245,7 @@ private enum MapFilter: String, CaseIterable, Identifiable {
 
 private struct SearchBar: View {
     @Binding var query: String
+    let userInitials: String
 
     var body: some View {
         HStack(spacing: WanderTheme.spacing2) {
@@ -257,7 +258,7 @@ private struct SearchBar: View {
                 .submitLabel(.search)
             Spacer()
             if query.isEmpty {
-                WanderAvatar(initials: "JL", size: 28, color: WanderTheme.avatarSofia.color)
+                WanderAvatar(initials: userInitials, size: 28, color: WanderTheme.terracotta.color)
             } else {
                 Button {
                     query = ""
