@@ -1144,3 +1144,27 @@ Actions:
 Current state:
 
 - Public link exists, but it may show no available build until App Store Connect beta review/export compliance is completed and build `0.1 (5)` is attached to `Wander Alpha`.
+
+## 2026-06-05 09:54 PDT - Codex - Attach Build 5 To Public TestFlight
+
+Agent: Codex
+Branch: `main`
+Starting commit: `638e99a`
+Starting status: local `main` matches `origin/main`.
+
+Goal: get the latest build onto the public TestFlight link and handle export compliance if possible.
+
+Actions:
+
+- Attempted to patch build `0.1 (5)` export compliance to `usesNonExemptEncryption=false`; Apple returned that the value was already set and cannot be updated.
+- Re-queried build `0.1 (5)` and confirmed `usesNonExemptEncryption=false`.
+- Retried attaching build `0.1 (5)` (`7fdc7c41-12e6-40ff-88cd-3348e2942c88`) to external group `Wander Alpha`.
+- App Store Connect accepted the attach.
+- Final read-back showed public link enabled, cap 100, feedback enabled, and build `0.1 (5)` attached.
+- Verified `https://testflight.apple.com/join/knEhRa6t` responds with HTTP 200.
+
+Current state:
+
+- Public TestFlight link is live: `https://testflight.apple.com/join/knEhRa6t`
+- Attached build: `0.1 (5)`
+- Export compliance: `usesNonExemptEncryption=false`
