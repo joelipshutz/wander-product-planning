@@ -1168,3 +1168,30 @@ Current state:
 - Public TestFlight link is live: `https://testflight.apple.com/join/knEhRa6t`
 - Attached build: `0.1 (5)`
 - Export compliance: `usesNonExemptEncryption=false`
+
+## 2026-06-05 15:03 PDT - Codex - TestFlight Link Not Accepting Testers
+
+Agent: Codex
+Branch: `main`
+Starting commit: `4bf3c3f`
+Starting status: local `main` matches `origin/main`.
+
+Goal: investigate Joe seeing "not accepting new testers" on the public TestFlight link and open the link to anyone if App Store Connect allows it.
+
+Plan:
+
+- Query current `Wander Alpha` beta group settings, cap, public link state, and attached builds.
+- Remove or raise the public-link cap if it is limiting joins.
+- If group settings are already open, identify whether Apple beta review or build external availability is the remaining blocker.
+
+Actions:
+
+- Queried `Wander Alpha`; public link was enabled, build `0.1 (5)` was attached, export compliance was `usesNonExemptEncryption=false`, and the group still had `publicLinkLimitEnabled=true` with limit 100.
+- Queried beta review submission for build `0.1 (5)`; Apple reports `betaReviewState=WAITING_FOR_REVIEW`, submitted `2026-06-05T09:53:38-07:00`.
+- Patched `Wander Alpha` to keep public link enabled, keep feedback enabled, and set `publicLinkLimitEnabled=false`.
+- App Store Connect accepted the patch. Read-back confirms `publicLinkLimitEnabled=false`, public link still `https://testflight.apple.com/join/knEhRa6t`, and build `0.1 (5)` remains attached.
+
+Current state:
+
+- Anyone with the link can join once Apple approves external TestFlight review.
+- The remaining blocker is not group settings; it is Apple beta review pending for build `0.1 (5)`.
