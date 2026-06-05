@@ -1121,3 +1121,26 @@ Completion checkpoint:
 - Uploaded build `0.1 (5)` through `xcodebuild -exportArchive` with the App Store Connect API key.
 - Result: App Store Connect analysis passed, upload reached 90%, and Xcode output ended with `Uploaded Wander`.
 - Current state: build `0.1 (5)` is uploaded and processing in App Store Connect. Next step is Joe device-smoke testing direct current-location/manual save on TestFlight after processing completes.
+
+## 2026-06-05 09:47 PDT - Codex - Public TestFlight Link Setup
+
+Agent: Codex
+Branch: `main`
+Starting commit: `89e22bd`
+Starting status: local `main` matches `origin/main`.
+
+Goal: create/find the public TestFlight share link for Wander.
+
+Actions:
+
+- Queried App Store Connect for app bundle `com.grayline.wander`; app id is `6776850787`, name is `Wander: Find Places`.
+- Initial TestFlight beta group query returned no groups.
+- Created external beta group `Wander Alpha` with public link enabled, feedback enabled, and 100-tester cap.
+- Public link created: `https://testflight.apple.com/join/knEhRa6t`.
+- Attempted to attach build `0.1 (5)` (`7fdc7c41-12e6-40ff-88cd-3348e2942c88`) to the group.
+- App Store Connect rejected the build attach with `Build is not assignable` / `Build is not in an externally assignable state.`
+- Follow-up query showed build `0.1 (5)` is `VALID`, but `usesNonExemptEncryption` is still null and beta app review contact fields are empty.
+
+Current state:
+
+- Public link exists, but it may show no available build until App Store Connect beta review/export compliance is completed and build `0.1 (5)` is attached to `Wander Alpha`.
