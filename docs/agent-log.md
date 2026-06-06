@@ -1195,3 +1195,30 @@ Current state:
 
 - Anyone with the link can join once Apple approves external TestFlight review.
 - The remaining blocker is not group settings; it is Apple beta review pending for build `0.1 (5)`.
+
+## 2026-06-05 20:49 PDT - Codex - M5 Add Capture Feedback Logged
+
+Agent: Codex
+Branch: `main`
+Starting commit: `783c765`
+Starting status: local `main` matches `origin/main`.
+
+Goal: log Joe's TestFlight feedback and transition from M4 into M5.
+
+Context:
+
+- Joe confirmed sign-in is working and said to move to M5.
+- Add flow feedback from TestFlight:
+  - No back button once the user starts adding a place.
+  - Title should be `add a place`.
+  - Remove `where's it from` and `pick a source`; the app should feel like it will fill in what it can.
+  - `I'm here now` needs a real location permission ask and nearby-place resolution.
+  - Current build still returns deterministic `Maru Coffee`, which is not acceptable for M5.
+  - Manual add should resolve real place candidates.
+  - Paste link and photo add are still not real extraction.
+  - Need clarity that LLM is for parsing/extraction hints, while canonical place identity/coordinates should come from MapKit/place-provider search.
+
+Actions:
+
+- Updated `docs/roadmap.md` to mark M4 as done baseline and M5 as in progress.
+- Updated `docs/open-questions.md` with explicit M5 Add capture notes for navigation, copy, location, manual resolution, link extraction, and photo extraction.

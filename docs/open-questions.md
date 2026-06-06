@@ -1,6 +1,6 @@
 # Open Questions
 
-Last updated: 2026-06-02
+Last updated: 2026-06-05
 
 These are the known unresolved questions and risks. Some are intentionally deferred; do not reopen locked decisions unless Joe asks.
 
@@ -32,6 +32,17 @@ These are the known unresolved questions and risks. Some are intentionally defer
 | Which cheap LLM path parses Discover queries? | Use a cheap/swappable model behind `LLMFilterParser`. | Send only raw phrase + allowed filter schema. |
 | What extraction providers are used for link/photo/social saves? | Evaluate Slate extraction first, then implement backend job lanes. | Known gaps: Instagram and location extraction are weak in Slate today. |
 | What confidence and fallback UX should extraction use? | Keep candidate confirmation and manual rescue mandatory. | Never pretend extraction worked if confidence is low. |
+
+## M5 Add Capture Notes
+
+| Issue | Recommendation | Notes |
+|---|---|---|
+| Add flow navigation | Add an explicit back button/escape path after the user starts adding. | Current TestFlight build can strand the user in the Add flow. |
+| Add flow copy | Use title `add a place`; remove `where's it from` and `pick a source`. | Source selection can remain structurally, but copy should feel like "we'll fill in what we can." |
+| Current location add | Ask for location permission and resolve nearby candidates from real location. | Do not show deterministic `Maru Coffee` as the default "I'm here now" result. If permission is denied/unavailable, fall back to manual search. |
+| Manual add resolution | Use MapKit/place-provider search for canonical place identity. | LLM can parse messy user text into query/category/area hints, but it should not invent the canonical place or coordinates. |
+| Paste link extraction | Create real source artifact + extraction job lane. | Google Maps/link sources should return candidates; low-confidence extraction must route to manual rescue. |
+| Photo add extraction | Add real photo import/capture plus backend extraction lane. | Photos are not working until PhotosUI/import and extraction jobs exist. |
 
 ## Deferred Product Questions
 
