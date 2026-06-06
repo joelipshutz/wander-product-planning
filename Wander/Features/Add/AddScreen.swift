@@ -142,13 +142,22 @@ struct AddScreen: View {
                     .textFieldStyle(.plain)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    .submitLabel(.search)
+                    .onSubmit {
+                        guard !linkInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                              !isResolvingCandidates
+                        else { return }
+                        Task {
+                            await resolveLinkCandidates()
+                        }
+                    }
                     .lineLimit(2, reservesSpace: true)
                     .padding(WanderTheme.spacing3)
                     .background(WanderTheme.surfaceRaised.color)
                     .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusMedium))
             }
 
-            Text("Obvious map links can turn into place candidates now. Weird links become drafts.")
+            Text("Some map links can turn into place candidates now. Short links that do not expand become drafts.")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(WanderTheme.textMuted.color)
 
@@ -157,7 +166,7 @@ struct AddScreen: View {
             }
 
             WanderPrimaryButton(
-                title: isResolvingCandidates ? "checking link..." : "find from link",
+                title: isResolvingCandidates ? "checking link..." : "find place from link",
                 systemImage: "magnifyingglass",
                 isDisabled: linkInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isResolvingCandidates
             ) {
@@ -169,7 +178,7 @@ struct AddScreen: View {
             Button {
                 saveLinkDraft()
             } label: {
-                Label("save as draft", systemImage: "tray.and.arrow.down")
+                Label("save link as draft", systemImage: "tray.and.arrow.down")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(WanderTheme.terracotta.color)
                     .frame(maxWidth: .infinity, minHeight: 44)

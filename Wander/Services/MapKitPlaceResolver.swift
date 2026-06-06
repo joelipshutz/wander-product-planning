@@ -6,6 +6,7 @@ enum PlaceResolutionError: Error, Equatable {
     case locationDenied
     case locationUnavailable
     case noCandidates
+    case shortLinkNeedsExtraction
     case unsupportedLink
 }
 
@@ -18,8 +19,10 @@ extension PlaceResolutionError: LocalizedError {
             "Could not find where you are right now. Try adding the place manually."
         case .noCandidates:
             "No matching places found. Try a more specific name or nearby area."
+        case .shortLinkNeedsExtraction:
+            "Short map links need extraction. Save this as a draft for now or add it manually."
         case .unsupportedLink:
-            "I could not find a place in that link yet. Save it as a draft or add it manually."
+            "This link does not show enough place info yet. Save it as a draft or add it manually."
         }
     }
 }
@@ -71,11 +74,46 @@ final class MapKitPlaceResolver: PlaceCandidateResolving {
     }
 
     func resolveLink(_ input: LinkPlaceInput) async throws -> [PlaceCandidate] {
-        guard let manualInput = LinkPlaceParser().manualInput(from: input) else {
-            throw PlaceResolutionError.unsupportedLink
+        let parser = LinkPlaceParser()
+
+        if let manualInput = parser.manualInput(from: input) {
+            return try await resolveManualEntry(manualInput)
         }
 
-        return try await resolveManualEntry(manualInput)
+        if parser.isShortMapLink(input) {
+            if let expandedValue = try? await expandedURLString(from: input),
+               let manualInput = parser.manualInput(from: LinkPlaceInput(rawValue: expandedValue)) {
+                return try await resolveManualEntry(manualInput)
+            }
+
+            throw PlaceResolutionError.shortLinkNeedsExtraction
+        }
+
+        throw PlaceResolutionError.unsupportedLink
+    }
+
+    private func expandedURLString(from input: LinkPlaceInput) async throws -> String? {
+        let rawValue = input.rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: rawValue), let host = url.host?.lowercased() else {
+            return nil
+        }
+
+        guard ["maps.app.goo.gl", "goo.gl", "g.co"].contains(host) else {
+            return nil
+        }
+
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)
+        request.httpMethod = "GET"
+        request.setValue("Mozilla/5.0 Wander link resolver", forHTTPHeaderField: "User-Agent")
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let expandedURL = response.url,
+              expandedURL.absoluteString != rawValue
+        else {
+            return nil
+        }
+
+        return expandedURL.absoluteString
     }
 
     private func mapItems(_ items: [MKMapItem], fallbackCategory: String?, limit: Int) -> [PlaceCandidate] {

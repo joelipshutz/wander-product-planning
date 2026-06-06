@@ -1378,3 +1378,36 @@ Checkpoint:
 - Set export compliance to `usesNonExemptEncryption=false`, attached build `0.1 (8)` to public group `Wander Alpha`, and submitted it for external TestFlight review.
 - Apple currently reports build `0.1 (8)` beta review state `WAITING_FOR_REVIEW`.
 - Final App Store Connect check after push: build `0.1 (8)` is `VALID`, `usesNonExemptEncryption=false`, and external beta review state is `APPROVED`.
+
+## 2026-06-06 12:57 PDT - Codex - M5 Build 9 Friend Test Batch
+
+Agent: Codex
+Branch: `main`
+Starting commit: `1af695e`
+Starting status: local `main` matches `origin/main`; worktree clean.
+
+Goal: fix confusing short Google Maps link behavior and prepare a clearer Build 9 friend-test batch.
+
+Plan:
+
+- Try to resolve Google Maps short links by following their HTTPS redirect before falling back.
+- If a short link still does not expose a place name, show honest copy that short links need extraction and can be saved as drafts.
+- Polish Add link copy so testers understand what works now versus what is queued for backend extraction.
+- Keep backend extraction workers out of this batch; M6 owns real extraction execution.
+- Run full tests, upload a new TestFlight build, and provide a friend-ready testing message.
+
+Checkpoint:
+
+- Added short-map-link detection for `maps.app.goo.gl`, `goo.gl`, and `g.co`.
+- `MapKitPlaceResolver.resolveLink` now follows known short-link HTTPS redirects, reparses the final URL, and then runs MapKit candidate search.
+- Checked Joe's screenshot link with `curl -sIL`; it redirects to a full `maps.google.com/maps?q=Tahoe+Waterman's+Landing...` URL, which the parser now covers.
+- Added specific short-link fallback copy: "Short map links need extraction. Save this as a draft for now or add it manually."
+- Updated Add link helper/button/draft copy so the feature reads as partial support, not broken extraction.
+- Added tests for short-link classification, expanded Google Maps redirect destinations, and short-link fallback copy.
+- Ran full Xcode tests before and after the build number bump:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: passed both runs.
+- Bumped `CURRENT_PROJECT_VERSION` to `9`, archived `/private/tmp/Wander-0.1-build9.xcarchive`, and uploaded build `0.1 (9)`.
+- App Store Connect build id for `0.1 (9)`: `c0f30e62-bda5-457b-82f8-a960635f60c7`; processing state `VALID`.
+- Set export compliance to `usesNonExemptEncryption=false`, attached build `0.1 (9)` to public group `Wander Alpha`, and submitted it for external TestFlight review.
+- Apple currently reports build `0.1 (9)` beta review state `WAITING_FOR_REVIEW`.

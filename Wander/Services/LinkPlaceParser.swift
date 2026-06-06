@@ -27,6 +27,20 @@ struct LinkPlaceParser {
         return nil
     }
 
+    func isShortMapLink(_ input: LinkPlaceInput) -> Bool {
+        let rawValue = input.rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: rawValue),
+              let host = url.host?.lowercased()
+        else {
+            return false
+        }
+
+        return host == "maps.app.goo.gl"
+            || host == "goo.gl"
+            || host == "g.co"
+            || host == "maps.google.com" && url.path.lowercased().contains("/maps")
+    }
+
     private func queryPlaceName(from components: URLComponents) -> String? {
         let preferredKeys = ["q", "query", "destination", "daddr", "address", "place"]
         return firstQueryValue(in: components, keys: preferredKeys)

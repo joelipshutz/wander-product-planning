@@ -12,6 +12,17 @@ final class LinkPlaceParserTests: XCTestCase {
         XCTAssertEqual(input, ManualPlaceInput(name: "Larchmont Noodles", areaHint: nil, category: nil))
     }
 
+    func testParsesExpandedGoogleMapsShortLinkDestination() {
+        let input = parser.manualInput(
+            from: LinkPlaceInput(rawValue: "https://maps.google.com/maps?q=Tahoe+Waterman's+Landing,+5166+N+Lake+Blvd,+Carnelian+Bay,+CA+96140&ftid=0x8099634d085665a5:0x9db0380829c24219")
+        )
+
+        XCTAssertEqual(
+            input,
+            ManualPlaceInput(name: "Tahoe Waterman's Landing, 5166 N Lake Blvd, Carnelian Bay, CA 96140", areaHint: nil, category: nil)
+        )
+    }
+
     func testParsesAppleMapsQuery() {
         let input = parser.manualInput(
             from: LinkPlaceInput(rawValue: "https://maps.apple.com/?q=Maru%20Coffee&ll=34.0407,-118.2354")
@@ -32,11 +43,19 @@ final class LinkPlaceParserTests: XCTestCase {
         let input = parser.manualInput(from: LinkPlaceInput(rawValue: "https://maps.app.goo.gl/abc123"))
 
         XCTAssertNil(input)
+        XCTAssertTrue(parser.isShortMapLink(LinkPlaceInput(rawValue: "https://maps.app.goo.gl/abc123")))
     }
 
     func testTreatsPlainTextAsManualHint() {
         let input = parser.manualInput(from: LinkPlaceInput(rawValue: "Courage Bagels near Virgil"))
 
         XCTAssertEqual(input, ManualPlaceInput(name: "Courage Bagels near Virgil", areaHint: nil, category: nil))
+    }
+
+    func testShortLinkCopyIsSpecific() {
+        XCTAssertEqual(
+            PlaceResolutionError.shortLinkNeedsExtraction.localizedDescription,
+            "Short map links need extraction. Save this as a draft for now or add it manually."
+        )
     }
 }
