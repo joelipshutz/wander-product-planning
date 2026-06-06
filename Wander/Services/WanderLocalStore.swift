@@ -314,6 +314,10 @@ final class WanderStore: ObservableObject {
         )
     }
 
+    func linkCandidates(_ rawValue: String) async throws -> [PlaceCandidate] {
+        try await placeResolver.resolveLink(LinkPlaceInput(rawValue: rawValue))
+    }
+
     @discardableResult
     func saveCandidate(
         _ candidate: PlaceCandidate,

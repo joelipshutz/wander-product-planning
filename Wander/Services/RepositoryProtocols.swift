@@ -36,6 +36,10 @@ struct ManualPlaceInput: Equatable {
     let category: String?
 }
 
+struct LinkPlaceInput: Equatable {
+    let rawValue: String
+}
+
 struct PlaceCandidate: Identifiable, Equatable {
     let id: String
     let name: String
@@ -152,6 +156,7 @@ protocol BlockRepository {
 protocol PlaceCandidateResolving {
     func resolveCurrentLocation() async throws -> [PlaceCandidate]
     func resolveManualEntry(_ input: ManualPlaceInput) async throws -> [PlaceCandidate]
+    func resolveLink(_ input: LinkPlaceInput) async throws -> [PlaceCandidate]
 }
 
 @MainActor

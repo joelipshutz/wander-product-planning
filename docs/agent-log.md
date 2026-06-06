@@ -1291,3 +1291,51 @@ Final checkpoint, 2026-06-05 21:16 PDT:
 - Implementation commit: `e082b63 feat: resolve add place candidates`; pushed to `origin/main`.
 - Verified local `main` and `origin/main` matched `e082b63d022a04b6e3567acb5fd78efda04c8457` after push.
 - Rechecked App Store Connect after upload: build `0.1 (6)` external TestFlight review is `APPROVED`.
+
+## 2026-06-05 22:41 PDT - Codex - M5 Link Capture Candidate Flow
+
+Agent: Codex
+Branch: `main`
+Starting commit: `d563730`
+Starting status: local `main` matches `origin/main`; worktree clean.
+
+Goal: continue M5 by turning paste-link Add from an immediate draft shell into a real candidate-resolution flow for map/location links, while preserving draft fallback for opaque or low-confidence links.
+
+Expected files to touch:
+
+- `Wander/Features/Add/AddScreen.swift`
+- `Wander/Services/RepositoryProtocols.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- new service/parser files under `Wander/Services/`
+- focused tests under `WanderTests/`
+- `project.yml` / `Wander.xcodeproj/project.pbxproj` if new source files require regeneration
+- `docs/agent-log.md`
+
+Plan:
+
+- Add a link-entry step in Add instead of creating a draft immediately.
+- Parse obvious place hints from Google Maps, Apple Maps, and Instagram location URLs.
+- Resolve parsed hints through MapKit candidate search and require confirmation before save.
+- If parsing/resolution fails, keep a draft and offer manual rescue.
+- Leave backend extraction jobs and photo import/extraction as the next M5 slices.
+
+Notes:
+
+- Mission Control was checked with `curl -s http://localhost:4000/api/tasks`; it is still unreachable locally (`curl` exit 7), so this repo log remains the coordination record.
+
+Checkpoint:
+
+- Added `LinkPlaceInput` and `PlaceCandidateResolving.resolveLink`.
+- Added `LinkPlaceParser` for deterministic local hints from Google Maps place paths, Apple Maps query links, Instagram location slugs, and plain text.
+- Added Add `link` step with paste field, `find from link`, and explicit `save as draft` fallback.
+- Link candidates now flow through MapKit search and reuse the existing confirm/details/save path with `sourceType = link`.
+- Opaque/short links still become drafts instead of fake candidates.
+- Added parser tests and store boundary tests.
+- Ran full test suite after new files and again after build-number regeneration:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: passed both runs.
+- Bumped `CURRENT_PROJECT_VERSION` to `7`, archived `/private/tmp/Wander-0.1-build7.xcarchive`, and uploaded build `0.1 (7)` with `xcodebuild -exportArchive`.
+- Upload succeeded and App Store Connect reported `Uploaded Wander`; immediate API polls had not yet surfaced build `7`, so export compliance/public-group attachment remains pending until Apple indexes the build.
+- Follow-up App Store Connect poll surfaced build `0.1 (7)` as build id `e7e0991e-bf35-4004-8a80-7bc6eef6e1e2`, processing state `VALID`.
+- Set export compliance to `usesNonExemptEncryption=false`, attached build `0.1 (7)` to public group `Wander Alpha`, and submitted it for external TestFlight review.
+- Apple reports build `0.1 (7)` beta review state `WAITING_FOR_REVIEW`.

@@ -41,6 +41,8 @@ struct AddScreen: View {
                     switch step {
                     case .source:
                         sourcePicker
+                    case .link:
+                        linkForm
                     case .manual:
                         manualForm
                     case .confirm:
@@ -96,10 +98,10 @@ struct AddScreen: View {
                     await resolveCurrentLocationCandidates()
                 }
             }
-            SourceRow(title: AddSourceType.link.title, subtitle: "real extraction comes next", systemImage: "link", isDisabled: isResolvingCandidates) {
+            SourceRow(title: AddSourceType.link.title, subtitle: "paste a map or location link", systemImage: "link", isDisabled: isResolvingCandidates) {
                 resolutionMessage = nil
-                draft = store.createUnresolvedDraft(sourceType: .link, originalInput: linkInput)
-                step = .draft
+                selectedSource = .link
+                step = .link
             }
             SourceRow(title: AddSourceType.manual.title, subtitle: "search by name or neighborhood", systemImage: "square.and.pencil", isDisabled: isResolvingCandidates) {
                 resolutionMessage = nil
@@ -122,6 +124,56 @@ struct AddScreen: View {
                 .foregroundStyle(WanderTheme.textMuted.color)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.top, WanderTheme.spacing2)
+        }
+    }
+
+    private var linkForm: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
+            VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
+                Text("link")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(WanderTheme.textMuted.color)
+                TextField("paste a Google Maps, Apple Maps, or location link", text: $linkInput, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .lineLimit(2, reservesSpace: true)
+                    .padding(WanderTheme.spacing3)
+                    .background(WanderTheme.surfaceRaised.color)
+                    .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusMedium))
+            }
+
+            Text("Obvious map links can turn into place candidates now. Weird links become drafts.")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(WanderTheme.textMuted.color)
+
+            if let resolutionMessage {
+                InlineMessage(text: resolutionMessage)
+            }
+
+            WanderPrimaryButton(
+                title: isResolvingCandidates ? "checking link..." : "find from link",
+                systemImage: "magnifyingglass",
+                isDisabled: linkInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isResolvingCandidates
+            ) {
+                Task {
+                    await resolveLinkCandidates()
+                }
+            }
+
+            Button {
+                saveLinkDraft()
+            } label: {
+                Label("save as draft", systemImage: "tray.and.arrow.down")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(WanderTheme.terracotta.color)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(WanderTheme.surfaceBone.color)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(linkInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .opacity(linkInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
         }
     }
 
@@ -330,6 +382,7 @@ struct AddScreen: View {
         manualName = ""
         manualArea = ""
         manualCategory = "coffee"
+        linkInput = ""
         selectedAnswers = [:]
         savedResult = nil
         draft = nil
@@ -341,10 +394,18 @@ struct AddScreen: View {
         resolutionMessage = nil
 
         switch step {
+        case .link:
+            step = .source
         case .manual:
             step = .source
         case .confirm:
-            step = selectedSource == .manual ? .manual : .source
+            if selectedSource == .manual {
+                step = .manual
+            } else if selectedSource == .link {
+                step = .link
+            } else {
+                step = .source
+            }
         case .details:
             step = .confirm
         case .draft:
@@ -468,6 +529,36 @@ struct AddScreen: View {
         }
     }
 
+    @MainActor
+    private func resolveLinkCandidates() async {
+        selectedSource = .link
+        resolutionMessage = nil
+        isResolvingCandidates = true
+        defer { isResolvingCandidates = false }
+
+        do {
+            candidates = try await store.linkCandidates(linkInput)
+            selectedCandidateID = candidates.first?.id
+            selectedVisibility = store.defaultVisibility
+            guard !candidates.isEmpty else {
+                resolutionMessage = PlaceResolutionError.noCandidates.localizedDescription
+                return
+            }
+            step = .confirm
+        } catch {
+            candidates = []
+            selectedCandidateID = nil
+            resolutionMessage = resolutionCopy(for: error)
+        }
+    }
+
+    private func saveLinkDraft() {
+        selectedSource = .link
+        resolutionMessage = nil
+        draft = store.createUnresolvedDraft(sourceType: .link, originalInput: linkInput)
+        step = .draft
+    }
+
     private func resolutionCopy(for error: Error) -> String {
         if let error = error as? LocalizedError,
            let description = error.errorDescription {
@@ -502,6 +593,7 @@ struct AddScreen: View {
 
 private enum AddStep {
     case source
+    case link
     case manual
     case confirm
     case details
@@ -511,6 +603,7 @@ private enum AddStep {
     var subtitle: String {
         switch self {
         case .source: "Start with where you are, a name, a link, or a photo."
+        case .link: "Paste the link; we'll look for the place."
         case .manual: "Name is enough; area helps."
         case .confirm: "Pick the place, status, and who can see it."
         case .details: "optional taps for future you."
@@ -521,7 +614,7 @@ private enum AddStep {
 
     var canGoBack: Bool {
         switch self {
-        case .manual, .confirm, .details, .draft:
+        case .link, .manual, .confirm, .details, .draft:
             true
         case .source, .saved:
             false

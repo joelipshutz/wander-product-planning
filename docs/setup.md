@@ -197,11 +197,12 @@ Current status as of 2026-06-04:
 
 - Signed archive succeeds locally for `com.grayline.wander`.
 - App Store Connect app record exists for bundle id `com.grayline.wander`.
-- Builds `0.1 (1)`, `0.1 (2)`, `0.1 (3)`, `0.1 (4)`, `0.1 (5)`, and `0.1 (6)` uploaded successfully and began App Store Connect processing. Build `0.1 (6)` is the next M5 Add capture QA candidate.
+- Builds `0.1 (1)` through `0.1 (7)` uploaded successfully and began App Store Connect processing. Build `0.1 (7)` is the next M5 Add link-capture QA candidate.
 - Public TestFlight group `Wander Alpha` exists with public link enabled and no custom tester cap: `https://testflight.apple.com/join/knEhRa6t`.
 - Build `0.1 (5)` is attached to the public group. Export compliance is set to `usesNonExemptEncryption=false`.
 - Build `0.1 (5)` passed external TestFlight review.
 - Build `0.1 (6)` is attached to `Wander Alpha`, export compliance is set to `usesNonExemptEncryption=false`, and external TestFlight review is `APPROVED`.
+- Build `0.1 (7)` is attached to `Wander Alpha`, export compliance is set to `usesNonExemptEncryption=false`, and external TestFlight review is `WAITING_FOR_REVIEW`.
 - Increment `CURRENT_PROJECT_VERSION` in `project.yml` before each additional TestFlight upload, then run `xcodegen generate`.
 - If Xcode Accounts cannot be used for upload, pass the local App Store Connect API key to `xcodebuild -exportArchive` with `-authenticationKeyPath`, `-authenticationKeyID`, and `-authenticationKeyIssuerID`.
 

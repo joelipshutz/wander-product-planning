@@ -6,6 +6,7 @@ enum PlaceResolutionError: Error, Equatable {
     case locationDenied
     case locationUnavailable
     case noCandidates
+    case unsupportedLink
 }
 
 extension PlaceResolutionError: LocalizedError {
@@ -17,6 +18,8 @@ extension PlaceResolutionError: LocalizedError {
             "Could not find where you are right now. Try adding the place manually."
         case .noCandidates:
             "No matching places found. Try a more specific name or nearby area."
+        case .unsupportedLink:
+            "I could not find a place in that link yet. Save it as a draft or add it manually."
         }
     }
 }
@@ -65,6 +68,14 @@ final class MapKitPlaceResolver: PlaceCandidateResolving {
             throw PlaceResolutionError.noCandidates
         }
         return candidates
+    }
+
+    func resolveLink(_ input: LinkPlaceInput) async throws -> [PlaceCandidate] {
+        guard let manualInput = LinkPlaceParser().manualInput(from: input) else {
+            throw PlaceResolutionError.unsupportedLink
+        }
+
+        return try await resolveManualEntry(manualInput)
     }
 
     private func mapItems(_ items: [MKMapItem], fallbackCategory: String?, limit: Int) -> [PlaceCandidate] {

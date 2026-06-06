@@ -150,6 +150,28 @@ final class WanderStoreTests: XCTestCase {
         XCTAssertEqual(resolver.manualInputs, [ManualPlaceInput(name: "Larchmont Noodles", areaHint: "LA", category: "restaurant")])
     }
 
+    func testLinkCandidatesUseInjectedResolverInput() async throws {
+        let resolver = FakePlaceResolver(
+            linkCandidates: [
+                PlaceCandidate(
+                    id: "mapkit_link_place",
+                    name: "Linked Place",
+                    category: "restaurant",
+                    latitude: 34.07,
+                    longitude: -118.32,
+                    sourceProviderPlaceID: "mapkit_link_place",
+                    confidence: 0.86
+                )
+            ]
+        )
+        let store = WanderStore(fixtures: WanderFixtures.empty(), placeResolver: resolver)
+
+        let candidates = try await store.linkCandidates("https://maps.google.com/?q=Linked+Place")
+
+        XCTAssertEqual(candidates.map(\.name), ["Linked Place"])
+        XCTAssertEqual(resolver.linkInputs, [LinkPlaceInput(rawValue: "https://maps.google.com/?q=Linked+Place")])
+    }
+
     func testSaveCandidatePersistsQuestionAttributes() {
         let store = makeStore()
         let candidate = PlaceCandidate(
@@ -609,14 +631,18 @@ private final class FakeUserPlaceRepository: UserPlaceRepository {
 private final class FakePlaceResolver: PlaceCandidateResolving {
     private let currentLocationResult: Result<[PlaceCandidate], Error>
     private let manualResult: Result<[PlaceCandidate], Error>
+    private let linkResult: Result<[PlaceCandidate], Error>
     private(set) var currentLocationCallCount = 0
     private(set) var manualInputs: [ManualPlaceInput] = []
+    private(set) var linkInputs: [LinkPlaceInput] = []
 
     init(
         currentLocationCandidates: [PlaceCandidate] = [],
         manualCandidates: [PlaceCandidate] = [],
+        linkCandidates: [PlaceCandidate] = [],
         currentLocationError: Error? = nil,
-        manualError: Error? = nil
+        manualError: Error? = nil,
+        linkError: Error? = nil
     ) {
         if let currentLocationError {
             self.currentLocationResult = .failure(currentLocationError)
@@ -629,6 +655,12 @@ private final class FakePlaceResolver: PlaceCandidateResolving {
         } else {
             self.manualResult = .success(manualCandidates)
         }
+
+        if let linkError {
+            self.linkResult = .failure(linkError)
+        } else {
+            self.linkResult = .success(linkCandidates)
+        }
     }
 
     func resolveCurrentLocation() async throws -> [PlaceCandidate] {
@@ -639,5 +671,10 @@ private final class FakePlaceResolver: PlaceCandidateResolving {
     func resolveManualEntry(_ input: ManualPlaceInput) async throws -> [PlaceCandidate] {
         manualInputs.append(input)
         return try manualResult.get()
+    }
+
+    func resolveLink(_ input: LinkPlaceInput) async throws -> [PlaceCandidate] {
+        linkInputs.append(input)
+        return try linkResult.get()
     }
 }
