@@ -1411,3 +1411,4 @@ Checkpoint:
 - App Store Connect build id for `0.1 (9)`: `c0f30e62-bda5-457b-82f8-a960635f60c7`; processing state `VALID`.
 - Set export compliance to `usesNonExemptEncryption=false`, attached build `0.1 (9)` to public group `Wander Alpha`, and submitted it for external TestFlight review.
 - Apple currently reports build `0.1 (9)` beta review state `WAITING_FOR_REVIEW`.
+- Final App Store Connect check after push: build `0.1 (9)` is `VALID`, `usesNonExemptEncryption=false`, and external beta review state is `APPROVED`.
