@@ -40,8 +40,14 @@ struct PlaceCandidate: Identifiable, Equatable {
     let id: String
     let name: String
     let category: String
+    var address: String? = nil
+    var locality: String? = nil
+    var region: String? = nil
+    var country: String? = nil
     let latitude: Double?
     let longitude: Double?
+    var sourceProvider: String = "mapkit"
+    var sourceProviderPlaceID: String? = nil
     let confidence: Double
 }
 
@@ -140,6 +146,12 @@ protocol BlockRepository {
     func unblock(userID: String) async throws
     func blockedProfiles() async throws -> [ProfileShell]
     func isBlocked(userID: String) async throws -> Bool
+}
+
+@MainActor
+protocol PlaceCandidateResolving {
+    func resolveCurrentLocation() async throws -> [PlaceCandidate]
+    func resolveManualEntry(_ input: ManualPlaceInput) async throws -> [PlaceCandidate]
 }
 
 @MainActor

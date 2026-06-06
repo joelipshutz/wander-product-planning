@@ -18,6 +18,8 @@ struct AddScreen: View {
     @State private var selectedAnswers: [String: Set<String>] = [:]
     @State private var savedResult: SaveResult?
     @State private var draft: UnresolvedDraft?
+    @State private var isResolvingCandidates = false
+    @State private var resolutionMessage: String?
 
     private var selectedCandidate: PlaceCandidate? {
         candidates.first { $0.id == selectedCandidateID } ?? candidates.first
@@ -61,10 +63,19 @@ struct AddScreen: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
-            Text(step.kicker)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(WanderTheme.textMuted.color)
-            Text(step.title)
+            if step.canGoBack {
+                Button {
+                    goBack()
+                } label: {
+                    Label("back", systemImage: "chevron.left")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(WanderTheme.terracotta.color)
+                }
+                .buttonStyle(.plain)
+                .padding(.bottom, WanderTheme.spacing1)
+            }
+
+            Text("add a place")
                 .font(.system(size: 28, weight: .black))
             Text(step.subtitle)
                 .font(.system(size: 14, weight: .medium))
@@ -74,27 +85,39 @@ struct AddScreen: View {
 
     private var sourcePicker: some View {
         VStack(spacing: WanderTheme.spacing2) {
-            SourceRow(title: AddSourceType.currentLocation.title, subtitle: "use nearby places · not live location", systemImage: "location.fill", isPrimary: true) {
-                selectedSource = .currentLocation
-                candidates = store.currentLocationCandidates()
-                selectedCandidateID = candidates.first?.id
-                selectedVisibility = store.defaultVisibility
-                step = .confirm
+            SourceRow(
+                title: isResolvingCandidates ? "finding nearby places..." : AddSourceType.currentLocation.title,
+                subtitle: "asks once, suggests places nearby",
+                systemImage: "location.fill",
+                isPrimary: true,
+                isDisabled: isResolvingCandidates
+            ) {
+                Task {
+                    await resolveCurrentLocationCandidates()
+                }
             }
-            SourceRow(title: AddSourceType.link.title, subtitle: "saved as unresolved until backend extraction", systemImage: "link") {
+            SourceRow(title: AddSourceType.link.title, subtitle: "real extraction comes next", systemImage: "link", isDisabled: isResolvingCandidates) {
+                resolutionMessage = nil
                 draft = store.createUnresolvedDraft(sourceType: .link, originalInput: linkInput)
                 step = .draft
             }
-            SourceRow(title: AddSourceType.manual.title, subtitle: "name, area, a note", systemImage: "square.and.pencil") {
+            SourceRow(title: AddSourceType.manual.title, subtitle: "search by name or neighborhood", systemImage: "square.and.pencil", isDisabled: isResolvingCandidates) {
+                resolutionMessage = nil
                 selectedSource = .manual
                 step = .manual
             }
-            SourceRow(title: AddSourceType.photo.title, subtitle: "draft shell for the extraction job lane", systemImage: "photo") {
+            SourceRow(title: AddSourceType.photo.title, subtitle: "photo extraction comes next", systemImage: "photo", isDisabled: isResolvingCandidates) {
+                resolutionMessage = nil
                 draft = store.createUnresolvedDraft(sourceType: .photo)
                 step = .draft
             }
 
-            Text("location is used to find nearby places · not to broadcast you")
+            if let resolutionMessage {
+                InlineMessage(text: resolutionMessage)
+                    .padding(.top, WanderTheme.spacing2)
+            }
+
+            Text("location finds nearby places only · it never broadcasts you")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(WanderTheme.textMuted.color)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -104,7 +127,7 @@ struct AddScreen: View {
 
     private var manualForm: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
-            LabeledField(label: "place name", placeholder: "Maru Coffee", text: $manualName)
+            LabeledField(label: "place name", placeholder: "Larchmont Noodles", text: $manualName)
             LabeledField(label: "area", placeholder: "arts district", text: $manualArea)
 
             VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
@@ -125,11 +148,18 @@ struct AddScreen: View {
                 }
             }
 
-            WanderPrimaryButton(title: "find candidates", systemImage: "magnifyingglass", isDisabled: manualName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
-                candidates = store.manualCandidates(name: manualName, areaHint: manualArea, category: manualCategory)
-                selectedCandidateID = candidates.first?.id
-                selectedVisibility = store.defaultVisibility
-                step = candidates.isEmpty ? .draft : .confirm
+            if let resolutionMessage {
+                InlineMessage(text: resolutionMessage)
+            }
+
+            WanderPrimaryButton(
+                title: isResolvingCandidates ? "finding..." : "find this place",
+                systemImage: "magnifyingglass",
+                isDisabled: manualName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isResolvingCandidates
+            ) {
+                Task {
+                    await resolveManualCandidates()
+                }
             }
         }
     }
@@ -303,6 +333,25 @@ struct AddScreen: View {
         selectedAnswers = [:]
         savedResult = nil
         draft = nil
+        resolutionMessage = nil
+        isResolvingCandidates = false
+    }
+
+    private func goBack() {
+        resolutionMessage = nil
+
+        switch step {
+        case .manual:
+            step = .source
+        case .confirm:
+            step = selectedSource == .manual ? .manual : .source
+        case .details:
+            step = .confirm
+        case .draft:
+            step = .source
+        case .source, .saved:
+            break
+        }
     }
 
     private func prepareDetails() {
@@ -369,6 +418,65 @@ struct AddScreen: View {
         step = .saved
     }
 
+    @MainActor
+    private func resolveCurrentLocationCandidates() async {
+        selectedSource = .currentLocation
+        resolutionMessage = nil
+        isResolvingCandidates = true
+        defer { isResolvingCandidates = false }
+
+        do {
+            candidates = try await store.currentLocationCandidates()
+            selectedCandidateID = candidates.first?.id
+            selectedVisibility = store.defaultVisibility
+            guard !candidates.isEmpty else {
+                resolutionMessage = PlaceResolutionError.noCandidates.localizedDescription
+                return
+            }
+            step = .confirm
+        } catch {
+            candidates = []
+            selectedCandidateID = nil
+            resolutionMessage = resolutionCopy(for: error)
+        }
+    }
+
+    @MainActor
+    private func resolveManualCandidates() async {
+        selectedSource = .manual
+        resolutionMessage = nil
+        isResolvingCandidates = true
+        defer { isResolvingCandidates = false }
+
+        do {
+            candidates = try await store.manualCandidates(
+                name: manualName,
+                areaHint: manualArea,
+                category: manualCategory
+            )
+            selectedCandidateID = candidates.first?.id
+            selectedVisibility = store.defaultVisibility
+            guard !candidates.isEmpty else {
+                resolutionMessage = PlaceResolutionError.noCandidates.localizedDescription
+                return
+            }
+            step = .confirm
+        } catch {
+            candidates = []
+            selectedCandidateID = nil
+            resolutionMessage = resolutionCopy(for: error)
+        }
+    }
+
+    private func resolutionCopy(for error: Error) -> String {
+        if let error = error as? LocalizedError,
+           let description = error.errorDescription {
+            return description
+        }
+
+        return "Could not find matching places. Try a more specific name or add a nearby area."
+    }
+
     private func syncStatusTitle(for syncState: SyncState) -> String {
         switch syncState {
         case .synced:
@@ -400,35 +508,23 @@ private enum AddStep {
     case saved
     case draft
 
-    var kicker: String {
-        switch self {
-        case .source, .manual: "ADD A PLACE"
-        case .confirm: "STEP 1 OF 2"
-        case .details: "STEP 2 OF 2"
-        case .saved: "SAVED"
-        case .draft: "DRAFT"
-        }
-    }
-
-    var title: String {
-        switch self {
-        case .source: "where's it from?"
-        case .manual: "what's the place?"
-        case .confirm: "is this the one?"
-        case .details: "a few quick details"
-        case .saved: "nice, saved"
-        case .draft: "needs a little help"
-        }
-    }
-
     var subtitle: String {
         switch self {
-        case .source: "pick a source - we'll fill in what we can."
-        case .manual: "name and area are enough to start."
-        case .confirm: "pick the place, status, and who can see it."
+        case .source: "Start with where you are, a name, a link, or a photo."
+        case .manual: "Name is enough; area helps."
+        case .confirm: "Pick the place, status, and who can see it."
         case .details: "optional taps for future you."
         case .saved: "it is ready on your map."
         case .draft: "we kept the input without pretending extraction works."
+        }
+    }
+
+    var canGoBack: Bool {
+        switch self {
+        case .manual, .confirm, .details, .draft:
+            true
+        case .source, .saved:
+            false
         }
     }
 }
@@ -645,6 +741,7 @@ private struct SourceRow: View {
     let subtitle: String
     let systemImage: String
     var isPrimary = false
+    var isDisabled = false
     let action: () -> Void
 
     var body: some View {
@@ -674,6 +771,8 @@ private struct SourceRow: View {
             .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
         }
         .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.72 : 1)
     }
 }
 
@@ -689,9 +788,10 @@ private struct CandidateRow: View {
                 VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
                     Text(candidate.name)
                         .font(.system(size: 16, weight: .bold))
-                    Text("\(candidate.category) · confidence \(Int(candidate.confidence * 100))%")
+                    Text(candidate.subtitle)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(WanderTheme.textMuted.color)
+                        .lineLimit(2)
                 }
                 Spacer()
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
@@ -706,6 +806,39 @@ private struct CandidateRow: View {
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+private extension PlaceCandidate {
+    var subtitle: String {
+        let parts = [
+            address,
+            locality,
+            category.isEmpty ? nil : category
+        ].compactMap { value -> String? in
+            guard let value, !value.isEmpty else { return nil }
+            return value
+        }
+
+        guard !parts.isEmpty else {
+            return "confidence \(Int(confidence * 100))%"
+        }
+
+        return parts.joined(separator: " · ")
+    }
+}
+
+private struct InlineMessage: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 13, weight: .bold))
+            .foregroundStyle(WanderTheme.terracottaDark.color)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(WanderTheme.spacing3)
+            .background(WanderTheme.surfaceBone.color)
+            .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusMedium))
     }
 }
 

@@ -1222,3 +1222,66 @@ Actions:
 
 - Updated `docs/roadmap.md` to mark M4 as done baseline and M5 as in progress.
 - Updated `docs/open-questions.md` with explicit M5 Add capture notes for navigation, copy, location, manual resolution, link extraction, and photo extraction.
+
+## 2026-06-05 20:57 PDT - Codex - M5 Add UX And Place Resolution Start
+
+Agent: Codex
+Branch: `main`
+Starting commit: `3d0c59a`
+Starting status: local `main` matches `origin/main`.
+
+Goal: implement the first M5 Add slice: clean Add copy/navigation, remove fake current-location/manual place candidates, and resolve candidates through real iOS location/place search services.
+
+Expected files to touch:
+
+- `Wander/Features/Add/AddScreen.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- `Wander/Services/RepositoryProtocols.swift`
+- new service files under `Wander/Services/`
+- `project.yml`
+- `Wander.xcodeproj/project.pbxproj`
+- focused tests under `WanderTests/`
+- `docs/agent-log.md`
+
+Plan:
+
+- Add back navigation/escape behavior inside Add after leaving the source state.
+- Update Add title/copy to `add a place` and remove the confusing source-picker wording.
+- Replace store-level fake candidate methods with async resolution through a place resolver.
+- Implement current-location permission + nearby MapKit search for `I'm here now`.
+- Implement manual MapKit search using name, area hint, and category hints.
+- Keep link/photo as honest unresolved-draft shells until backend extraction jobs are built.
+
+Checkpoint:
+
+- Added `PlaceCandidateResolving` and `MapKitPlaceResolver`.
+- `MapKitPlaceResolver` uses CoreLocation one-shot permission/location plus MapKit nearby POI search for `I'm here right now`.
+- Manual add now resolves candidates through MapKit local search instead of fabricating a downtown LA candidate.
+- `PlaceCandidate` now carries address/locality/region/country/provider metadata; local save preserves those fields.
+- Add UI now uses stable title `add a place`, has an in-flow back button, removes `where's it from`/`pick a source` copy, and shows async resolving/error states.
+- Added `NSLocationWhenInUseUsageDescription` through `project.yml` and regenerated `Wander.xcodeproj`.
+- Added resolver-boundary tests and updated current-location save metadata coverage.
+- Full Xcode test suite passed:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Bumped `CURRENT_PROJECT_VERSION` from `5` to `6`; build `0.1 (6)` is the next TestFlight candidate for this M5 Add slice.
+
+Completion checkpoint:
+
+- Regenerated `Wander.xcodeproj` after the build-number bump.
+- Reran the full Xcode test suite after regeneration:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: passed.
+- Built signed archive:
+  `/private/tmp/Wander-0.1-build6.xcarchive`
+- Uploaded build `0.1 (6)` through `xcodebuild -exportArchive` with the App Store Connect API key.
+- Result: App Store Connect analysis passed, upload succeeded, and Xcode output ended with `Uploaded Wander`.
+- App Store Connect build id for `0.1 (6)`: `7c34953e-f7ca-444b-93e2-413572c9b4c1`.
+- Set export compliance to `usesNonExemptEncryption=false`.
+- Attached build `0.1 (6)` to external group `Wander Alpha`.
+- Submitted build `0.1 (6)` for external TestFlight review; Apple reports `betaReviewState=WAITING_FOR_REVIEW`.
+
+Handoff checkpoint, 2026-06-05 21:12 PDT:
+
+- Mission Control task update attempted with `curl -s http://localhost:4000/api/tasks`; local server was not reachable (`curl` exit 7), so this repo log is the active coordination surface for this work.
+- Cleanup after review: Add source actions now clear stale resolution messages when switching to link/manual/photo.
+- Current remaining M5 scope after this commit: real link extraction, photo extraction/capture, richer detail questions, and backend job plumbing. This slice only replaces fake current-location/manual candidates and cleans the first Add surface/navigation.

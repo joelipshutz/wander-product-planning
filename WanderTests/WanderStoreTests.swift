@@ -82,13 +82,72 @@ final class WanderStoreTests: XCTestCase {
 
     func testCurrentLocationSavePreservesSourceMetadata() {
         let store = makeStore()
-        let candidate = store.currentLocationCandidates()[0]
+        let candidate = PlaceCandidate(
+            id: "mapkit_maru_3404070_-11823540",
+            name: "Maru Coffee",
+            category: "coffee",
+            address: "101 Arts District",
+            locality: "Los Angeles",
+            region: "CA",
+            country: "US",
+            latitude: 34.0407,
+            longitude: -118.2354,
+            sourceProvider: "mapkit",
+            sourceProviderPlaceID: "mapkit_maru_3404070_-11823540",
+            confidence: 0.92
+        )
 
         _ = store.saveCandidate(candidate, status: .been, visibility: .followers, note: nil, sourceType: .currentLocation)
 
         let saved = store.currentUserVisiblePlaces.first { $0.place.canonicalName == "Maru Coffee" }
         XCTAssertEqual(saved?.userPlace.sourceType, AddSourceType.currentLocation.rawValue)
         XCTAssertEqual(saved?.userPlace.nearbyConfirmed, true)
+        XCTAssertEqual(saved?.place.address, "101 Arts District")
+        XCTAssertEqual(saved?.place.sourceProviderPlaceID, "mapkit_maru_3404070_-11823540")
+    }
+
+    func testCurrentLocationCandidatesUseInjectedResolver() async throws {
+        let resolver = FakePlaceResolver(
+            currentLocationCandidates: [
+                PlaceCandidate(
+                    id: "mapkit_here",
+                    name: "Here Cafe",
+                    category: "coffee",
+                    latitude: 34.1,
+                    longitude: -118.2,
+                    sourceProviderPlaceID: "mapkit_here",
+                    confidence: 0.9
+                )
+            ]
+        )
+        let store = WanderStore(fixtures: WanderFixtures.empty(), placeResolver: resolver)
+
+        let candidates = try await store.currentLocationCandidates()
+
+        XCTAssertEqual(candidates.map(\.name), ["Here Cafe"])
+        XCTAssertEqual(resolver.currentLocationCallCount, 1)
+    }
+
+    func testManualCandidatesUseInjectedResolverInput() async throws {
+        let resolver = FakePlaceResolver(
+            manualCandidates: [
+                PlaceCandidate(
+                    id: "mapkit_larchmont",
+                    name: "Larchmont Noodles",
+                    category: "restaurant",
+                    latitude: 34.073,
+                    longitude: -118.323,
+                    sourceProviderPlaceID: "mapkit_larchmont",
+                    confidence: 0.88
+                )
+            ]
+        )
+        let store = WanderStore(fixtures: WanderFixtures.empty(), placeResolver: resolver)
+
+        let candidates = try await store.manualCandidates(name: "Larchmont Noodles", areaHint: "LA", category: "restaurant")
+
+        XCTAssertEqual(candidates.map(\.name), ["Larchmont Noodles"])
+        XCTAssertEqual(resolver.manualInputs, [ManualPlaceInput(name: "Larchmont Noodles", areaHint: "LA", category: "restaurant")])
     }
 
     func testSaveCandidatePersistsQuestionAttributes() {
@@ -544,4 +603,41 @@ private final class FakeUserPlaceRepository: UserPlaceRepository {
     func updateVisibility(userPlaceID: String, visibility: PlaceVisibility) async throws {}
 
     func delete(userPlaceID: String) async throws {}
+}
+
+@MainActor
+private final class FakePlaceResolver: PlaceCandidateResolving {
+    private let currentLocationResult: Result<[PlaceCandidate], Error>
+    private let manualResult: Result<[PlaceCandidate], Error>
+    private(set) var currentLocationCallCount = 0
+    private(set) var manualInputs: [ManualPlaceInput] = []
+
+    init(
+        currentLocationCandidates: [PlaceCandidate] = [],
+        manualCandidates: [PlaceCandidate] = [],
+        currentLocationError: Error? = nil,
+        manualError: Error? = nil
+    ) {
+        if let currentLocationError {
+            self.currentLocationResult = .failure(currentLocationError)
+        } else {
+            self.currentLocationResult = .success(currentLocationCandidates)
+        }
+
+        if let manualError {
+            self.manualResult = .failure(manualError)
+        } else {
+            self.manualResult = .success(manualCandidates)
+        }
+    }
+
+    func resolveCurrentLocation() async throws -> [PlaceCandidate] {
+        currentLocationCallCount += 1
+        return try currentLocationResult.get()
+    }
+
+    func resolveManualEntry(_ input: ManualPlaceInput) async throws -> [PlaceCandidate] {
+        manualInputs.append(input)
+        return try manualResult.get()
+    }
 }

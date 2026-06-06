@@ -45,6 +45,7 @@ final class WanderStore: ObservableObject {
 
     private let visibilityPolicy = VisibilityPolicy()
     private let parser = DeterministicFilterParser()
+    private let placeResolver: PlaceCandidateResolving
 
     let smartFilters: [SmartFilter] = [
         SmartFilter(id: "hikes-la", title: "hikes in LA", query: "hikes in LA"),
@@ -53,7 +54,7 @@ final class WanderStore: ObservableObject {
         SmartFilter(id: "friends-liked", title: "friends liked", query: "friends been")
     ]
 
-    init(fixtures: WanderFixtures) {
+    init(fixtures: WanderFixtures, placeResolver: PlaceCandidateResolving = MapKitPlaceResolver()) {
         self.currentUser = fixtures.currentUser
         self.profiles = fixtures.profiles
         self.places = fixtures.places
@@ -63,6 +64,7 @@ final class WanderStore: ObservableObject {
         self.blocks = fixtures.blocks
         self.contactProvider = fixtures.contactProvider
         self.defaultVisibility = fixtures.currentUser.defaultVisibility
+        self.placeResolver = placeResolver
     }
 
     func apply(authState: AuthState) {
@@ -298,32 +300,18 @@ final class WanderStore: ObservableObject {
         return DiscoverResults(places: places, profiles: profiles)
     }
 
-    func currentLocationCandidates() -> [PlaceCandidate] {
-        [
-            PlaceCandidate(
-                id: "candidate_maru",
-                name: "Maru Coffee",
-                category: "coffee",
-                latitude: 34.0407,
-                longitude: -118.2354,
-                confidence: 0.92
-            )
-        ]
+    func currentLocationCandidates() async throws -> [PlaceCandidate] {
+        try await placeResolver.resolveCurrentLocation()
     }
 
-    func manualCandidates(name: String, areaHint: String?, category: String?) -> [PlaceCandidate] {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return [] }
-        return [
-            PlaceCandidate(
-                id: "manual_\(slug(trimmed))",
-                name: trimmed,
-                category: category?.isEmpty == false ? category ?? "place" : "place",
-                latitude: 34.0522,
-                longitude: -118.2437,
-                confidence: areaHint?.isEmpty == false ? 0.72 : 0.48
+    func manualCandidates(name: String, areaHint: String?, category: String?) async throws -> [PlaceCandidate] {
+        try await placeResolver.resolveManualEntry(
+            ManualPlaceInput(
+                name: name,
+                areaHint: areaHint,
+                category: category
             )
-        ]
+        )
     }
 
     @discardableResult
@@ -939,7 +927,12 @@ final class WanderStore: ObservableObject {
     }
 
     private func upsertPlace(from candidate: PlaceCandidate, sourceType: AddSourceType) -> LocalPlace {
-        if let existing = places.first(where: { $0.id == candidate.id || $0.canonicalName.caseInsensitiveCompare(candidate.name) == .orderedSame }) {
+        let providerPlaceID = candidate.sourceProviderPlaceID ?? candidate.id
+        if let existing = places.first(where: {
+            $0.id == candidate.id
+                || ($0.sourceProvider == candidate.sourceProvider && $0.sourceProviderPlaceID == providerPlaceID)
+                || $0.canonicalName.caseInsensitiveCompare(candidate.name) == .orderedSame
+        }) {
             return existing
         }
 
@@ -947,12 +940,14 @@ final class WanderStore: ObservableObject {
             localID: "local_place_\(slug(candidate.name))",
             canonicalName: candidate.name,
             category: candidate.category,
-            locality: "Los Angeles",
-            region: "CA",
+            address: candidate.address,
+            locality: candidate.locality,
+            region: candidate.region,
+            country: candidate.country,
             latitude: candidate.latitude ?? 34.0522,
             longitude: candidate.longitude ?? -118.2437,
-            sourceProvider: sourceType == .manual ? "manual" : "mapkit",
-            sourceProviderPlaceID: candidate.id,
+            sourceProvider: candidate.sourceProvider,
+            sourceProviderPlaceID: providerPlaceID,
             confidence: candidate.confidence,
             syncState: .pendingCreate
         )
