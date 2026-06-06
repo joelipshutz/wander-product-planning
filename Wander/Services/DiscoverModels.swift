@@ -9,6 +9,39 @@ struct DiscoverFilters: Equatable {
     var tags: Set<String> = []
 }
 
+struct DiscoverFilterChip: Identifiable, Equatable {
+    let id: String
+    let title: String
+}
+
+extension DiscoverFilters {
+    var chips: [DiscoverFilterChip] {
+        var chips: [DiscoverFilterChip] = []
+
+        chips.append(contentsOf: categories.sorted().map { category in
+            DiscoverFilterChip(id: "category_\(category)", title: category)
+        })
+
+        chips.append(contentsOf: statuses.sorted { $0.rawValue < $1.rawValue }.map { status in
+            DiscoverFilterChip(id: "status_\(status.rawValue)", title: status.displayTitle)
+        })
+
+        if let relationship {
+            chips.append(DiscoverFilterChip(id: "relationship_\(relationship.rawValue)", title: relationship.discoverChipTitle))
+        }
+
+        if let area {
+            chips.append(DiscoverFilterChip(id: "area_\(area)", title: area))
+        }
+
+        chips.append(contentsOf: tags.sorted().map { tag in
+            DiscoverFilterChip(id: "tag_\(tag)", title: tag)
+        })
+
+        return chips
+    }
+}
+
 struct DiscoverFilterSchema: Equatable {
     let allowedCategories: [String]
     let allowedStatuses: [PlaceStatus]
@@ -51,6 +84,7 @@ enum DiscoverPlaceScope: String, CaseIterable, Identifiable, Equatable {
     }
 }
 
+@MainActor
 protocol LLMFilterParser {
     func parse(query: String, schema: DiscoverFilterSchema) async throws -> DiscoverFilters
 }
@@ -64,11 +98,17 @@ struct DeterministicFilterParser: LLMFilterParser {
             filters.categories.insert(category)
         }
 
-        if normalized.contains("been") {
+        for (category, aliases) in Self.categoryAliases where schema.allowedCategories.contains(category) {
+            if aliases.contains(where: { normalized.contains($0) }) {
+                filters.categories.insert(category)
+            }
+        }
+
+        if normalized.contains("been") || normalized.contains("went") || normalized.contains("tried") || normalized.contains("liked") {
             filters.statuses.insert(.been)
         }
 
-        if normalized.contains("wanna") || normalized.contains("want") {
+        if normalized.contains("wanna") || normalized.contains("want") || normalized.contains("try") || normalized.contains("saved") {
             filters.statuses.insert(.wannaGo)
         }
 
@@ -82,6 +122,46 @@ struct DeterministicFilterParser: LLMFilterParser {
             filters.area = "LA"
         }
 
+        for area in ["eastside", "silver lake", "larchmont", "echo park", "los feliz"] where normalized.contains(area) {
+            filters.area = area
+        }
+
+        for tag in Self.knownTags where normalized.contains(tag) {
+            filters.tags.insert(tag)
+        }
+
         return filters
+    }
+
+    private static let categoryAliases: [String: [String]] = [
+        "coffee": ["coffee", "cafe", "cafes", "work from"],
+        "restaurant": ["restaurant", "restaurants", "noodle", "noodles", "dinner", "lunch"],
+        "hike": ["hike", "hikes", "trail", "trails"],
+        "bar": ["bar", "bars", "drink", "drinks", "patio"],
+        "park": ["park", "parks"]
+    ]
+
+    private static let knownTags = [
+        "wifi",
+        "work",
+        "patio",
+        "quiet",
+        "cozy",
+        "views",
+        "sunset",
+        "group",
+        "date",
+        "dog friendly"
+    ]
+}
+
+private extension ViewerRelationship {
+    var discoverChipTitle: String {
+        switch self {
+        case .owner: "mine"
+        case .mutual: "friends"
+        case .follower: "following"
+        case .nonFollower: "other people"
+        }
     }
 }

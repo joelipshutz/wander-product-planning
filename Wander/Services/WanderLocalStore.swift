@@ -5,6 +5,8 @@ struct UnresolvedDraft: Identifiable, Equatable {
     let sourceType: AddSourceType
     let title: String
     let message: String
+    let sourceArtifactID: String?
+    let extractionJobID: String?
     let createdAt: Date
 }
 
@@ -37,15 +39,20 @@ final class WanderStore: ObservableObject {
     @Published private(set) var follows: [LocalFollow]
     @Published private(set) var blocks: [LocalBlock]
     @Published private(set) var unresolvedDrafts: [UnresolvedDraft] = []
+    @Published private(set) var sourceArtifacts: [LocalSourceArtifact] = []
+    @Published private(set) var extractionJobs: [LocalExtractionJob] = []
     @Published private(set) var remoteVisiblePlaceCache: [VisiblePlace] = []
     @Published private(set) var lastRemoteError: String?
+    @Published private(set) var lastDiscoverFilters = DiscoverFilters(query: "")
     @Published var defaultVisibility: PlaceVisibility
 
     let contactProvider: FakeContactProvider
 
     private let visibilityPolicy = VisibilityPolicy()
-    private let parser = DeterministicFilterParser()
+    private let parser: LLMFilterParser
     private let placeResolver: PlaceCandidateResolving
+    private let analytics: AnalyticsClient
+    private var discoverParseCache: [String: DiscoverFilters] = [:]
 
     let smartFilters: [SmartFilter] = [
         SmartFilter(id: "hikes-la", title: "hikes in LA", query: "hikes in LA"),
@@ -54,7 +61,12 @@ final class WanderStore: ObservableObject {
         SmartFilter(id: "friends-liked", title: "friends liked", query: "friends been")
     ]
 
-    init(fixtures: WanderFixtures, placeResolver: PlaceCandidateResolving = MapKitPlaceResolver()) {
+    init(
+        fixtures: WanderFixtures,
+        placeResolver: PlaceCandidateResolving = MapKitPlaceResolver(),
+        parser: LLMFilterParser = DeterministicFilterParser(),
+        analytics: AnalyticsClient = NoopAnalyticsClient()
+    ) {
         self.currentUser = fixtures.currentUser
         self.profiles = fixtures.profiles
         self.places = fixtures.places
@@ -65,6 +77,8 @@ final class WanderStore: ObservableObject {
         self.contactProvider = fixtures.contactProvider
         self.defaultVisibility = fixtures.currentUser.defaultVisibility
         self.placeResolver = placeResolver
+        self.parser = parser
+        self.analytics = analytics
     }
 
     func apply(authState: AuthState) {
@@ -88,8 +102,15 @@ final class WanderStore: ObservableObject {
     }
 
     var pendingSyncCount: Int {
-        userPlaces.filter { $0.syncState != .synced }.count
-            + placeAttributes.filter { $0.syncState != .synced }.count
+        let pendingUserPlaces = userPlaces.filter { $0.syncState != .synced }.count
+        let pendingAttributes = placeAttributes.filter { $0.syncState != .synced }.count
+        let pendingArtifacts = sourceArtifacts.filter { SyncState(rawValue: $0.syncStateRaw) != .synced }.count
+        let pendingJobs = extractionJobs.filter { SyncState(rawValue: $0.syncStateRaw) != .synced }.count
+
+        return pendingUserPlaces
+            + pendingAttributes
+            + pendingArtifacts
+            + pendingJobs
             + unresolvedDrafts.count
     }
 
@@ -254,12 +275,46 @@ final class WanderStore: ObservableObject {
     }
 
     func parseDiscover(query: String) async -> DiscoverFilters {
+        let cacheKey = normalizedParseCacheKey(query)
+        if let cached = discoverParseCache[cacheKey] {
+            lastDiscoverFilters = cached
+            analytics.track(
+                AnalyticsEvent(
+                    name: WanderAnalyticsEvents.discoverQueryParsed,
+                    properties: ["source": "cache", "chip_count": "\(cached.chips.count)"]
+                )
+            )
+            return cached
+        }
+
         let schema = DiscoverFilterSchema(
             allowedCategories: Array(Set(places.map(\.category))).sorted(),
             allowedStatuses: PlaceStatus.allCases,
             allowedRelationships: [.follower, .mutual]
         )
-        return (try? await parser.parse(query: query, schema: schema)) ?? DiscoverFilters(query: query)
+
+        do {
+            let filters = try await parser.parse(query: query, schema: schema)
+            discoverParseCache[cacheKey] = filters
+            lastDiscoverFilters = filters
+            analytics.track(
+                AnalyticsEvent(
+                    name: WanderAnalyticsEvents.discoverQueryParsed,
+                    properties: ["source": "parser", "chip_count": "\(filters.chips.count)"]
+                )
+            )
+            return filters
+        } catch {
+            let fallback = DiscoverFilters(query: query)
+            lastDiscoverFilters = fallback
+            analytics.track(
+                AnalyticsEvent(
+                    name: WanderAnalyticsEvents.discoverParseFailed,
+                    properties: ["error": remoteErrorMessage(error)]
+                )
+            )
+            return fallback
+        }
     }
 
     func discover(query: String, scope: DiscoverPlaceScope = .everyone, backend: WanderBackend? = nil) async -> DiscoverResults {
@@ -283,6 +338,10 @@ final class WanderStore: ObservableObject {
         }
 
         let places = visiblePlaces(filters: placeFilters)
+            .filter { visiblePlace in
+                matchesArea(filters.area, visiblePlace: visiblePlace)
+                    && matchesTags(filters.tags, visiblePlace: visiblePlace)
+            }
         var profiles = searchProfiles(handleQuery: query)
         let normalizedProfileQuery = normalizedHandleQuery(query)
 
@@ -360,6 +419,12 @@ final class WanderStore: ObservableObject {
         if let attributes {
             replaceAttributes(for: userPlace.id, with: attributes, syncState: .pendingCreate)
         }
+        analytics.track(
+            AnalyticsEvent(
+                name: WanderAnalyticsEvents.placeSaved,
+                properties: ["source_type": sourceType.rawValue, "visibility": visibility.rawValue, "status": status.rawValue]
+            )
+        )
         return SaveResult(userPlaceID: userPlace.id, syncState: userPlace.syncState)
     }
 
@@ -407,27 +472,34 @@ final class WanderStore: ObservableObject {
     }
 
     @discardableResult
-    func createUnresolvedDraft(sourceType: AddSourceType, originalInput: String? = nil) -> UnresolvedDraft {
+    func createUnresolvedDraft(sourceType: AddSourceType, originalInput: String? = nil, localAssetRef: String? = nil) -> UnresolvedDraft {
         let title: String
         let message: String
 
         switch sourceType {
         case .link:
             title = "This link needs a little help."
-            message = originalInput?.isEmpty == false ? originalInput ?? "Saved as a draft." : "Saved as a draft until backend extraction is connected."
+            message = originalInput?.isEmpty == false ? originalInput ?? "Saved as a draft." : "Saved as a draft for extraction."
         case .photo:
             title = "Photo saved as a draft."
-            message = "Photo extraction waits for the backend job lane."
+            message = "Photo is ready for extraction. Add it manually if you want it on your map now."
         default:
             title = "Draft saved."
             message = "You can finish this manually."
         }
+
+        let artifact = sourceType.createsSourceArtifact
+            ? upsertSourceArtifact(sourceType: sourceType, originalInput: originalInput, localAssetRef: localAssetRef)
+            : nil
+        let job = artifact.map { upsertExtractionJob(sourceType: sourceType, artifact: $0) }
 
         let draft = UnresolvedDraft(
             id: "draft_\(sourceType.rawValue)_\(unresolvedDrafts.count + 1)",
             sourceType: sourceType,
             title: title,
             message: message,
+            sourceArtifactID: artifact.map { $0.serverID ?? $0.localID },
+            extractionJobID: job.map { $0.serverID ?? $0.localID },
             createdAt: .now
         )
         unresolvedDrafts.append(draft)
@@ -959,6 +1031,63 @@ final class WanderStore: ObservableObject {
         return place
     }
 
+    private func upsertSourceArtifact(sourceType: AddSourceType, originalInput: String?, localAssetRef: String?) -> LocalSourceArtifact {
+        let normalizedInput = normalizedSourceInput(originalInput: originalInput, localAssetRef: localAssetRef)
+        let type = sourceType.sourceArtifactType
+        let hash = stableHash("\(currentUser.id)|\(type)|\(normalizedInput)")
+
+        if let existing = sourceArtifacts.first(where: { artifact in
+            artifact.userID == currentUser.id
+                && artifact.type == type
+                && artifact.normalizedSourceHash == hash
+                && artifact.deletedAt == nil
+        }) {
+            return existing
+        }
+
+        let artifact = LocalSourceArtifact(
+            localID: "local_source_\(sourceType.rawValue)_\(hash)",
+            userID: currentUser.id,
+            type: type,
+            originalInput: originalInput?.isEmpty == false ? originalInput ?? normalizedInput : normalizedInput,
+            normalizedInput: normalizedInput,
+            normalizedSourceHash: hash,
+            localAssetRef: localAssetRef,
+            syncState: .pendingCreate
+        )
+        sourceArtifacts.append(artifact)
+        return artifact
+    }
+
+    private func upsertExtractionJob(sourceType: AddSourceType, artifact: LocalSourceArtifact) -> LocalExtractionJob {
+        if let existing = extractionJobs.first(where: { job in
+            job.ownerUserID == currentUser.id
+                && job.sourceType == sourceType.rawValue
+                && job.normalizedSourceHash == artifact.normalizedSourceHash
+        }) {
+            return existing
+        }
+
+        let job = LocalExtractionJob(
+            localID: "local_job_\(sourceType.rawValue)_\(artifact.normalizedSourceHash)",
+            sourceArtifactID: artifact.serverID ?? artifact.localID,
+            ownerUserID: currentUser.id,
+            sourceType: sourceType.rawValue,
+            normalizedSourceHash: artifact.normalizedSourceHash,
+            status: .pending,
+            providerStepsJSON: "[\"queued_for_backend_extraction\"]",
+            syncState: .pendingCreate
+        )
+        extractionJobs.append(job)
+        analytics.track(
+            AnalyticsEvent(
+                name: WanderAnalyticsEvents.extractionJobStarted,
+                properties: ["source_type": sourceType.rawValue, "status": job.status.rawValue]
+            )
+        )
+        return job
+    }
+
     private func replaceAttributes(for userPlaceID: String, with drafts: [PlaceAttributeDraft], syncState: SyncState) {
         placeAttributes.removeAll { $0.userPlaceID == userPlaceID }
 
@@ -994,5 +1123,91 @@ final class WanderStore: ObservableObject {
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { !$0.isEmpty }
             .joined(separator: "_")
+    }
+
+    private func normalizedParseCacheKey(_ query: String) -> String {
+        query
+            .lowercased()
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func normalizedSourceInput(originalInput: String?, localAssetRef: String?) -> String {
+        let value = originalInput?.isEmpty == false ? originalInput ?? "" : localAssetRef ?? ""
+        return value
+            .lowercased()
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func stableHash(_ value: String) -> String {
+        let prime: UInt64 = 1_099_511_628_211
+        var hash: UInt64 = 14_695_981_039_346_656_037
+
+        for byte in value.utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* prime
+        }
+
+        return String(hash, radix: 16)
+    }
+
+    private func matchesArea(_ area: String?, visiblePlace: VisiblePlace) -> Bool {
+        guard let area, !area.isEmpty, area != "LA" else { return true }
+        let haystack = [
+            visiblePlace.place.address,
+            visiblePlace.place.locality,
+            visiblePlace.place.region,
+            visiblePlace.place.canonicalName
+        ]
+            .compactMap { $0 }
+            .joined(separator: " ")
+            .lowercased()
+
+        return haystack.contains(area.lowercased())
+    }
+
+    private func matchesTags(_ tags: Set<String>, visiblePlace: VisiblePlace) -> Bool {
+        guard !tags.isEmpty else { return true }
+        let attributeText = attributes(for: visiblePlace.userPlace.id)
+            .map(\.valueJSON)
+            .joined(separator: " ")
+        let haystack = [
+            visiblePlace.place.canonicalName,
+            visiblePlace.place.category,
+            visiblePlace.userPlace.note,
+            attributeText
+        ]
+            .compactMap { $0 }
+            .joined(separator: " ")
+            .lowercased()
+
+        return tags.contains { tag in
+            haystack.contains(tag.lowercased())
+        }
+    }
+}
+
+private extension AddSourceType {
+    var createsSourceArtifact: Bool {
+        switch self {
+        case .link, .photo:
+            true
+        case .currentLocation, .manual, .socialSave:
+            false
+        }
+    }
+
+    var sourceArtifactType: String {
+        switch self {
+        case .link:
+            "url"
+        case .photo:
+            "image"
+        case .currentLocation:
+            "current_location"
+        case .manual, .socialSave:
+            "text"
+        }
     }
 }

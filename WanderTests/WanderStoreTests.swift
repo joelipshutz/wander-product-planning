@@ -1,6 +1,10 @@
 import XCTest
 @testable import Wander
 
+private enum TestError: Error {
+    case expected
+}
+
 @MainActor
 final class WanderStoreTests: XCTestCase {
     private func makeStore() -> WanderStore {
@@ -246,11 +250,30 @@ final class WanderStoreTests: XCTestCase {
         let store = makeStore()
 
         let linkDraft = store.createUnresolvedDraft(sourceType: .link, originalInput: "https://example.com/place")
-        let photoDraft = store.createUnresolvedDraft(sourceType: .photo)
+        let photoDraft = store.createUnresolvedDraft(
+            sourceType: .photo,
+            originalInput: "photo import · 42 bytes",
+            localAssetRef: "photos_picker:test_asset"
+        )
 
         XCTAssertEqual(store.unresolvedDrafts, [linkDraft, photoDraft])
         XCTAssertEqual(linkDraft.sourceType, .link)
         XCTAssertEqual(photoDraft.sourceType, .photo)
+        XCTAssertEqual(store.sourceArtifacts.map(\.type), ["url", "image"])
+        XCTAssertEqual(store.extractionJobs.map(\.sourceType), ["link", "photo"])
+        XCTAssertEqual(photoDraft.sourceArtifactID, store.sourceArtifacts.last?.localID)
+        XCTAssertEqual(photoDraft.extractionJobID, store.extractionJobs.last?.localID)
+    }
+
+    func testDraftSourceArtifactsAreIdempotentBySourceHash() {
+        let store = makeStore()
+
+        _ = store.createUnresolvedDraft(sourceType: .link, originalInput: "https://example.com/place")
+        _ = store.createUnresolvedDraft(sourceType: .link, originalInput: "https://example.com/place")
+
+        XCTAssertEqual(store.unresolvedDrafts.count, 2)
+        XCTAssertEqual(store.sourceArtifacts.count, 1)
+        XCTAssertEqual(store.extractionJobs.count, 1)
     }
 
     func testUsernameSearchIsNearExactAndHidesBlockedUsers() {
@@ -279,7 +302,41 @@ final class WanderStoreTests: XCTestCase {
         let results = await store.discover(query: "hikes in LA from people")
 
         XCTAssertEqual(results.places.map { $0.place.category }, ["hike"])
+        XCTAssertEqual(store.lastDiscoverFilters.chips.map(\.title), ["hike", "following", "LA"])
         XCTAssertTrue(results.profiles.isEmpty)
+    }
+
+    func testDiscoverParserCachesAndTracksAnalytics() async {
+        let analytics = RecordingAnalyticsClient()
+        let parser = FakeFilterParser(
+            result: DiscoverFilters(
+                query: "coffee work",
+                categories: ["coffee"],
+                tags: ["work"]
+            )
+        )
+        let store = WanderStore(fixtures: WanderFixtures.seed(), parser: parser, analytics: analytics)
+
+        _ = await store.discover(query: "coffee work")
+        _ = await store.discover(query: "coffee work")
+
+        XCTAssertEqual(parser.queries, ["coffee work"])
+        XCTAssertEqual(
+            analytics.events.map(\.name),
+            [WanderAnalyticsEvents.discoverQueryParsed, WanderAnalyticsEvents.discoverQueryParsed]
+        )
+        XCTAssertEqual(analytics.events.map { $0.properties["source"] }, ["parser", "cache"])
+    }
+
+    func testDiscoverParserFailureFallsBackAndTracksFailure() async {
+        let analytics = RecordingAnalyticsClient()
+        let parser = FakeFilterParser(error: TestError.expected)
+        let store = WanderStore(fixtures: WanderFixtures.seed(), parser: parser, analytics: analytics)
+
+        let filters = await store.parseDiscover(query: "anything")
+
+        XCTAssertEqual(filters, DiscoverFilters(query: "anything"))
+        XCTAssertEqual(analytics.events.map(\.name), [WanderAnalyticsEvents.discoverParseFailed])
     }
 
     func testDiscoverCanScopeBetweenMyPlacesFriendsAndEveryone() async {
@@ -676,5 +733,33 @@ private final class FakePlaceResolver: PlaceCandidateResolving {
     func resolveLink(_ input: LinkPlaceInput) async throws -> [PlaceCandidate] {
         linkInputs.append(input)
         return try linkResult.get()
+    }
+}
+
+@MainActor
+private final class FakeFilterParser: LLMFilterParser {
+    private let result: DiscoverFilters?
+    private let error: Error?
+    private(set) var queries: [String] = []
+
+    init(result: DiscoverFilters? = nil, error: Error? = nil) {
+        self.result = result
+        self.error = error
+    }
+
+    func parse(query: String, schema: DiscoverFilterSchema) async throws -> DiscoverFilters {
+        queries.append(query)
+        if let error {
+            throw error
+        }
+        return result ?? DiscoverFilters(query: query)
+    }
+}
+
+private final class RecordingAnalyticsClient: AnalyticsClient {
+    private(set) var events: [AnalyticsEvent] = []
+
+    func track(_ event: AnalyticsEvent) {
+        events.append(event)
     }
 }

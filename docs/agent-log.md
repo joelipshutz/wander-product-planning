@@ -1340,3 +1340,40 @@ Checkpoint:
 - Set export compliance to `usesNonExemptEncryption=false`, attached build `0.1 (7)` to public group `Wander Alpha`, and submitted it for external TestFlight review.
 - Apple reports build `0.1 (7)` beta review state `WAITING_FOR_REVIEW`.
 - Final App Store Connect check after push: build `0.1 (7)` is `VALID`, `usesNonExemptEncryption=false`, and external beta review state is `APPROVED`.
+
+## 2026-06-05 23:06 PDT - Codex - M5 Shared Test Checkpoint
+
+Agent: Codex
+Branch: `main`
+Starting commit: `0bbc43b`
+Starting status: local `main` matches `origin/main`; worktree clean.
+
+Goal: continue through the remaining M5 work until there is a strong TestFlight checkpoint for Joe and external testers.
+
+Plan:
+
+- Keep backend extraction workers out of this slice because the eng plan marks backend extraction as M6.
+- Add a real Add-photo import path using PhotosUI that creates local source-artifact/extraction-job state and a visible draft, instead of a dead source row.
+- Add visible parsed Discover filter chips and strengthen the cheap/swappable parser boundary without sending user graph/place/contact data to an external model from the client.
+- Add an analytics/event interface and cover it with focused tests/mocks, not a vendor SDK.
+- Run full Xcode tests, upload a new TestFlight build, and provide a focused tester script.
+
+Notes:
+
+- Mission Control is still unreachable on `localhost:4000` (`curl` exit 7), so this repo log remains the coordination surface.
+
+Checkpoint:
+
+- Added local source-artifact and extraction-job creation for link/photo unresolved drafts. Backend execution remains M6; this M5 slice creates durable local artifact/job state and keeps draft/manual rescue visible.
+- Added PhotosUI photo import in Add. Imported photos create a photo draft plus local image source artifact and pending extraction job; no fake AI candidate is shown.
+- Added visible parsed Discover filter chips below the search field.
+- Strengthened deterministic parser coverage for category aliases, tags, area, status, relationships, cache, and parser failure fallback behind the existing `LLMFilterParser` protocol.
+- Wired parser analytics through the existing `AnalyticsClient` abstraction for `discover_query_parsed`, `discover_parse_failed`, `place_saved`, and `extraction_job_started`.
+- Added tests for photo/link draft artifacts, idempotent artifact/job creation, Discover chips, parser cache, parser failure, and analytics events.
+- Ran full test suite before and after the build number bump:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: passed both runs.
+- Bumped `CURRENT_PROJECT_VERSION` to `8`, archived `/private/tmp/Wander-0.1-build8.xcarchive`, and uploaded build `0.1 (8)` with `xcodebuild -exportArchive`.
+- App Store Connect build id for `0.1 (8)`: `0c4f9998-4f74-4491-9811-5a2e885c2677`; processing state `VALID`.
+- Set export compliance to `usesNonExemptEncryption=false`, attached build `0.1 (8)` to public group `Wander Alpha`, and submitted it for external TestFlight review.
+- Apple currently reports build `0.1 (8)` beta review state `WAITING_FOR_REVIEW`.

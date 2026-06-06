@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 struct AddScreen: View {
@@ -20,6 +21,8 @@ struct AddScreen: View {
     @State private var draft: UnresolvedDraft?
     @State private var isResolvingCandidates = false
     @State private var resolutionMessage: String?
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var isImportingPhoto = false
 
     private var selectedCandidate: PlaceCandidate? {
         candidates.first { $0.id == selectedCandidateID } ?? candidates.first
@@ -45,6 +48,8 @@ struct AddScreen: View {
                         linkForm
                     case .manual:
                         manualForm
+                    case .photo:
+                        photoForm
                     case .confirm:
                         confirmPlace
                     case .details:
@@ -110,8 +115,8 @@ struct AddScreen: View {
             }
             SourceRow(title: AddSourceType.photo.title, subtitle: "photo extraction comes next", systemImage: "photo", isDisabled: isResolvingCandidates) {
                 resolutionMessage = nil
-                draft = store.createUnresolvedDraft(sourceType: .photo)
-                step = .draft
+                selectedSource = .photo
+                step = .photo
             }
 
             if let resolutionMessage {
@@ -128,7 +133,7 @@ struct AddScreen: View {
     }
 
     private var linkForm: some View {
-        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
+        return VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
             VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
                 Text("link")
                     .font(.system(size: 13, weight: .bold))
@@ -174,6 +179,53 @@ struct AddScreen: View {
             .buttonStyle(.plain)
             .disabled(linkInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .opacity(linkInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
+        }
+    }
+
+    private var photoForm: some View {
+        let title = isImportingPhoto ? "importing photo..." : "choose a photo"
+        let subtitle = "we'll keep it as a draft for extraction"
+
+        return VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
+            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                HStack(spacing: WanderTheme.spacing3) {
+                    Image(systemName: "photo.badge.plus")
+                        .font(.system(size: 20, weight: .bold))
+                    VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
+                        Text(title)
+                            .font(.system(size: 16, weight: .bold))
+                        Text(subtitle)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(WanderTheme.textMuted.color)
+                    }
+                    Spacer()
+                }
+                .foregroundStyle(WanderTheme.textInk.color)
+                .frame(minHeight: 64)
+                .padding(WanderTheme.spacing3)
+                .background(WanderTheme.surfaceBone.color)
+                .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+            }
+            .disabled(isImportingPhoto)
+            .onChange(of: selectedPhotoItem) { _, item in
+                guard let item else { return }
+                Task {
+                    await importPhotoDraft(from: item)
+                }
+            }
+
+            if let resolutionMessage {
+                InlineMessage(text: resolutionMessage)
+            }
+
+            Text("Photo extraction still needs the backend worker. For this build, photo import proves the capture/draft lane.")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(WanderTheme.textMuted.color)
+
+            WanderPrimaryButton(title: "add manually instead", systemImage: "square.and.pencil") {
+                selectedSource = .manual
+                step = .manual
+            }
         }
     }
 
@@ -388,6 +440,8 @@ struct AddScreen: View {
         draft = nil
         resolutionMessage = nil
         isResolvingCandidates = false
+        selectedPhotoItem = nil
+        isImportingPhoto = false
     }
 
     private func goBack() {
@@ -395,6 +449,8 @@ struct AddScreen: View {
 
         switch step {
         case .link:
+            step = .source
+        case .photo:
             step = .source
         case .manual:
             step = .source
@@ -559,6 +615,31 @@ struct AddScreen: View {
         step = .draft
     }
 
+    @MainActor
+    private func importPhotoDraft(from item: PhotosPickerItem) async {
+        selectedSource = .photo
+        resolutionMessage = nil
+        isImportingPhoto = true
+        defer {
+            isImportingPhoto = false
+            selectedPhotoItem = nil
+        }
+
+        do {
+            let data = try await item.loadTransferable(type: Data.self)
+            let byteCount = data?.count ?? 0
+            let assetRef = item.itemIdentifier.map { "photos_picker:\($0)" } ?? "photos_picker:imported_photo_\(byteCount)"
+            draft = store.createUnresolvedDraft(
+                sourceType: .photo,
+                originalInput: "photo import · \(byteCount) bytes",
+                localAssetRef: assetRef
+            )
+            step = .draft
+        } catch {
+            resolutionMessage = "Could not import that photo. Try another one or add manually."
+        }
+    }
+
     private func resolutionCopy(for error: Error) -> String {
         if let error = error as? LocalizedError,
            let description = error.errorDescription {
@@ -595,6 +676,7 @@ private enum AddStep {
     case source
     case link
     case manual
+    case photo
     case confirm
     case details
     case saved
@@ -605,6 +687,7 @@ private enum AddStep {
         case .source: "Start with where you are, a name, a link, or a photo."
         case .link: "Paste the link; we'll look for the place."
         case .manual: "Name is enough; area helps."
+        case .photo: "Choose a photo to save as an extraction draft."
         case .confirm: "Pick the place, status, and who can see it."
         case .details: "optional taps for future you."
         case .saved: "it is ready on your map."
@@ -614,7 +697,7 @@ private enum AddStep {
 
     var canGoBack: Bool {
         switch self {
-        case .link, .manual, .confirm, .details, .draft:
+        case .link, .manual, .photo, .confirm, .details, .draft:
             true
         case .source, .saved:
             false

@@ -10,6 +10,7 @@ struct DiscoverScreen: View {
     @State private var selectedProfile: SelectedProfile?
     @State private var savedMessage: String?
     @State private var selectedScope: DiscoverPlaceScope = .everyone
+    @State private var parsedChips: [DiscoverFilterChip] = []
     @FocusState private var searchFieldFocused: Bool
 
     private var matchedContacts: [ContactMatch] {
@@ -30,6 +31,7 @@ struct DiscoverScreen: View {
                 VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
                     header
                     searchField
+                    parsedFilterRow
                     peopleSection
                     resultsSection
                 }
@@ -91,6 +93,28 @@ struct DiscoverScreen: View {
         .background(WanderTheme.surfaceRaised.color)
         .clipShape(Capsule())
         .overlay(Capsule().stroke(WanderTheme.borderHairline.color))
+    }
+
+    @ViewBuilder
+    private var parsedFilterRow: some View {
+        if !parsedChips.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: WanderTheme.spacing2) {
+                    ForEach(parsedChips) { chip in
+                        Text(chip.title)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(WanderTheme.terracotta.color)
+                            .frame(minHeight: 34)
+                            .padding(.horizontal, WanderTheme.spacing3)
+                            .background(WanderTheme.surfaceBone.color)
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(WanderTheme.terracotta.color.opacity(0.7), lineWidth: 1))
+                    }
+                }
+                .padding(.vertical, WanderTheme.spacing1)
+            }
+            .accessibilityLabel("Parsed search filters")
+        }
     }
 
     private var peopleSection: some View {
@@ -181,6 +205,7 @@ struct DiscoverScreen: View {
 
     private func refresh() async {
         results = await store.discover(query: query, scope: selectedScope, backend: backend)
+        parsedChips = store.lastDiscoverFilters.chips
     }
 }
 
