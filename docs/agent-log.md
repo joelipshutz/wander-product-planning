@@ -1285,3 +1285,9 @@ Handoff checkpoint, 2026-06-05 21:12 PDT:
 - Mission Control task update attempted with `curl -s http://localhost:4000/api/tasks`; local server was not reachable (`curl` exit 7), so this repo log is the active coordination surface for this work.
 - Cleanup after review: Add source actions now clear stale resolution messages when switching to link/manual/photo.
 - Current remaining M5 scope after this commit: real link extraction, photo extraction/capture, richer detail questions, and backend job plumbing. This slice only replaces fake current-location/manual candidates and cleans the first Add surface/navigation.
+
+Final checkpoint, 2026-06-05 21:16 PDT:
+
+- Implementation commit: `e082b63 feat: resolve add place candidates`; pushed to `origin/main`.
+- Verified local `main` and `origin/main` matched `e082b63d022a04b6e3567acb5fd78efda04c8457` after push.
+- Rechecked App Store Connect after upload: build `0.1 (6)` external TestFlight review is `APPROVED`.

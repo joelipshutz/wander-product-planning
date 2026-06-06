@@ -201,7 +201,7 @@ Current status as of 2026-06-04:
 - Public TestFlight group `Wander Alpha` exists with public link enabled and no custom tester cap: `https://testflight.apple.com/join/knEhRa6t`.
 - Build `0.1 (5)` is attached to the public group. Export compliance is set to `usesNonExemptEncryption=false`.
 - Build `0.1 (5)` passed external TestFlight review.
-- Build `0.1 (6)` is attached to `Wander Alpha`, export compliance is set to `usesNonExemptEncryption=false`, and external TestFlight review is `WAITING_FOR_REVIEW`.
+- Build `0.1 (6)` is attached to `Wander Alpha`, export compliance is set to `usesNonExemptEncryption=false`, and external TestFlight review is `APPROVED`.
 - Increment `CURRENT_PROJECT_VERSION` in `project.yml` before each additional TestFlight upload, then run `xcodegen generate`.
 - If Xcode Accounts cannot be used for upload, pass the local App Store Connect API key to `xcodebuild -exportArchive` with `-authenticationKeyPath`, `-authenticationKeyID`, and `-authenticationKeyIssuerID`.
 
