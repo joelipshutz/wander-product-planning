@@ -5,6 +5,7 @@ struct AddScreen: View {
     @EnvironmentObject private var store: WanderStore
     @EnvironmentObject private var auth: AuthSessionStore
     @EnvironmentObject private var backend: WanderBackend
+    let resetToken: UUID
     @State private var step: AddStep = .source
     @State private var candidates: [PlaceCandidate] = []
     @State private var selectedCandidateID: String?
@@ -23,6 +24,10 @@ struct AddScreen: View {
     @State private var resolutionMessage: String?
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var isImportingPhoto = false
+
+    init(resetToken: UUID = UUID()) {
+        self.resetToken = resetToken
+    }
 
     private var selectedCandidate: PlaceCandidate? {
         candidates.first { $0.id == selectedCandidateID } ?? candidates.first
@@ -65,6 +70,9 @@ struct AddScreen: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .wanderScreen()
+            .onChange(of: resetToken) { _, _ in
+                reset()
+            }
         }
     }
 
@@ -84,6 +92,7 @@ struct AddScreen: View {
 
             Text("add a place")
                 .font(.system(size: 28, weight: .black))
+                .foregroundStyle(WanderTheme.textInk.color)
             Text(step.subtitle)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(WanderTheme.textMuted.color)
@@ -140,6 +149,8 @@ struct AddScreen: View {
                     .foregroundStyle(WanderTheme.textMuted.color)
                 TextField("paste a Google Maps, Apple Maps, or location link", text: $linkInput, axis: .vertical)
                     .textFieldStyle(.plain)
+                    .foregroundStyle(WanderTheme.textInk.color)
+                    .tint(WanderTheme.terracotta.color)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .submitLabel(.search)
@@ -287,6 +298,14 @@ struct AddScreen: View {
                 }
             }
 
+            RecoveryActionsRow(
+                primaryTitle: selectedSource.searchAgainTitle,
+                primarySystemImage: "magnifyingglass",
+                secondaryTitle: "back to add",
+                primaryAction: returnToSearchForCurrentSource,
+                secondaryAction: reset
+            )
+
             PickerBlock(title: "I've...") {
                 HStack(spacing: WanderTheme.spacing2) {
                     ChoicePill(title: "been", isSelected: selectedStatus == .been) { selectedStatus = .been }
@@ -323,6 +342,7 @@ struct AddScreen: View {
                     VStack(alignment: .leading) {
                         Text(selectedCandidate.name)
                             .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(WanderTheme.textInk.color)
                         Text("\(selectedStatus.displayTitle) · \(selectedVisibility.displayTitle)")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(WanderTheme.textMuted.color)
@@ -333,6 +353,14 @@ struct AddScreen: View {
                 .background(WanderTheme.surfaceBone.color)
                 .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusMedium))
             }
+
+            RecoveryActionsRow(
+                primaryTitle: "change place",
+                primarySystemImage: "magnifyingglass",
+                secondaryTitle: "back to add",
+                primaryAction: returnToSearchForCurrentSource,
+                secondaryAction: reset
+            )
 
             ForEach(currentQuestionBlocks) { block in
                 QuestionBlock(title: block.title, tag: block.tag) {
@@ -351,6 +379,8 @@ struct AddScreen: View {
                     .foregroundStyle(WanderTheme.textMuted.color)
                 TextField("best table, what to order, who told you...", text: $note, axis: .vertical)
                     .textFieldStyle(.plain)
+                    .foregroundStyle(WanderTheme.textInk.color)
+                    .tint(WanderTheme.terracotta.color)
                     .lineLimit(3, reservesSpace: true)
                     .padding(WanderTheme.spacing3)
                     .background(WanderTheme.surfaceRaised.color)
@@ -477,6 +507,23 @@ struct AddScreen: View {
             step = .source
         case .source, .saved:
             break
+        }
+    }
+
+    private func returnToSearchForCurrentSource() {
+        resolutionMessage = nil
+        selectedCandidateID = nil
+        selectedAnswers = [:]
+
+        switch selectedSource {
+        case .manual:
+            step = .manual
+        case .link:
+            step = .link
+        case .photo:
+            step = .photo
+        case .currentLocation, .socialSave:
+            step = .source
         }
     }
 
@@ -714,6 +761,23 @@ private enum AddStep {
     }
 }
 
+private extension AddSourceType {
+    var searchAgainTitle: String {
+        switch self {
+        case .currentLocation:
+            "pick another nearby place"
+        case .link:
+            "try a different link"
+        case .manual:
+            "search again"
+        case .photo:
+            "choose another photo"
+        case .socialSave:
+            "change place"
+        }
+    }
+}
+
 private enum AddQuestionKind: Equatable {
     case singleChoice
     case multiTag
@@ -940,6 +1004,7 @@ private struct SourceRow: View {
                 VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
                     Text(title)
                         .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(isPrimary ? WanderTheme.textOnAction.color : WanderTheme.textInk.color)
                     Text(subtitle)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(isPrimary ? WanderTheme.textOnAction.color.opacity(0.82) : WanderTheme.textMuted.color)
@@ -973,6 +1038,7 @@ private struct CandidateRow: View {
                 VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
                     Text(candidate.name)
                         .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(WanderTheme.textInk.color)
                     Text(candidate.subtitle)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(WanderTheme.textMuted.color)
@@ -1039,9 +1105,48 @@ private struct LabeledField: View {
                 .foregroundStyle(WanderTheme.textMuted.color)
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
+                .foregroundStyle(WanderTheme.textInk.color)
+                .tint(WanderTheme.terracotta.color)
                 .padding(WanderTheme.spacing3)
                 .background(WanderTheme.surfaceRaised.color)
                 .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusMedium))
+        }
+    }
+}
+
+private struct RecoveryActionsRow: View {
+    let primaryTitle: String
+    let primarySystemImage: String
+    let secondaryTitle: String
+    let primaryAction: () -> Void
+    let secondaryAction: () -> Void
+
+    var body: some View {
+        HStack(spacing: WanderTheme.spacing2) {
+            Button(action: primaryAction) {
+                Label(primaryTitle, systemImage: primarySystemImage)
+                    .font(.system(size: 13, weight: .bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .foregroundStyle(WanderTheme.terracottaDark.color)
+                    .background(WanderTheme.surfaceBone.color)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(WanderTheme.borderHairline.color, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+
+            Button(action: secondaryAction) {
+                Label(secondaryTitle, systemImage: "house.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .foregroundStyle(WanderTheme.textInk.color)
+                    .background(WanderTheme.surfaceSand.color)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
         }
     }
 }
@@ -1090,6 +1195,7 @@ private struct QuestionBlock<Content: View>: View {
             HStack {
                 Text(title)
                     .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(WanderTheme.textInk.color)
                 Spacer()
                 Text(tag)
                     .font(.system(size: 11, weight: .bold))
@@ -1109,20 +1215,99 @@ private struct SelectableQuestionOptions: View {
     let onSelect: (String) -> Void
 
     var body: some View {
-        LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: block.minimumOptionWidth), spacing: WanderTheme.spacing2)],
-            alignment: .leading,
-            spacing: WanderTheme.spacing2
-        ) {
+        WrappingChipLayout(horizontalSpacing: WanderTheme.spacing2, verticalSpacing: WanderTheme.spacing2) {
             ForEach(block.options, id: \.self) { option in
                 Button {
                     onSelect(option)
                 } label: {
                     WanderChip(title: option, isSelected: selectedValues.contains(option))
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
                 .buttonStyle(.plain)
             }
+        }
+    }
+}
+
+private struct WrappingChipLayout: Layout {
+    var horizontalSpacing: CGFloat
+    var verticalSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = rows(for: subviews, maxWidth: proposal.width ?? .greatestFiniteMagnitude)
+        return CGSize(width: proposal.width ?? rows.width, height: rows.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let rows = rows(for: subviews, maxWidth: bounds.width)
+        var y = bounds.minY
+
+        for row in rows.items {
+            var x = bounds.minX
+            for item in row.items {
+                subviews[item.index].place(
+                    at: CGPoint(x: x, y: y),
+                    proposal: ProposedViewSize(width: item.size.width, height: item.size.height)
+                )
+                x += item.size.width + horizontalSpacing
+            }
+            y += row.height + verticalSpacing
+        }
+    }
+
+    private func rows(for subviews: Subviews, maxWidth: CGFloat) -> ChipRows {
+        var rows: [ChipRow] = []
+        var currentItems: [ChipItem] = []
+        var currentWidth: CGFloat = 0
+        var currentHeight: CGFloat = 0
+        let effectiveMaxWidth = max(1, maxWidth)
+
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let nextWidth = currentItems.isEmpty ? size.width : currentWidth + horizontalSpacing + size.width
+
+            if nextWidth > effectiveMaxWidth, !currentItems.isEmpty {
+                rows.append(ChipRow(items: currentItems, width: currentWidth, height: currentHeight))
+                currentItems = [ChipItem(index: index, size: size)]
+                currentWidth = size.width
+                currentHeight = size.height
+            } else {
+                currentItems.append(ChipItem(index: index, size: size))
+                currentWidth = nextWidth
+                currentHeight = max(currentHeight, size.height)
+            }
+        }
+
+        if !currentItems.isEmpty {
+            rows.append(ChipRow(items: currentItems, width: currentWidth, height: currentHeight))
+        }
+
+        return ChipRows(items: rows, horizontalSpacing: horizontalSpacing, verticalSpacing: verticalSpacing)
+    }
+
+    private struct ChipItem {
+        let index: Int
+        let size: CGSize
+    }
+
+    private struct ChipRow {
+        let items: [ChipItem]
+        let width: CGFloat
+        let height: CGFloat
+    }
+
+    private struct ChipRows {
+        let items: [ChipRow]
+        let horizontalSpacing: CGFloat
+        let verticalSpacing: CGFloat
+
+        var width: CGFloat {
+            items.map(\.width).max() ?? 0
+        }
+
+        var height: CGFloat {
+            guard !items.isEmpty else { return 0 }
+            return items.reduce(0) { $0 + $1.height } + verticalSpacing * CGFloat(max(0, items.count - 1))
         }
     }
 }

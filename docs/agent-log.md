@@ -1412,3 +1412,82 @@ Checkpoint:
 - Set export compliance to `usesNonExemptEncryption=false`, attached build `0.1 (9)` to public group `Wander Alpha`, and submitted it for external TestFlight review.
 - Apple currently reports build `0.1 (9)` beta review state `WAITING_FOR_REVIEW`.
 - Final App Store Connect check after push: build `0.1 (9)` is `VALID`, `usesNonExemptEncryption=false`, and external beta review state is `APPROVED`.
+
+## 2026-06-06 13:20 PDT - Codex - M6 Backend Extraction Plan Eng Review
+
+Agent: Codex
+Branch: `main`
+Starting commit: `efc5033`
+Starting status: local `main` matches `origin/main`; worktree clean before this log entry.
+
+Goal: run `/plan-eng-review` against the next M6 backend extraction step before implementation.
+
+Expected files to inspect/touch:
+
+- `docs/plans/2026-06-01-wander-ios-eng-plan.md`
+- `docs/specs/wander-ios-product-spec.md`
+- `docs/backend/m3-supabase-foundation.md`
+- `docs/plans/2026-06-01-wander-m1-5-contract-lock.md`
+- `Wander/Models/LocalModels.swift`
+- `Wander/Services/RepositoryProtocols.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- `Wander/Services/Remote/SupabaseRepositories.swift`
+- `supabase/migrations/*`
+- `docs/agent-log.md`
+
+Notes:
+
+- Mission Control remains unreachable on `localhost:4000` (`curl` exit 7), so this repo log is the coordination record.
+- gstack preamble reported `UPGRADE_AVAILABLE 1.26.0.0 1.56.0.0`; upgrade was snoozed for this review so the toolchain does not change mid-task.
+- gstack design-doc check found no branch-specific design artifact; using the existing Wander product spec, M1.5 contract, M3 backend doc, decisions doc, and current code as review inputs.
+
+Checkpoint:
+
+- Joe paused the M6 review to triage friend TestFlight feedback from Build 9.
+- Decision: Build 10 cleanup should happen before M6 because the findings are current-test blockers: Dark Mode contrast, Map search behavior, Add flow escape hatches, and chip/sheet readability.
+
+## 2026-06-06 19:19 PDT - Codex - Build 10 Friend Test Cleanup
+
+Agent: Codex
+Branch: `main`
+Starting commit: `efc5033`
+Starting status: local `main` matched `origin/main`; `docs/agent-log.md` already had the in-progress M6 review entry above from this session.
+
+Goal: implement the pre-M6 Build 10 cleanup from friend screenshots, then provide a QA checklist for Joe/friend testing.
+
+Expected files to touch:
+
+- `Wander/App/WanderRootView.swift`
+- `Wander/Features/Add/AddScreen.swift`
+- `Wander/Features/Map/MapScreen.swift`
+- `docs/qa/2026-06-06-build-10-cleanup-test-checklist.md`
+- `docs/agent-log.md`
+
+Plan:
+
+- Force the alpha UI into the approved light theme so Dark Mode cannot make cream surfaces unreadable.
+- Make Map search text readable and make keyboard Search run real MapKit candidate search.
+- Add visible Add-flow recovery actions: change/search again and back to Add home.
+- Reset Add to the home/source picker after leaving the Add tab.
+- Replace quick-detail question grid spacing with a wrapping chip layout.
+- Add a friend-test QA checklist doc before shipping.
+
+Checkpoint:
+
+- Forced the app into the approved light theme at the root so iOS Dark Mode no longer turns cream-surface text white.
+- Wired Map search submit to `store.manualCandidates(...)` so pressing keyboard Search can find unsaved place candidates, show transient pins/sheets, and allow saving them to the user's map.
+- Added Map search loading/error state and made search/candidate/sheet text explicitly readable against the warm map and cream surfaces.
+- Added Add-flow recovery actions on confirmation/details screens: search/change place and back to Add home.
+- Reset Add to source picker when the user leaves the Add tab and returns.
+- Replaced Add quick-details `LazyVGrid` chips with a custom wrapping layout to remove spacing holes.
+- Added QA checklist: `docs/qa/2026-06-06-build-10-cleanup-test-checklist.md`.
+- Ran full tests:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: passed before and after the build-number bump/project regeneration.
+- Simulator smoke screenshots captured:
+  `DerivedData/build10-map-smoke.png`
+  `DerivedData/build10-add-smoke.png`
+- Bumped `CURRENT_PROJECT_VERSION` to `10`, regenerated `Wander.xcodeproj` with `xcodegen generate`, archived `/private/tmp/Wander-0.1-build10.xcarchive`, and uploaded build `0.1 (10)`.
+- App Store Connect build id for `0.1 (10)`: `128f2b2b-3523-4620-beb5-72bef23ceaa6`; processing state `VALID`.
+- Set export compliance to `usesNonExemptEncryption=false`, attached build `0.1 (10)` to public group `Wander Alpha`, and submitted it for external TestFlight review.
+- Final App Store Connect check: build `0.1 (10)` is `VALID`, `usesNonExemptEncryption=false`, and external beta review state is `APPROVED`.

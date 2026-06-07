@@ -8,6 +8,9 @@ struct MapScreen: View {
     @State private var selectedPlaceID: String?
     @State private var isPlaceSheetExpanded: Bool
     @State private var mapQuery = ""
+    @State private var mapSearchCandidates: [PlaceCandidate] = []
+    @State private var isSearchingMap = false
+    @State private var mapSearchMessage: String?
     @State private var selectedFilters: Set<MapFilter> = [.you, .social, .been, .wanna]
     @State private var position: MapCameraPosition = .region(
         MKCoordinateRegion(
@@ -27,7 +30,7 @@ struct MapScreen: View {
     }
 
     private var visiblePlaces: [VisiblePlace] {
-        let places = store.visiblePlaces(filters: filters)
+        let places = store.visiblePlaces(filters: filters) + mapSearchVisiblePlaces
         let normalizedQuery = mapQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !normalizedQuery.isEmpty else { return places }
 
@@ -39,6 +42,39 @@ struct MapScreen: View {
                 || visiblePlace.owner.handle.lowercased().contains(normalizedQuery)
                 || (visiblePlace.userPlace.note?.lowercased().contains(normalizedQuery) ?? false)
                 || (visiblePlace.userPlace.ratingSignal?.lowercased().contains(normalizedQuery) ?? false)
+                || visiblePlace.id.hasPrefix("map_search_")
+        }
+    }
+
+    private var mapSearchVisiblePlaces: [VisiblePlace] {
+        mapSearchCandidates.compactMap { candidate in
+            guard let latitude = candidate.latitude, let longitude = candidate.longitude else { return nil }
+            let place = LocalPlace(
+                localID: "map_search_place_\(candidate.id)",
+                canonicalName: candidate.name,
+                category: candidate.category,
+                address: candidate.address,
+                locality: candidate.locality,
+                region: candidate.region,
+                country: candidate.country,
+                latitude: latitude,
+                longitude: longitude,
+                sourceProvider: candidate.sourceProvider,
+                sourceProviderPlaceID: candidate.sourceProviderPlaceID,
+                confidence: candidate.confidence,
+                syncState: .localOnly
+            )
+            let userPlace = LocalUserPlace(
+                localID: "map_search_user_place_\(candidate.id)",
+                userID: store.currentUser.id,
+                placeID: place.localID,
+                status: .wannaGo,
+                visibility: store.defaultVisibility,
+                note: "search result",
+                sourceType: AddSourceType.manual.rawValue,
+                syncState: .localOnly
+            )
+            return VisiblePlace(id: "map_search_\(candidate.id)", place: place, userPlace: userPlace, owner: store.currentUser)
         }
     }
 
@@ -98,7 +134,19 @@ struct MapScreen: View {
 
             VStack(spacing: 0) {
                 VStack(spacing: WanderTheme.spacing2) {
-                    SearchBar(query: $mapQuery, userInitials: store.currentUser.initials)
+                    SearchBar(
+                        query: $mapQuery,
+                        userInitials: store.currentUser.initials,
+                        isSearching: isSearchingMap
+                    ) {
+                        Task {
+                            await runMapSearch()
+                        }
+                    }
+                    if let mapSearchMessage {
+                        MapSearchMessage(text: mapSearchMessage)
+                            .padding(.horizontal, WanderTheme.spacing3)
+                    }
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: WanderTheme.spacing1) {
                             ForEach(MapFilter.allCases) { filter in
@@ -127,9 +175,27 @@ struct MapScreen: View {
                         currentUserID: store.currentUser.id,
                         isExpanded: $isPlaceSheetExpanded
                     ) {
-                        auth.requireSignIn(for: .socialSave) {
+                        if let candidate = mapSearchCandidate(for: selectedPlace) {
                             Task {
-                                _ = await store.saveVisiblePlace(selectedPlace, backend: backend)
+                                _ = await store.saveCandidate(
+                                    candidate,
+                                    status: .wannaGo,
+                                    visibility: store.defaultVisibility,
+                                    note: nil,
+                                    sourceType: .manual,
+                                    backend: auth.isSignedIn ? backend : nil
+                                )
+                                if !auth.isSignedIn {
+                                    auth.presentGate(for: .syncPlace)
+                                }
+                                mapSearchMessage = "Saved \(candidate.name) to your map."
+                                mapSearchCandidates.removeAll { $0.id == candidate.id }
+                            }
+                        } else {
+                            auth.requireSignIn(for: .socialSave) {
+                                Task {
+                                    _ = await store.saveVisiblePlace(selectedPlace, backend: backend)
+                                }
                             }
                         }
                     }
@@ -158,6 +224,10 @@ struct MapScreen: View {
             }
         }
         .onChange(of: mapQuery) { _, _ in
+            mapSearchMessage = nil
+            if mapQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                mapSearchCandidates = []
+            }
             if let firstVisibleID = visiblePlaceIDs.first, !visiblePlaceIDs.contains(selectedPlaceID ?? "") {
                 selectedPlaceID = firstVisibleID
                 isPlaceSheetExpanded = false
@@ -191,6 +261,10 @@ struct MapScreen: View {
     }
 
     private func savers(for selectedPlace: VisiblePlace) -> [LocalProfile] {
+        guard !selectedPlace.id.hasPrefix("map_search_") else {
+            return [store.currentUser]
+        }
+
         var seen = Set<String>()
         return visiblePlaces
             .filter { $0.place.id == selectedPlace.place.id }
@@ -200,6 +274,42 @@ struct MapScreen: View {
                 seen.insert(profile.id)
                 return true
             }
+    }
+
+    @MainActor
+    private func runMapSearch() async {
+        let query = mapQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return }
+
+        isSearchingMap = true
+        mapSearchMessage = nil
+        defer { isSearchingMap = false }
+
+        do {
+            let candidates = try await store.manualCandidates(name: query, areaHint: nil, category: nil)
+            mapSearchCandidates = candidates
+            selectedPlaceID = mapSearchVisiblePlaces.first?.id ?? visiblePlaceIDs.first
+            isPlaceSheetExpanded = false
+            mapSearchMessage = candidates.isEmpty ? "No places found. Try a name plus neighborhood." : nil
+        } catch {
+            mapSearchCandidates = []
+            mapSearchMessage = resolutionCopy(for: error)
+        }
+    }
+
+    private func mapSearchCandidate(for visiblePlace: VisiblePlace) -> PlaceCandidate? {
+        guard visiblePlace.id.hasPrefix("map_search_") else { return nil }
+        let candidateID = String(visiblePlace.id.dropFirst("map_search_".count))
+        return mapSearchCandidates.first { $0.id == candidateID }
+    }
+
+    private func resolutionCopy(for error: Error) -> String {
+        if let error = error as? LocalizedError,
+           let description = error.errorDescription {
+            return description
+        }
+
+        return "Could not search the map right now. Try again or add it from the Add tab."
     }
 
     private static func resolvedInitialMapPlaceQuery(from arguments: [String] = ProcessInfo.processInfo.arguments) -> String? {
@@ -246,6 +356,8 @@ private enum MapFilter: String, CaseIterable, Identifiable {
 private struct SearchBar: View {
     @Binding var query: String
     let userInitials: String
+    let isSearching: Bool
+    let onSubmit: () -> Void
 
     var body: some View {
         HStack(spacing: WanderTheme.spacing2) {
@@ -253,11 +365,19 @@ private struct SearchBar: View {
                 .foregroundStyle(WanderTheme.textMuted.color)
             TextField("search a place, vibe, or username...", text: $query)
                 .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(WanderTheme.textInk.color)
+                .tint(WanderTheme.terracotta.color)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
+                .onSubmit(onSubmit)
             Spacer()
-            if query.isEmpty {
+            if isSearching {
+                ProgressView()
+                    .scaleEffect(0.82)
+                    .tint(WanderTheme.terracotta.color)
+                    .frame(width: 28, height: 28)
+            } else if query.isEmpty {
                 WanderAvatar(initials: userInitials, size: 28, color: WanderTheme.terracotta.color)
             } else {
                 Button {
@@ -277,6 +397,23 @@ private struct SearchBar: View {
         .overlay(Capsule().stroke(WanderTheme.borderHairline.color))
         .shadow(color: WanderTheme.textInk.color.opacity(0.08), radius: 10, x: 0, y: 5)
         .padding(.horizontal, WanderTheme.spacing3)
+    }
+}
+
+private struct MapSearchMessage: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(WanderTheme.textInk.color)
+            .lineLimit(2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, WanderTheme.spacing3)
+            .padding(.vertical, WanderTheme.spacing2)
+            .background(WanderTheme.surfaceBone.color)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(WanderTheme.borderHairline.color, lineWidth: 1))
     }
 }
 
@@ -411,7 +548,9 @@ private struct PlaceSheet: View {
                     HStack {
                         Text(visiblePlace.place.canonicalName)
                             .font(.system(size: 20, weight: .bold))
-                            .lineLimit(1)
+                            .foregroundStyle(WanderTheme.textInk.color)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.82)
                         StatusBadge(status: visiblePlace.userPlace.status)
                     }
                     Text("\(visiblePlace.place.locality ?? "Los Angeles") · \(visiblePlace.place.category)")
@@ -443,6 +582,7 @@ private struct PlaceSheet: View {
                 VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
                     Text(visiblePlace.place.canonicalName)
                         .font(.system(size: 24, weight: .black))
+                        .foregroundStyle(WanderTheme.textInk.color)
                         .lineLimit(2)
                     Text("\(visiblePlace.place.locality ?? "Los Angeles") · \(visiblePlace.place.category)")
                         .font(.system(size: 13, weight: .semibold))
@@ -578,6 +718,7 @@ private struct SocialProofRow: View {
             Spacer()
             Text(visibility.displayTitle)
                 .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(WanderTheme.textInk.color)
                 .padding(.horizontal, WanderTheme.spacing3)
                 .padding(.vertical, WanderTheme.spacing1)
                 .background(WanderTheme.surfaceSand.color)
@@ -623,11 +764,13 @@ private struct PlaceFactPill: View {
                 .font(.system(size: 11, weight: .bold))
             Text(title)
                 .lineLimit(1)
+                .minimumScaleFactor(0.82)
         }
         .font(.system(size: 12, weight: .bold))
         .padding(.horizontal, WanderTheme.spacing3)
-        .frame(height: 34)
+        .frame(minHeight: 36)
         .background(WanderTheme.surfaceSand.color)
+        .foregroundStyle(WanderTheme.textInk.color)
         .clipShape(Capsule())
     }
 }

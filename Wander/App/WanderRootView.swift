@@ -5,6 +5,7 @@ struct WanderRootView: View {
     @EnvironmentObject private var auth: AuthSessionStore
     @EnvironmentObject private var backend: WanderBackend
     @State private var selectedTab: WanderTab
+    @State private var addTabResetToken = UUID()
     @State private var initialPresentation: WanderInitialPresentation?
     @StateObject private var store: WanderStore
     private let fixtureMode: WanderFixtureMode
@@ -23,7 +24,7 @@ struct WanderRootView: View {
                 .tabItem { Label(WanderTab.map.title, systemImage: WanderTab.map.systemImage) }
                 .tag(WanderTab.map)
 
-            AddScreen()
+            AddScreen(resetToken: addTabResetToken)
                 .tabItem { Label(WanderTab.add.title, systemImage: WanderTab.add.systemImage) }
                 .tag(WanderTab.add)
 
@@ -36,6 +37,7 @@ struct WanderRootView: View {
                 .tag(WanderTab.profile)
         }
         .tint(WanderTheme.terracotta.color)
+        .preferredColorScheme(.light)
         .environmentObject(store)
         .sheet(item: $auth.activeGate) { request in
             AuthGateSheet(request: request)
@@ -68,6 +70,11 @@ struct WanderRootView: View {
         }
         .onChange(of: auth.state) { _, state in
             applyAuthStateIfNeeded(state)
+        }
+        .onChange(of: selectedTab) { oldValue, newValue in
+            if oldValue == .add, newValue != .add {
+                addTabResetToken = UUID()
+            }
         }
     }
 
