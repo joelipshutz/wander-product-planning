@@ -2167,3 +2167,13 @@ Completion:
 - The new place sheet mirrors the Map sheet style and only shows metadata currently available without paid/billing-backed APIs: category, address/locality, directions, share, saved-by context, note, and saved answer chips.
 - `git diff --check`: passed.
 - Full elevated `xcodebuild test`: passed, 80 tests.
+- Commit `1722197` (`fix: open discover places as place details`) pushed to `origin/main`.
+- Bumped `CURRENT_PROJECT_VERSION` to `22` in `project.yml`.
+- Regenerated `Wander.xcodeproj` with `xcodegen generate`.
+- Full elevated `xcodebuild test`: passed again after project generation, 80 tests.
+- Commit `0753ba0` (`chore: bump wander build 22`) pushed to `origin/main`.
+- Archived `/private/tmp/Wander-0.1-build22.xcarchive`.
+- Uploaded build `0.1 (22)` to App Store Connect.
+- App Store Connect build id: `00f928e3-bdc7-4327-92a5-dde06e148334`.
+- Build `0.1 (22)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
+- Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
