@@ -1888,3 +1888,50 @@ Findings:
 - Typeahead selection does not explicitly dismiss keyboard today.
 - Map plus on unsaved/social places saves directly as `wanna` with default visibility; it does not currently route through the Add confirmation/details/questions flow.
 - The edit pencil mostly marks `wanna` as `been` or shows "editing saved places is coming next"; full edit/details is not implemented.
+
+## 2026-06-09 12:03 PDT - Codex - Durable Local Persistence
+
+Agent: Codex
+Branch: `main`
+Starting commit: `412e355`
+Starting status: one untracked file was already present: `Wander/Services/WanderStorePersistence.swift`.
+
+Goal: execute the next highest-risk alpha fix from Build 17 feedback: make saved places, follows/blocks, drafts, source artifacts, extraction jobs, attributes, and default visibility survive app kill/relaunch.
+
+Remaining work list from latest triage:
+
+- Durable local persistence for saves/follows/drafts.
+- Follow graph reliability: relationship refresh, remote profile/following/follower reads, and social places appearing after follow.
+- Add-tab `sync failed` diagnosis.
+- Map typeahead keyboard dismissal after selecting a result.
+- Map plus should enter the Add-style confirmation/details flow for unsaved places instead of direct-saving incomplete metadata.
+- Real edit flow for saved places: status, visibility, answers, notes.
+- Save success should be a short celebratory toast/haptic/add-another moment, not a full-screen success state.
+- Map user location dot should use Apple Maps-style blue.
+- Place profile cleanup: address should not appear as a chip.
+- Remote visible-place attribute hydration into the expanded place profile.
+- Later share/deep-link/web landing page.
+- M6 extraction hardening: Google Maps robustness, generic web metadata, photo OCR, TikTok/Instagram.
+- Alpha readiness: privacy copy, onboarding/auth gates, analytics provider, performance/QA.
+
+Expected files to touch:
+
+- `Wander/Services/WanderStorePersistence.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- `Wander/App/WanderRootView.swift`
+- `WanderTests/WanderStoreTests.swift`
+- `project.yml`
+- `Wander.xcodeproj/project.pbxproj`
+- `docs/agent-log.md`
+
+Checkpoint:
+
+- Reused and completed the existing untracked `WanderStorePersistence.swift` as a JSON snapshot store under Application Support.
+- Live fixture mode now injects `WanderStorePersistence.live`; demo fixture mode remains non-persistent.
+- `WanderStore` now restores saved places, user places, attributes, follows, blocks, drafts, source artifacts, extraction jobs, current profile, and default visibility from disk.
+- Added persistence calls around local save, draft, follow, block, sync-marking, profile-shell, and extraction-job mutations.
+- Added relaunch tests covering saved place answers/default visibility and social graph/draft restore.
+- `xcodegen generate`: passed.
+- Initial sandboxed test run failed from CoreSimulator/SwiftPM cache permissions only.
+- Focused `WanderStoreTests`: passed with elevated `xcodebuild`.
+- Full test suite: passed with elevated `xcodebuild`.

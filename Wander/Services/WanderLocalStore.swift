@@ -53,7 +53,14 @@ final class WanderStore: ObservableObject {
     @Published private(set) var remoteVisiblePlaceCache: [VisiblePlace] = []
     @Published private(set) var lastRemoteError: String?
     @Published private(set) var lastDiscoverFilters = DiscoverFilters(query: "")
-    @Published var defaultVisibility: PlaceVisibility
+    @Published var defaultVisibility: PlaceVisibility {
+        didSet {
+            currentUser.defaultVisibilityRaw = defaultVisibility.rawValue
+            currentUser.updatedAt = .now
+            currentUser.localUpdatedAt = .now
+            persist()
+        }
+    }
 
     let contactProvider: FakeContactProvider
 
@@ -61,6 +68,7 @@ final class WanderStore: ObservableObject {
     private let parser: LLMFilterParser
     private let placeResolver: PlaceCandidateResolving
     private let analytics: AnalyticsClient
+    private let persistence: WanderStorePersistence?
     private var discoverParseCache: [String: DiscoverFilters] = [:]
 
     let smartFilters: [SmartFilter] = [
@@ -74,20 +82,43 @@ final class WanderStore: ObservableObject {
         fixtures: WanderFixtures,
         placeResolver: PlaceCandidateResolving = MapKitPlaceResolver(),
         parser: LLMFilterParser = DeterministicFilterParser(),
-        analytics: AnalyticsClient = NoopAnalyticsClient()
+        analytics: AnalyticsClient = NoopAnalyticsClient(),
+        persistence: WanderStorePersistence? = nil
     ) {
-        self.currentUser = fixtures.currentUser
-        self.profiles = fixtures.profiles
-        self.places = fixtures.places
-        self.userPlaces = fixtures.userPlaces
-        self.placeAttributes = fixtures.placeAttributes
-        self.follows = fixtures.follows
-        self.blocks = fixtures.blocks
-        self.contactProvider = fixtures.contactProvider
-        self.defaultVisibility = fixtures.currentUser.defaultVisibility
         self.placeResolver = placeResolver
         self.parser = parser
         self.analytics = analytics
+        self.persistence = persistence
+
+        if let restored = persistence?.load()?.restoredState(contactProvider: fixtures.contactProvider) {
+            self.currentUser = restored.currentUser
+            self.profiles = restored.profiles
+            self.places = restored.places
+            self.userPlaces = restored.userPlaces
+            self.placeAttributes = restored.placeAttributes
+            self.follows = restored.follows
+            self.blocks = restored.blocks
+            self.unresolvedDrafts = restored.unresolvedDrafts
+            self.sourceArtifacts = restored.sourceArtifacts
+            self.extractionJobs = restored.extractionJobs
+            self.contactProvider = restored.contactProvider
+            self.defaultVisibility = restored.defaultVisibility
+        } else {
+            self.currentUser = fixtures.currentUser
+            self.profiles = fixtures.profiles
+            self.places = fixtures.places
+            self.userPlaces = fixtures.userPlaces
+            self.placeAttributes = fixtures.placeAttributes
+            self.follows = fixtures.follows
+            self.blocks = fixtures.blocks
+            self.contactProvider = fixtures.contactProvider
+            self.defaultVisibility = fixtures.currentUser.defaultVisibility
+        }
+    }
+
+    private func persist() {
+        guard let persistence else { return }
+        persistence.save(WanderStoreSnapshot(store: self))
     }
 
     func apply(authState: AuthState) {
@@ -409,6 +440,7 @@ final class WanderStore: ObservableObject {
             existing.localUpdatedAt = .now
             existing.syncStateRaw = SyncState.pendingUpdate.rawValue
             objectWillChange.send()
+            persist()
             return SaveResult(userPlaceID: existing.id, syncState: existing.syncState)
         }
 
@@ -434,6 +466,7 @@ final class WanderStore: ObservableObject {
                 properties: ["source_type": sourceType.rawValue, "visibility": visibility.rawValue, "status": status.rawValue]
             )
         )
+        persist()
         return SaveResult(userPlaceID: userPlace.id, syncState: userPlace.syncState)
     }
 
@@ -512,6 +545,7 @@ final class WanderStore: ObservableObject {
             createdAt: .now
         )
         unresolvedDrafts.append(draft)
+        persist()
         return draft
     }
 
@@ -571,6 +605,8 @@ final class WanderStore: ObservableObject {
             job.updatedAt = .now
             job.localUpdatedAt = .now
             lastRemoteError = message
+            objectWillChange.send()
+            persist()
             return nil
         }
     }
@@ -656,12 +692,18 @@ final class WanderStore: ObservableObject {
                 syncState: .pendingCreate
             )
         )
+        persist()
     }
 
     func follow(userID: String, source: FollowSource = .profile, backend: WanderBackend?) async {
         let follow = upsertFollow(userID: userID, source: source)
 
-        guard let follow, let backend else {
+        guard let follow else {
+            return
+        }
+
+        guard let backend else {
+            persist()
             return
         }
 
@@ -672,16 +714,19 @@ final class WanderStore: ObservableObject {
             follow.serverUpdatedAt = .now
             lastRemoteError = nil
             objectWillChange.send()
+            persist()
         } catch {
             follow.syncStateRaw = SyncState.failed.rawValue
             follow.lastSyncError = remoteErrorMessage(error)
             lastRemoteError = follow.lastSyncError
             objectWillChange.send()
+            persist()
         }
     }
 
     func unfollow(userID: String) {
         follows.removeAll { $0.followerUserID == currentUser.id && $0.followedUserID == userID }
+        persist()
     }
 
     func unfollow(userID: String, backend: WanderBackend?) async {
@@ -697,6 +742,7 @@ final class WanderStore: ObservableObject {
         follow.syncStateRaw = SyncState.pendingDelete.rawValue
         follow.lastSyncError = nil
         objectWillChange.send()
+        persist()
 
         do {
             try await backend.unfollow(userID: userID)
@@ -707,6 +753,7 @@ final class WanderStore: ObservableObject {
             follow.lastSyncError = remoteErrorMessage(error)
             lastRemoteError = follow.lastSyncError
             objectWillChange.send()
+            persist()
         }
     }
 
@@ -727,12 +774,18 @@ final class WanderStore: ObservableObject {
                 syncState: .pendingCreate
             )
         )
+        persist()
     }
 
     func block(userID: String, backend: WanderBackend?) async {
         let block = upsertBlock(userID: userID)
 
-        guard let block, let backend else {
+        guard let block else {
+            return
+        }
+
+        guard let backend else {
+            persist()
             return
         }
 
@@ -743,16 +796,19 @@ final class WanderStore: ObservableObject {
             block.serverUpdatedAt = .now
             lastRemoteError = nil
             objectWillChange.send()
+            persist()
         } catch {
             block.syncStateRaw = SyncState.failed.rawValue
             block.lastSyncError = remoteErrorMessage(error)
             lastRemoteError = block.lastSyncError
             objectWillChange.send()
+            persist()
         }
     }
 
     func unblock(userID: String) {
         blocks.removeAll { $0.blockerUserID == currentUser.id && $0.blockedUserID == userID }
+        persist()
     }
 
     func unblock(userID: String, backend: WanderBackend?) async {
@@ -768,6 +824,7 @@ final class WanderStore: ObservableObject {
         block.syncStateRaw = SyncState.pendingDelete.rawValue
         block.lastSyncError = nil
         objectWillChange.send()
+        persist()
 
         do {
             try await backend.unblock(userID: userID)
@@ -778,6 +835,7 @@ final class WanderStore: ObservableObject {
             block.lastSyncError = remoteErrorMessage(error)
             lastRemoteError = block.lastSyncError
             objectWillChange.send()
+            persist()
         }
     }
 
@@ -821,6 +879,7 @@ final class WanderStore: ObservableObject {
         let handle = normalizedSessionHandle(from: session)
         let displayName = normalizedSessionDisplayName(from: session, fallbackHandle: handle)
         let localID = "local_profile_current"
+        let preferredVisibility = defaultVisibility
         let profile = LocalProfile(
             localID: localID,
             serverID: session.userID,
@@ -828,26 +887,29 @@ final class WanderStore: ObservableObject {
             displayName: displayName,
             syncState: .synced
         )
+        profile.defaultVisibilityRaw = preferredVisibility.rawValue
 
         currentUser = profile
         profiles.removeAll { $0.localID == localID || $0.serverID == session.userID }
         profiles.insert(profile, at: 0)
-        defaultVisibility = profile.defaultVisibility
+        defaultVisibility = preferredVisibility
     }
 
     private func applySignedOutProfile() {
         let localID = "local_profile_current"
+        let preferredVisibility = defaultVisibility
         let profile = LocalProfile(
             localID: localID,
             handle: "you",
             displayName: "You",
             syncState: .localOnly
         )
+        profile.defaultVisibilityRaw = preferredVisibility.rawValue
 
         currentUser = profile
         profiles.removeAll { $0.localID == localID }
         profiles.insert(profile, at: 0)
-        defaultVisibility = profile.defaultVisibility
+        defaultVisibility = preferredVisibility
     }
 
     private func normalizedSessionHandle(from session: AuthSession) -> String {
@@ -1007,6 +1069,7 @@ final class WanderStore: ObservableObject {
             attribute.serverUpdatedAt = syncState == .synced ? .now : attribute.serverUpdatedAt
         }
         objectWillChange.send()
+        persist()
     }
 
     private func markPlace(localOrServerID: String, serverID: String, syncState: SyncState, error: String? = nil) {
@@ -1023,6 +1086,8 @@ final class WanderStore: ObservableObject {
         for userPlace in userPlaces where previousIDs.contains(userPlace.placeID) {
             userPlace.placeID = serverID
         }
+        objectWillChange.send()
+        persist()
     }
 
     private func remoteSocialSaveIDs(for visiblePlace: VisiblePlace) -> (placeID: String, sourceUserPlaceID: String)? {
@@ -1063,6 +1128,7 @@ final class WanderStore: ObservableObject {
             }
         }
         objectWillChange.send()
+        persist()
     }
 
     private func mergeProfileShells(_ shells: [ProfileShell]) -> [ProfileShell] {
@@ -1266,6 +1332,7 @@ final class WanderStore: ObservableObject {
             extractionJobID: extractionJobID,
             createdAt: existing.createdAt
         )
+        persist()
     }
 
     private func markSourceArtifact(_ artifact: LocalSourceArtifact, serverID: String?, syncState: SyncState, error: String?) {
@@ -1276,6 +1343,8 @@ final class WanderStore: ObservableObject {
         artifact.lastSyncError = error
         artifact.serverUpdatedAt = syncState == .synced ? .now : artifact.serverUpdatedAt
         artifact.localUpdatedAt = .now
+        objectWillChange.send()
+        persist()
     }
 
     private func markExtractionJob(
@@ -1300,6 +1369,8 @@ final class WanderStore: ObservableObject {
         job.serverUpdatedAt = syncState == .synced ? .now : job.serverUpdatedAt
         job.localUpdatedAt = .now
         job.updatedAt = .now
+        objectWillChange.send()
+        persist()
     }
 
     private func applyExtractionResult(_ result: ExtractionJobResult) {
@@ -1331,6 +1402,8 @@ final class WanderStore: ObservableObject {
                 ]
             )
         )
+        objectWillChange.send()
+        persist()
     }
 
     private func providerSteps(from json: String) -> [String] {

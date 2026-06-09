@@ -11,6 +11,13 @@ final class WanderStoreTests: XCTestCase {
         WanderStore(fixtures: WanderFixtures.seed())
     }
 
+    private func makeTemporaryPersistence() -> (persistence: WanderStorePersistence, directory: URL) {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wander-store-tests-\(UUID().uuidString)", isDirectory: true)
+        let url = directory.appendingPathComponent("store.json")
+        return (WanderStorePersistence.file(url: url), directory)
+    }
+
     func testEmptyFixturesStartWithoutDemoPeopleOrPlaces() {
         let store = WanderStore(fixtures: WanderFixtures.empty())
 
@@ -205,6 +212,70 @@ final class WanderStoreTests: XCTestCase {
         XCTAssertEqual(attributes.first { $0.questionKey == "rating_signal" }?.valueJSON, "\"great\"")
         XCTAssertEqual(attributes.first { $0.questionKey == "coffee_tags" }?.valueJSON, "[\"wifi solid\",\"quiet\"]")
         XCTAssertEqual(store.currentUserVisiblePlaces.first { $0.id == result.userPlaceID }?.userPlace.ratingSignal, "great")
+    }
+
+    func testFilePersistenceRestoresSavedPlaceAfterRelaunch() {
+        let fixture = makeTemporaryPersistence()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+
+        let firstStore = WanderStore(fixtures: WanderFixtures.empty(), persistence: fixture.persistence)
+        firstStore.apply(authState: .signedIn(AuthSession(userID: "user_live", displayName: "Joe", handle: "joe")))
+        firstStore.defaultVisibility = .mutuals
+
+        let result = firstStore.saveCandidate(
+            PlaceCandidate(
+                id: "mapkit_persisted_maru",
+                name: "Maru Coffee",
+                category: "coffee",
+                address: "101 Arts District",
+                locality: "Los Angeles",
+                region: "CA",
+                country: "US",
+                latitude: 34.0407,
+                longitude: -118.2354,
+                sourceProvider: "mapkit",
+                sourceProviderPlaceID: "mapkit_persisted_maru",
+                confidence: 0.92
+            ),
+            status: .been,
+            visibility: .mutuals,
+            note: "window table",
+            sourceType: .manual,
+            attributes: [
+                PlaceAttributeDraft(questionKey: "rating_signal", valueType: "emoji_scale", stringValue: "great"),
+                PlaceAttributeDraft(questionKey: "coffee_tags", valueType: "multi_tag", stringValues: ["wifi solid", "quiet"])
+            ]
+        )
+
+        let relaunchedStore = WanderStore(fixtures: WanderFixtures.empty(), persistence: fixture.persistence)
+        let saved = relaunchedStore.currentUserVisiblePlaces.first { $0.place.canonicalName == "Maru Coffee" }
+
+        XCTAssertEqual(relaunchedStore.currentUser.id, "user_live")
+        XCTAssertEqual(relaunchedStore.defaultVisibility, .mutuals)
+        XCTAssertEqual(saved?.place.address, "101 Arts District")
+        XCTAssertEqual(saved?.userPlace.status, .been)
+        XCTAssertEqual(saved?.userPlace.visibility, .mutuals)
+        XCTAssertEqual(saved?.userPlace.note, "window table")
+        XCTAssertEqual(saved?.userPlace.ratingSignal, "great")
+        XCTAssertEqual(relaunchedStore.attributes(for: result.userPlaceID).map(\.questionKey), ["coffee_tags", "rating_signal"])
+    }
+
+    func testFilePersistenceRestoresDraftsAndSocialGraphAfterRelaunch() {
+        let fixture = makeTemporaryPersistence()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+
+        let firstStore = WanderStore(fixtures: WanderFixtures.seed(), persistence: fixture.persistence)
+        firstStore.follow(userID: "user_maya", source: .contacts)
+        firstStore.block(userID: "user_ryan")
+        _ = firstStore.createUnresolvedDraft(sourceType: .link, originalInput: "https://maps.app.goo.gl/example")
+
+        let relaunchedStore = WanderStore(fixtures: WanderFixtures.empty(), persistence: fixture.persistence)
+
+        XCTAssertEqual(relaunchedStore.relationship(to: "user_maya"), .follower)
+        XCTAssertEqual(relaunchedStore.blockedProfiles().map(\.id), ["user_ryan"])
+        XCTAssertEqual(relaunchedStore.unresolvedDrafts.map(\.sourceType), [.link])
+        XCTAssertEqual(relaunchedStore.sourceArtifacts.map(\.type), ["url"])
+        XCTAssertEqual(relaunchedStore.extractionJobs.map(\.sourceType), ["link"])
     }
 
     func testUpdatingCandidateReplacesQuestionAttributesWhenProvided() {

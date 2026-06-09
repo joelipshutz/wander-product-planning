@@ -15,7 +15,8 @@ struct WanderRootView: View {
         self.fixtureMode = fixtureMode
         _selectedTab = State(initialValue: initialTab ?? Self.resolvedInitialTab())
         _initialPresentation = State(initialValue: initialPresentation ?? Self.resolvedInitialPresentation())
-        _store = StateObject(wrappedValue: WanderStore(fixtures: Self.resolvedFixtures(mode: fixtureMode)))
+        let persistence: WanderStorePersistence? = fixtureMode == .empty ? .live : nil
+        _store = StateObject(wrappedValue: WanderStore(fixtures: Self.resolvedFixtures(mode: fixtureMode), persistence: persistence))
     }
 
     var body: some View {
