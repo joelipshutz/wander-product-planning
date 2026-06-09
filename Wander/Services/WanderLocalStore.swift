@@ -10,6 +10,15 @@ struct UnresolvedDraft: Identifiable, Equatable {
     let createdAt: Date
 }
 
+private extension UnresolvedDraft {
+    var remoteExtractionJobID: String? {
+        guard let extractionJobID,
+              UUID(uuidString: extractionJobID) != nil
+        else { return nil }
+        return extractionJobID
+    }
+}
+
 struct AuthGateCopy: Equatable {
     let title: String
     let message: String
@@ -534,6 +543,52 @@ final class WanderStore: ObservableObject {
 
         for draft in pendingDrafts {
             await enqueueExtractionJob(for: draft, backend: backend)
+        }
+    }
+
+    func extractionJob(for draft: UnresolvedDraft) -> LocalExtractionJob? {
+        guard let jobID = draft.extractionJobID else { return nil }
+        return extractionJob(matching: jobID)
+    }
+
+    @discardableResult
+    func processExtractionJob(for draft: UnresolvedDraft, backend: WanderBackend) async -> ExtractionJobResult? {
+        guard let job = extractionJob(for: draft),
+              let remoteJobID = job.serverID ?? draft.remoteExtractionJobID
+        else { return nil }
+
+        do {
+            let result = try await backend.processExtractionJob(jobID: remoteJobID)
+            applyExtractionResult(result)
+            lastRemoteError = nil
+            return result
+        } catch {
+            let message = remoteErrorMessage(error)
+            job.syncStateRaw = SyncState.failed.rawValue
+            job.lastSyncError = message
+            job.errorCode = "process_failed"
+            job.errorMessage = message
+            job.updatedAt = .now
+            job.localUpdatedAt = .now
+            lastRemoteError = message
+            return nil
+        }
+    }
+
+    @discardableResult
+    func refreshExtractionJob(for draft: UnresolvedDraft, backend: WanderBackend) async -> ExtractionJobResult? {
+        guard let job = extractionJob(for: draft),
+              let remoteJobID = job.serverID ?? draft.remoteExtractionJobID
+        else { return nil }
+
+        do {
+            let result = try await backend.extractionJobResult(jobID: remoteJobID)
+            applyExtractionResult(result)
+            lastRemoteError = nil
+            return result
+        } catch {
+            lastRemoteError = remoteErrorMessage(error)
+            return nil
         }
     }
 
@@ -1247,6 +1302,37 @@ final class WanderStore: ObservableObject {
         job.updatedAt = .now
     }
 
+    private func applyExtractionResult(_ result: ExtractionJobResult) {
+        guard let job = extractionJob(matching: result.extractionJobID) else { return }
+
+        job.serverID = result.extractionJobID
+        job.statusRaw = result.status.rawValue
+        job.attemptCount = result.attemptCount
+        job.providerStepsJSON = encodedJSON(result.providerSteps)
+        job.extractedCandidatesJSON = encodedJSON(result.candidates)
+        job.confidence = result.confidence
+        job.errorCode = result.errorCode
+        job.errorMessage = result.errorMessage
+        job.syncStateRaw = SyncState.synced.rawValue
+        job.lastSyncError = nil
+        job.serverUpdatedAt = .now
+        job.localUpdatedAt = .now
+        job.updatedAt = .now
+
+        analytics.track(
+            AnalyticsEvent(
+                name: result.status == .failed || result.status == .noPlaceFound
+                    ? WanderAnalyticsEvents.extractionJobFailed
+                    : WanderAnalyticsEvents.extractionJobCompleted,
+                properties: [
+                    "source_type": job.sourceType,
+                    "status": result.status.rawValue,
+                    "candidate_count": "\(result.candidates.count)"
+                ]
+            )
+        )
+    }
+
     private func providerSteps(from json: String) -> [String] {
         guard let data = json.data(using: .utf8),
               let steps = try? JSONDecoder().decode([String].self, from: data)
@@ -1255,6 +1341,16 @@ final class WanderStore: ObservableObject {
         }
 
         return steps.isEmpty ? ["queued_for_backend_extraction"] : steps
+    }
+
+    private func encodedJSON<T: Encodable>(_ value: T) -> String {
+        guard let data = try? JSONEncoder().encode(value),
+              let encoded = String(data: data, encoding: .utf8)
+        else {
+            return "[]"
+        }
+
+        return encoded
     }
 
     private func replaceAttributes(for userPlaceID: String, with drafts: [PlaceAttributeDraft], syncState: SyncState) {

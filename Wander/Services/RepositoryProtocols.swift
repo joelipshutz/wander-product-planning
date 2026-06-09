@@ -40,7 +40,7 @@ struct LinkPlaceInput: Equatable {
     let rawValue: String
 }
 
-struct PlaceCandidate: Identifiable, Equatable {
+struct PlaceCandidate: Identifiable, Equatable, Codable {
     let id: String
     let name: String
     let category: String
@@ -151,6 +151,17 @@ struct ExtractionJobEnqueueResult: Equatable {
     let attemptCount: Int
 }
 
+struct ExtractionJobResult: Equatable {
+    let extractionJobID: String
+    let status: ExtractionStatus
+    let attemptCount: Int
+    let providerSteps: [String]
+    let candidates: [PlaceCandidate]
+    let confidence: Double
+    let errorCode: String?
+    let errorMessage: String?
+}
+
 @MainActor
 protocol ProfileRepository {
     func currentProfile() async throws -> LocalProfile?
@@ -205,6 +216,8 @@ protocol SocialPlaceSaveRepository {
 @MainActor
 protocol ExtractionRepository {
     func enqueue(_ draft: ExtractionJobDraft) async throws -> ExtractionJobEnqueueResult
+    func process(jobID: String) async throws -> ExtractionJobResult
+    func result(jobID: String) async throws -> ExtractionJobResult
 }
 
 @MainActor

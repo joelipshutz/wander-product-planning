@@ -122,7 +122,7 @@ struct AddScreen: View {
                 selectedSource = .manual
                 step = .manual
             }
-            SourceRow(title: AddSourceType.photo.title, subtitle: "photo extraction comes next", systemImage: "photo", isDisabled: isResolvingCandidates) {
+            SourceRow(title: AddSourceType.photo.title, subtitle: "save a photo draft for extraction", systemImage: "photo", isDisabled: isResolvingCandidates) {
                 resolutionMessage = nil
                 selectedSource = .photo
                 step = .photo
@@ -238,7 +238,7 @@ struct AddScreen: View {
                 InlineMessage(text: resolutionMessage)
             }
 
-            Text("Photo extraction still needs the backend worker. For this build, photo import proves the capture/draft lane.")
+            Text("We'll look for a place in the photo. If nothing obvious comes back, it stays as a draft.")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(WanderTheme.textMuted.color)
 
@@ -646,6 +646,14 @@ struct AddScreen: View {
             originalInput: linkInput,
             backend: auth.isSignedIn ? backend : nil
         )
+
+        if auth.isSignedIn,
+           let draft,
+           let result = await store.processExtractionJob(for: draft, backend: backend),
+           applyExtractionResult(result, source: .link) {
+            return
+        }
+
         step = .draft
     }
 
@@ -669,10 +677,38 @@ struct AddScreen: View {
                 localAssetRef: assetRef,
                 backend: auth.isSignedIn ? backend : nil
             )
+
+            if auth.isSignedIn,
+               let draft,
+               let result = await store.processExtractionJob(for: draft, backend: backend),
+               applyExtractionResult(result, source: .photo) {
+                return
+            }
+
             step = .draft
         } catch {
             resolutionMessage = "Could not import that photo. Try another one or add manually."
         }
+    }
+
+    @MainActor
+    private func applyExtractionResult(_ result: ExtractionJobResult, source: AddSourceType) -> Bool {
+        let resolvedCandidates = result.candidates.filter { candidate in
+            candidate.latitude != nil && candidate.longitude != nil
+        }
+        guard !resolvedCandidates.isEmpty,
+              result.status == .needsConfirmation || result.status == .complete
+        else {
+            return false
+        }
+
+        selectedSource = source
+        candidates = resolvedCandidates
+        selectedCandidateID = resolvedCandidates.first?.id
+        selectedVisibility = store.defaultVisibility
+        resolutionMessage = nil
+        step = .confirm
+        return true
     }
 
     private func resolutionCopy(for error: Error) -> String {

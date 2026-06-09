@@ -1617,3 +1617,69 @@ Completion:
 - Build `0.1 (12)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
 - Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
 - Next M6 work: implement the backend worker/provider adapters that consume queued `extraction_jobs` and write candidate results without auto-saving low-confidence places.
+
+## 2026-06-08 19:31 PDT - Codex - M6 Extraction Worker And Result Polling
+
+Agent: Codex
+Branch: `main`
+Starting commit: `bb74fac`
+Starting status: local `main` matched `origin/main`; worktree clean before this log entry.
+
+Goal: continue M6 by adding the worker/result path after Build 12's extraction enqueue foundation.
+
+Expected files to touch:
+
+- `supabase/functions/*`
+- `supabase/migrations/*`
+- `supabase/tests/*`
+- `Wander/Services/RepositoryProtocols.swift`
+- `Wander/Services/Remote/SupabaseRepositories.swift`
+- `Wander/App/WanderBackend.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- `Wander/Features/Add/AddScreen.swift`
+- `WanderTests/*`
+- `docs/*`
+
+Plan:
+
+- Add service-role RPCs for safely claiming pending extraction jobs and completing/failing them.
+- Add a Supabase Edge Function worker with conservative adapters: Google Maps/link/web text metadata first; photo remains a no-place/manual fallback until OCR storage is wired.
+- Expose an authenticated app RPC to fetch extraction job results.
+- Add iOS repository/store polling so a draft can become confirmable candidates without auto-saving.
+- Keep low-confidence/no-place results as drafts with manual rescue.
+
+Note:
+
+- Mission Control task creation failed again because `http://localhost:4000` is unreachable in this session.
+
+Checkpoint:
+
+- Added `supabase/migrations/20260608193200_extraction_worker_rpcs.sql` with authenticated claim/get RPCs and service-role claim-next/complete RPCs.
+- Hosted pgTAP initially caught missing execute grants for authenticated helper payload functions.
+- Added `supabase/migrations/20260608194600_fix_extraction_worker_helper_grants.sql`.
+- Hosted pgTAP now passes `15 + 14 + 16 = 45` assertions across RLS, Clerk mirroring, and extraction jobs.
+- Added `supabase/functions/extraction-worker/index.ts` plus its import map and deployed it to project `rugmtlgufrhlxwfkumhw`.
+- Live endpoint smoke without auth returns `401 missing_authorization`, confirming the deployed function is reachable and enforcing the app-triggered auth path.
+- Added iOS Edge Function invocation support, extraction process/result repository methods, store result application, and Add-flow transition from processed coordinate-backed link results into the existing confirmation screen.
+- Guardrail: extracted candidates without coordinates are not shown as saveable candidates in Add; unsupported/photo sources remain drafts.
+
+Completion:
+
+- Attempted to set explicit `WANDER_SUPABASE_ANON_KEY` fallback secret, but the CLI command hung and was terminated. The deployed worker still reads standard `SUPABASE_ANON_KEY` first, so this is not blocking Build 13.
+- `git diff --check`: passed.
+- Swift tests passed:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Hosted pgTAP passed:
+  - `supabase/tests/rls_visibility.sql`: 15 assertions
+  - `supabase/tests/clerk_profile_mirroring.sql`: 14 assertions
+  - `supabase/tests/extraction_jobs.sql`: 16 assertions
+- Supabase migrations applied to hosted project:
+  - `20260608193200_extraction_worker_rpcs.sql`
+  - `20260608194600_fix_extraction_worker_helper_grants.sql`
+- Deployed Edge Function `extraction-worker`; unauthenticated smoke returns `401 missing_authorization`.
+- Build number bumped to `0.1 (13)` and regenerated `Wander.xcodeproj`.
+- Archived and uploaded `/private/tmp/Wander-0.1-build13.xcarchive`.
+- App Store Connect build id: `727d0ab0-be96-4d81-8840-385c81f438bb`.
+- Build `0.1 (13)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
+- Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
+- Remaining M6 work: improve Google Maps/short-link robustness after real test results, add photo OCR/Vision, add TikTok/Instagram fallback adapters, add scheduled/background worker run, and finish alpha analytics/privacy/performance.

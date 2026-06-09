@@ -23,7 +23,7 @@ final class WanderBackend: ObservableObject {
             let userPlaceRepository = SupabaseUserPlaceRepository(rpc: client)
             self.userPlaceRepository = userPlaceRepository
             self.socialPlaceSaveRepository = userPlaceRepository
-            self.extractionRepository = SupabaseExtractionRepository(rpc: client)
+            self.extractionRepository = SupabaseExtractionRepository(rpc: client, functions: client)
         } else {
             self.profileRepository = nil
             self.followRepository = nil
@@ -143,5 +143,21 @@ final class WanderBackend: ObservableObject {
         }
 
         return try await extractionRepository.enqueue(draft)
+    }
+
+    func processExtractionJob(jobID: String) async throws -> ExtractionJobResult {
+        guard let extractionRepository else {
+            throw WanderRemoteError.notConfigured
+        }
+
+        return try await extractionRepository.process(jobID: jobID)
+    }
+
+    func extractionJobResult(jobID: String) async throws -> ExtractionJobResult {
+        guard let extractionRepository else {
+            throw WanderRemoteError.notConfigured
+        }
+
+        return try await extractionRepository.result(jobID: jobID)
     }
 }

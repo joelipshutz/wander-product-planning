@@ -27,6 +27,21 @@ extension RemoteProcedureCalling {
     }
 }
 
+@MainActor
+protocol RemoteFunctionCalling {
+    func invoke<Value: Decodable, Body: Encodable>(
+        _ name: String,
+        body: Body,
+        decoder: JSONDecoder
+    ) async throws -> Value
+}
+
+extension RemoteFunctionCalling {
+    func invoke<Value: Decodable, Body: Encodable>(_ name: String, body: Body) async throws -> Value {
+        try await invoke(name, body: body, decoder: RemoteDecoding.decoder)
+    }
+}
+
 enum RemoteDecoding {
     static let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
@@ -36,7 +51,7 @@ enum RemoteDecoding {
 }
 
 @MainActor
-final class WanderSupabaseClient: RemoteProcedureCalling {
+final class WanderSupabaseClient: RemoteProcedureCalling, RemoteFunctionCalling {
     let configuration: WanderBackendConfiguration
     private let authSession: AuthSessionProviding
     private let urlSession: URLSession
@@ -106,6 +121,50 @@ final class WanderSupabaseClient: RemoteProcedureCalling {
 
         guard !data.isEmpty else {
             throw WanderRemoteError.invalidResponse("RPC \(name) returned no data")
+        }
+
+        return try decoder.decode(Value.self, from: data)
+    }
+
+    func invoke<Value: Decodable, Body: Encodable>(
+        _ name: String,
+        body: Body,
+        decoder: JSONDecoder = RemoteDecoding.decoder
+    ) async throws -> Value {
+        guard let supabaseURL = configuration.supabaseURL else {
+            throw WanderRemoteError.notConfigured
+        }
+
+        let headers = try await authenticatedHeaders()
+        let endpoint = supabaseURL
+            .appendingPathComponent("functions")
+            .appendingPathComponent("v1")
+            .appendingPathComponent(name)
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        headers.forEach { key, value in
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+        request.httpBody = try JSONEncoder().encode(body)
+
+        let (data, response) = try await urlSession.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw WanderRemoteError.invalidResponse("Missing HTTP response for function \(name)")
+        }
+
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+                throw WanderRemoteError.notAuthenticated
+            }
+            let body = String(data: data, encoding: .utf8) ?? "unreadable response"
+            throw WanderRemoteError.invalidResponse("Function \(name) failed with \(httpResponse.statusCode): \(body)")
+        }
+
+        guard !data.isEmpty else {
+            throw WanderRemoteError.invalidResponse("Function \(name) returned no data")
         }
 
         return try decoder.decode(Value.self, from: data)

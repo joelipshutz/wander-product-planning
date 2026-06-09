@@ -331,6 +331,95 @@ final class WanderStoreTests: XCTestCase {
         XCTAssertNotNil(store.lastRemoteError)
     }
 
+    func testProcessExtractionResultUpdatesJobAndReturnsCandidates() async {
+        let store = WanderStore(fixtures: WanderFixtures.empty())
+        store.apply(authState: .signedIn(AuthSession(userID: "user_live", displayName: "Joe", handle: "joe")))
+        let extractionRepository = FakeExtractionRepository(
+            result: ExtractionJobEnqueueResult(
+                sourceArtifactID: "source_remote",
+                extractionJobID: "job_remote",
+                status: .pending,
+                attemptCount: 0
+            ),
+            processResult: ExtractionJobResult(
+                extractionJobID: "job_remote",
+                status: .needsConfirmation,
+                attemptCount: 1,
+                providerSteps: ["worker_started", "google_maps_coordinate_candidate"],
+                candidates: [
+                    PlaceCandidate(
+                        id: "extracted_hash",
+                        name: "Maru Coffee",
+                        category: "coffee",
+                        latitude: 34.0836,
+                        longitude: -118.3614,
+                        sourceProvider: "google_maps_link",
+                        sourceProviderPlaceID: "https://google.com/maps/place/Maru+Coffee",
+                        confidence: 0.86
+                    )
+                ],
+                confidence: 0.86,
+                errorCode: nil,
+                errorMessage: nil
+            )
+        )
+        let backend = WanderBackend(extractionRepository: extractionRepository)
+
+        let draft = await store.createUnresolvedDraft(
+            sourceType: .link,
+            originalInput: "https://maps.app.goo.gl/example",
+            backend: backend
+        )
+        let result = await store.processExtractionJob(for: draft, backend: backend)
+
+        XCTAssertEqual(result?.status, .needsConfirmation)
+        XCTAssertEqual(result?.candidates.map(\.name), ["Maru Coffee"])
+        XCTAssertEqual(extractionRepository.processedJobIDs, ["job_remote"])
+        XCTAssertEqual(store.extractionJobs.first?.status, .needsConfirmation)
+        XCTAssertEqual(store.extractionJobs.first?.attemptCount, 1)
+        XCTAssertEqual(store.extractionJobs.first?.confidence, 0.86)
+        XCTAssertEqual(store.extractionJobs.first?.syncStateRaw, SyncState.synced.rawValue)
+        XCTAssertTrue(store.extractionJobs.first?.extractedCandidatesJSON.contains("Maru Coffee") == true)
+    }
+
+    func testProcessExtractionNoPlaceDoesNotCreateSavedPlace() async {
+        let store = WanderStore(fixtures: WanderFixtures.empty())
+        store.apply(authState: .signedIn(AuthSession(userID: "user_live", displayName: "Joe", handle: "joe")))
+        let extractionRepository = FakeExtractionRepository(
+            result: ExtractionJobEnqueueResult(
+                sourceArtifactID: "source_remote",
+                extractionJobID: "job_remote",
+                status: .pending,
+                attemptCount: 0
+            ),
+            processResult: ExtractionJobResult(
+                extractionJobID: "job_remote",
+                status: .noPlaceFound,
+                attemptCount: 1,
+                providerSteps: ["worker_started", "photo_ocr_not_configured"],
+                candidates: [],
+                confidence: 0,
+                errorCode: "photo_ocr_not_configured",
+                errorMessage: "Photo OCR is not wired yet."
+            )
+        )
+        let backend = WanderBackend(extractionRepository: extractionRepository)
+
+        let draft = await store.createUnresolvedDraft(
+            sourceType: .photo,
+            originalInput: "photo import · 42 bytes",
+            localAssetRef: "photos_picker:test",
+            backend: backend
+        )
+        let result = await store.processExtractionJob(for: draft, backend: backend)
+
+        XCTAssertEqual(result?.status, .noPlaceFound)
+        XCTAssertTrue(store.userPlaces.isEmpty)
+        XCTAssertTrue(store.places.isEmpty)
+        XCTAssertEqual(store.extractionJobs.first?.status, .noPlaceFound)
+        XCTAssertEqual(store.extractionJobs.first?.errorCode, "photo_ocr_not_configured")
+    }
+
     func testUsernameSearchIsNearExactAndHidesBlockedUsers() {
         let store = makeStore()
 
@@ -742,11 +831,15 @@ private final class FakeUserPlaceRepository: UserPlaceRepository {
 @MainActor
 private final class FakeExtractionRepository: ExtractionRepository {
     private let result: ExtractionJobEnqueueResult?
+    private let processResult: ExtractionJobResult?
     private let error: Error?
     private(set) var drafts: [ExtractionJobDraft] = []
+    private(set) var processedJobIDs: [String] = []
+    private(set) var fetchedJobIDs: [String] = []
 
-    init(result: ExtractionJobEnqueueResult? = nil, error: Error? = nil) {
+    init(result: ExtractionJobEnqueueResult? = nil, processResult: ExtractionJobResult? = nil, error: Error? = nil) {
         self.result = result
+        self.processResult = processResult
         self.error = error
     }
 
@@ -760,6 +853,40 @@ private final class FakeExtractionRepository: ExtractionRepository {
             extractionJobID: "job_fake",
             status: .pending,
             attemptCount: 0
+        )
+    }
+
+    func process(jobID: String) async throws -> ExtractionJobResult {
+        processedJobIDs.append(jobID)
+        if let error {
+            throw error
+        }
+        return processResult ?? ExtractionJobResult(
+            extractionJobID: jobID,
+            status: .noPlaceFound,
+            attemptCount: 1,
+            providerSteps: ["worker_started", "no_place_found"],
+            candidates: [],
+            confidence: 0,
+            errorCode: "no_place_found",
+            errorMessage: nil
+        )
+    }
+
+    func result(jobID: String) async throws -> ExtractionJobResult {
+        fetchedJobIDs.append(jobID)
+        if let error {
+            throw error
+        }
+        return processResult ?? ExtractionJobResult(
+            extractionJobID: jobID,
+            status: .pending,
+            attemptCount: 0,
+            providerSteps: ["queued_for_backend_extraction"],
+            candidates: [],
+            confidence: 0,
+            errorCode: nil,
+            errorMessage: nil
         )
     }
 }

@@ -6,7 +6,7 @@ This is the durable milestone view. The detailed source plan is `docs/plans/2026
 
 ## Current Status
 
-M2 local product loop and visual pass are good enough for TestFlight iteration. M3 Clerk + Supabase foundation is in place: hosted schema/RLS/profile mirroring and iOS auth wiring are working. M4 is accepted enough to move on: sign-in works, TestFlight is live, export compliance is set, external review is approved, and the direct signed-in own-place save path is wired. M5 Add UX/current-location/manual resolution is accepted enough to proceed. M6 is now in progress: signed-in link/photo drafts enqueue durable Supabase extraction jobs, while actual provider/OCR/LLM job execution remains next.
+M2 local product loop and visual pass are good enough for TestFlight iteration. M3 Clerk + Supabase foundation is in place: hosted schema/RLS/profile mirroring and iOS auth wiring are working. M4 is accepted enough to move on: sign-in works, TestFlight is live, export compliance is set, external review is approved, and the direct signed-in own-place save path is wired. M5 Add UX/current-location/manual resolution is accepted enough to proceed. M6 is now in progress: signed-in link/photo drafts enqueue durable Supabase extraction jobs, and the first backend worker can process coordinate-backed link candidates without auto-saving. Photo OCR, TikTok/Instagram, richer web extraction, analytics, and alpha polish remain.
 
 ## Milestones
 
@@ -19,15 +19,14 @@ M2 local product loop and visual pass are good enough for TestFlight iteration. 
 | M3 Clerk + Supabase foundation | Done baseline | Real identity, schema, RLS, and policy tests. | Supabase/Clerk projects created, hosted tests passed, profile mirroring and iOS sign-in smoke passed. |
 | M4 Sync and remote repositories | Done baseline | Replace local-only store paths with local-first remote sync. | Remote visible places/profile search/follow/block/social-save/direct-own-save paths are wired. Public TestFlight is approved for external testers. |
 | M5 Extraction and smart Discover | Accepted baseline | Make Add capture real and add cheap LLM parsing where it helps. | Add UX/navigation, current-location, manual place resolution, and map search scope were cleaned up for TestFlight; provider-backed link/photo extraction moves into M6. |
-| M6 Backend extraction and alpha readiness | In progress | End-to-end alpha loop and provider-safe extraction foundation. | First slice enqueues signed-in link/photo extraction jobs in Supabase and improves nearby candidate ranking. Provider workers, OCR/LLM execution, analytics, privacy copy, onboarding/auth gates, and performance remain. |
+| M6 Backend extraction and alpha readiness | In progress | End-to-end alpha loop and provider-safe extraction foundation. | Enqueue + worker RPCs + Edge Function are live. Coordinate-backed link candidates can return to Add confirmation; no low-confidence auto-save. Photo OCR, richer web/TikTok/Instagram adapters, analytics, privacy copy, onboarding/auth gates, and performance remain. |
 
 ## Immediate Next Steps
 
-1. Ship Build 12 with Add redundant navigation removed, Map search scoped to saved/network places, improved current-location candidate ranking, and signed-in extraction job enqueue.
-2. Build the M6 backend worker that consumes `extraction_jobs`, runs the correct provider adapter, writes extracted candidates, and never auto-saves low-confidence results.
-3. Add provider adapters in order of expected alpha value: Google Maps links, generic web metadata, photo OCR/Vision, then TikTok/Instagram fallbacks.
-4. Add cheap/swappable LLM parsing where it improves manual/Discover query interpretation without becoming the source of truth for canonical place identity.
-5. Add alpha readiness basics: analytics events, privacy copy, onboarding/auth gates, performance pass, and final QA checklist.
+1. Ship Build 13 with the M6 worker/result path: signed-in link/photo jobs process through the Edge Function, coordinate-backed link candidates return to confirmation, and unsupported/photo sources stay drafts.
+2. Expand provider adapters in order of expected alpha value: Google Maps robustness, generic web metadata, photo OCR/Vision, then TikTok/Instagram fallbacks.
+3. Add cheap/swappable LLM parsing where it improves manual/Discover query interpretation without becoming the source of truth for canonical place identity.
+4. Add alpha readiness basics: analytics events, privacy copy, onboarding/auth gates, performance pass, and final QA checklist.
 
 ## M2 Acceptance Criteria
 

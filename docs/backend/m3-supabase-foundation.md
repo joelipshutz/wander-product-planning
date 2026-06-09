@@ -13,11 +13,15 @@ This is the backend contract started for M3. It should be reviewed and run befor
   - `supabase/migrations/20260602210000_public_app_rpc_wrappers.sql`
   - `supabase/migrations/20260608174400_enqueue_extraction_job.sql`
   - `supabase/migrations/20260608175500_fix_enqueue_extraction_job_variable.sql`
+  - `supabase/migrations/20260608193200_extraction_worker_rpcs.sql`
+  - `supabase/migrations/20260608194600_fix_extraction_worker_helper_grants.sql`
 - Tests:
   - `supabase/tests/rls_visibility.sql`
   - `supabase/tests/clerk_profile_mirroring.sql`
   - `supabase/tests/extraction_jobs.sql`
-- Edge Function: `supabase/functions/clerk-profile-webhook/index.ts`
+- Edge Functions:
+  - `supabase/functions/clerk-profile-webhook/index.ts`
+  - `supabase/functions/extraction-worker/index.ts`
 - Source plan: `docs/plans/2026-06-01-wander-ios-eng-plan.md`
 - Contract lock: `docs/plans/2026-06-01-wander-m1-5-contract-lock.md`
 
@@ -56,8 +60,8 @@ Backend test status:
 - Result:
   - `supabase/tests/rls_visibility.sql`: 15 assertions, 0 failures.
   - `supabase/tests/clerk_profile_mirroring.sql`: 14 assertions, 0 failures.
-  - `supabase/tests/extraction_jobs.sql`: 9 assertions, 0 failures.
-  - Total: 38 assertions, 0 failures.
+  - `supabase/tests/extraction_jobs.sql`: 16 assertions, 0 failures.
+  - Total: 45 assertions, 0 failures.
 - Direct signed webhook POST passed: Svix-style signature verification, Edge Function, PostgREST RPC, and profile lookup.
 - Real Clerk create/delete passed: disposable Clerk dev user mirrored through Clerk -> Svix -> Supabase and then soft-deleted on `user.deleted`.
 
@@ -209,6 +213,10 @@ Implemented in the migration:
 - `app.save_visible_place(input_place_id, input_source_user_place_id)`
 - `app.claim_guest_records(local_records)`
 - `app.enqueue_extraction_job(input_source_artifact, input_job)`
+- `app.get_extraction_job(input_job_id)`
+- `app.claim_extraction_job(input_job_id)`
+- `app.claim_next_extraction_job()`
+- `app.complete_extraction_job(input_job_id, input_status, input_candidates, input_confidence, input_provider_steps, input_error_code, input_error_message)`
 - `public.visible_places_in_view(...)` authenticated PostgREST wrapper
 - `public.search_profiles_by_handle(query)` authenticated PostgREST wrapper
 - `public.profile_visible_places(...)` authenticated PostgREST wrapper
@@ -219,6 +227,10 @@ Implemented in the migration:
 - `public.save_visible_place(input_place_id, input_source_user_place_id)` authenticated PostgREST wrapper returning `{ "user_place_id": ... }` for iOS
 - `public.claim_guest_records(local_records)` authenticated PostgREST wrapper
 - `public.enqueue_extraction_job(input_source_artifact, input_job)` authenticated PostgREST wrapper returning `{ "source_artifact_id", "extraction_job_id", "status", "attempt_count" }` for iOS
+- `public.get_extraction_job(input_job_id)` authenticated PostgREST wrapper returning job status, candidate JSON, confidence, and error fields.
+- `public.claim_extraction_job(input_job_id)` authenticated PostgREST wrapper used by the Edge Function with the caller's auth token to claim only that user's job.
+- `public.claim_next_extraction_job()` service-role wrapper for scheduled/manual worker runs.
+- `public.complete_extraction_job(...)` service-role wrapper for writing worker results.
 
 Notes:
 
@@ -227,7 +239,8 @@ Notes:
 - `save_visible_place` copies the visible source place into the caller's map as `wanna_go`, including source attribution and attached attributes.
 - `claim_guest_records` is a stub until the sync worker/merge path is designed.
 - `block_user` is a guarded `security definer` so it can remove both directions of the follow edge when a hard block is created.
-- `enqueue_extraction_job` is an M6 foundation RPC. It idempotently upserts `source_artifacts` and `extraction_jobs` for the authenticated user. It queues work only; separate backend workers still need to execute provider/OCR/LLM extraction.
+- `enqueue_extraction_job` idempotently upserts `source_artifacts` and `extraction_jobs` for the authenticated user.
+- `extraction-worker` is the first M6 worker. App-triggered calls use the user's auth token to claim only their own job, then the function completes the job with service-role credentials. Current worker scope is conservative: coordinate-backed Google Maps/link/web metadata candidates can return as `needs_confirmation`; photo OCR and unsupported sources return `no_place_found` and remain manual drafts. The worker never auto-creates `places` or `user_places`.
 
 ## Test Coverage Draft
 
@@ -259,6 +272,10 @@ Notes:
 - First enqueue creates one source artifact and one extraction job.
 - Duplicate enqueue returns the existing job and does not duplicate rows.
 - Retrying a failed job resets status to `pending`, increments attempt count, and clears the error code.
+- Authenticated owner claim moves the job to `running`.
+- Service completion writes confirmation candidates, confidence, and worker steps.
+- Completion does not auto-create canonical places.
+- Owner result fetch returns status, candidates, and confidence.
 
 Still needed:
 

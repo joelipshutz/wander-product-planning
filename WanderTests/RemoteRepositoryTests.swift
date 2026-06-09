@@ -241,10 +241,70 @@ final class RemoteRepositoryTests: XCTestCase {
         XCTAssertEqual(job?["source_type"] as? String, "link")
         XCTAssertEqual(job?["provider_steps_json"] as? [String], ["queued_for_backend_extraction"])
     }
+
+    func testExtractionProcessInvokesWorkerFunctionAndMapsCandidates() async throws {
+        let rpc = RecordingRPC()
+        rpc.responses["function:extraction-worker"] = """
+        {
+          "extraction_job_id": "job_remote",
+          "status": "needs_confirmation",
+          "attempt_count": 1,
+          "provider_steps_json": ["worker_started", "google_maps_coordinate_candidate"],
+          "extracted_candidates_json": [
+            {
+              "id": "extracted_hash",
+              "name": "Maru Coffee",
+              "category": "coffee",
+              "latitude": 34.0836,
+              "longitude": -118.3614,
+              "source_provider": "google_maps_link",
+              "source_provider_place_id": "https://google.com/maps/place/Maru+Coffee",
+              "confidence": 0.86
+            }
+          ],
+          "confidence": 0.86,
+          "error_code": null,
+          "error_message": null
+        }
+        """.data(using: .utf8)
+        let repository = SupabaseExtractionRepository(rpc: rpc, functions: rpc)
+
+        let result = try await repository.process(jobID: "job_remote")
+
+        XCTAssertEqual(result.status, .needsConfirmation)
+        XCTAssertEqual(result.candidates.map(\.name), ["Maru Coffee"])
+        XCTAssertEqual(result.candidates[0].sourceProvider, "google_maps_link")
+        XCTAssertEqual(rpc.calls.map(\.name), ["function:extraction-worker"])
+        XCTAssertEqual(rpc.calls[0].body["job_id"] as? String, "job_remote")
+    }
+
+    func testExtractionResultCallsExpectedRPC() async throws {
+        let rpc = RecordingRPC()
+        rpc.responses["get_extraction_job"] = """
+        {
+          "extraction_job_id": "job_remote",
+          "status": "no_place_found",
+          "attempt_count": 1,
+          "provider_steps_json": ["worker_started", "photo_ocr_not_configured"],
+          "extracted_candidates_json": [],
+          "confidence": 0,
+          "error_code": "photo_ocr_not_configured",
+          "error_message": "Photo OCR is not wired yet."
+        }
+        """.data(using: .utf8)
+        let repository = SupabaseExtractionRepository(rpc: rpc)
+
+        let result = try await repository.result(jobID: "job_remote")
+
+        XCTAssertEqual(result.status, .noPlaceFound)
+        XCTAssertEqual(result.errorCode, "photo_ocr_not_configured")
+        XCTAssertEqual(rpc.calls.map(\.name), ["get_extraction_job"])
+        XCTAssertEqual(rpc.calls[0].body["input_job_id"] as? String, "job_remote")
+    }
 }
 
 @MainActor
-private final class RecordingRPC: RemoteProcedureCalling {
+private final class RecordingRPC: RemoteProcedureCalling, RemoteFunctionCalling {
     struct Call: Equatable {
         let name: String
         let body: [String: AnyHashable]
@@ -269,6 +329,23 @@ private final class RecordingRPC: RemoteProcedureCalling {
 
         guard let data = responses[name] else {
             throw WanderRemoteError.invalidResponse("Missing fake response for \(name)")
+        }
+
+        return try decoder.decode(Value.self, from: data)
+    }
+
+    func invoke<Value: Decodable, Body: Encodable>(
+        _ name: String,
+        body: Body,
+        decoder: JSONDecoder
+    ) async throws -> Value {
+        let callName = "function:\(name)"
+        let encodedBody = try encodedObject(body)
+        rawBodies.append(encodedBody)
+        calls.append(Call(name: callName, body: anyHashableBody(encodedBody)))
+
+        guard let data = responses[callName] else {
+            throw WanderRemoteError.invalidResponse("Missing fake response for \(callName)")
         }
 
         return try decoder.decode(Value.self, from: data)

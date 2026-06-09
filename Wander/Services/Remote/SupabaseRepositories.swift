@@ -149,15 +149,37 @@ struct SupabaseUserPlaceRepository: UserPlaceRepository, SocialPlaceSaveReposito
 
 struct SupabaseExtractionRepository: ExtractionRepository {
     private let rpc: RemoteProcedureCalling
+    private let functions: RemoteFunctionCalling?
 
-    init(rpc: RemoteProcedureCalling) {
+    init(rpc: RemoteProcedureCalling, functions: RemoteFunctionCalling? = nil) {
         self.rpc = rpc
+        self.functions = functions
     }
 
     func enqueue(_ draft: ExtractionJobDraft) async throws -> ExtractionJobEnqueueResult {
         let response: EnqueueExtractionJobResponse = try await rpc.call(
             "enqueue_extraction_job",
             params: EnqueueExtractionJobParams(draft: draft)
+        )
+        return try response.result()
+    }
+
+    func process(jobID: String) async throws -> ExtractionJobResult {
+        guard let functions else {
+            throw WanderRemoteError.notConfigured
+        }
+
+        let response: ExtractionJobResultResponse = try await functions.invoke(
+            "extraction-worker",
+            body: ProcessExtractionJobParams(jobID: jobID)
+        )
+        return try response.result()
+    }
+
+    func result(jobID: String) async throws -> ExtractionJobResult {
+        let response: ExtractionJobResultResponse = try await rpc.call(
+            "get_extraction_job",
+            params: ExtractionJobIDParams(inputJobID: jobID)
         )
         return try response.result()
     }
@@ -306,6 +328,108 @@ private struct EnqueueExtractionJobResponse: Decodable {
             extractionJobID: extractionJobID,
             status: extractionStatus,
             attemptCount: attemptCount
+        )
+    }
+}
+
+private struct ProcessExtractionJobParams: Encodable {
+    let jobID: String
+
+    enum CodingKeys: String, CodingKey {
+        case jobID = "job_id"
+    }
+}
+
+private struct ExtractionJobIDParams: Encodable {
+    let inputJobID: String
+
+    enum CodingKeys: String, CodingKey {
+        case inputJobID = "input_job_id"
+    }
+}
+
+private struct ExtractionJobResultResponse: Decodable {
+    let extractionJobID: String
+    let status: String
+    let attemptCount: Int
+    let providerStepsJSON: [String]
+    let extractedCandidatesJSON: [ExtractionCandidateResponse]
+    let confidence: Double
+    let errorCode: String?
+    let errorMessage: String?
+
+    enum CodingKeys: String, CodingKey {
+        case extractionJobID = "extraction_job_id"
+        case status
+        case attemptCount = "attempt_count"
+        case providerStepsJSON = "provider_steps_json"
+        case extractedCandidatesJSON = "extracted_candidates_json"
+        case confidence
+        case errorCode = "error_code"
+        case errorMessage = "error_message"
+    }
+
+    func result() throws -> ExtractionJobResult {
+        guard let extractionStatus = ExtractionStatus(rawValue: status) else {
+            throw WanderRemoteError.invalidResponse("Unknown extraction status: \(status)")
+        }
+
+        return ExtractionJobResult(
+            extractionJobID: extractionJobID,
+            status: extractionStatus,
+            attemptCount: attemptCount,
+            providerSteps: providerStepsJSON,
+            candidates: extractedCandidatesJSON.map(\.placeCandidate),
+            confidence: confidence,
+            errorCode: errorCode,
+            errorMessage: errorMessage
+        )
+    }
+}
+
+private struct ExtractionCandidateResponse: Decodable {
+    let id: String
+    let name: String
+    let category: String
+    let address: String?
+    let locality: String?
+    let region: String?
+    let country: String?
+    let latitude: Double?
+    let longitude: Double?
+    let sourceProvider: String?
+    let sourceProviderPlaceID: String?
+    let confidence: Double
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case category
+        case address
+        case locality
+        case region
+        case country
+        case latitude
+        case longitude
+        case sourceProvider = "source_provider"
+        case sourceProviderPlaceID = "source_provider_place_id"
+        case confidence
+    }
+
+    var placeCandidate: PlaceCandidate {
+        PlaceCandidate(
+            id: id,
+            name: name,
+            category: category,
+            address: address,
+            locality: locality,
+            region: region,
+            country: country,
+            latitude: latitude,
+            longitude: longitude,
+            sourceProvider: sourceProvider ?? "extraction",
+            sourceProviderPlaceID: sourceProviderPlaceID,
+            confidence: confidence
         )
     }
 }
