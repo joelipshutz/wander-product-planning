@@ -8,6 +8,7 @@ struct MapScreen: View {
     @EnvironmentObject private var backend: WanderBackend
     @State private var selectedPlaceID: String?
     @State private var selectedSearchCandidateID: String?
+    @State private var mapSaveFlow: MapPlaceSaveContext?
     @State private var isPlaceSheetExpanded: Bool
     @State private var mapQuery = ""
     @State private var mapSearchMessage: String?
@@ -202,22 +203,11 @@ struct MapScreen: View {
 
                 if let selectedSearchCandidate {
                     SearchCandidateSheet(candidate: selectedSearchCandidate) {
-                        auth.requireSignIn(for: .syncPlace) {
-                            Task {
-                                let result = await store.saveCandidate(
-                                    selectedSearchCandidate,
-                                    status: .wannaGo,
-                                    visibility: store.defaultVisibility,
-                                    note: nil,
-                                    sourceType: .manual,
-                                    backend: backend
-                                )
-                                selectedSearchCandidateID = nil
-                                selectedPlaceID = result.userPlaceID
-                                mapSearchCandidates.removeAll { $0.id == selectedSearchCandidate.id }
-                                mapSearchMessage = "Added to your map."
-                            }
-                        }
+                        mapSaveFlow = MapPlaceSaveContext.addCandidate(
+                            selectedSearchCandidate,
+                            sourceType: .manual,
+                            defaultVisibility: store.defaultVisibility
+                        )
                     }
                     .padding(.horizontal, WanderTheme.spacing3)
                     .padding(.bottom, WanderTheme.spacing2)
@@ -264,6 +254,13 @@ struct MapScreen: View {
         }
         .onDisappear {
             typeaheadTask?.cancel()
+        }
+        .sheet(item: $mapSaveFlow) { context in
+            MapPlaceSaveFlowSheet(context: context) { submission in
+                await saveMapFlowSubmission(submission)
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -416,41 +413,15 @@ struct MapScreen: View {
     private func performAction(for visiblePlace: VisiblePlace) {
         switch action(for: visiblePlace) {
         case .add:
-            auth.requireSignIn(for: .socialSave) {
-                Task {
-                    _ = await store.saveVisiblePlace(visiblePlace, backend: backend)
-                    mapSearchMessage = "Added to your map."
-                }
-            }
+            mapSaveFlow = MapPlaceSaveContext.addVisiblePlace(
+                visiblePlace,
+                defaultVisibility: store.defaultVisibility
+            )
         case .edit:
-            if visiblePlace.userPlace.status == .wannaGo {
-                Task {
-                    _ = await store.saveCandidate(
-                        PlaceCandidate(
-                            id: visiblePlace.place.id,
-                            name: visiblePlace.place.canonicalName,
-                            category: visiblePlace.place.category,
-                            address: visiblePlace.place.address,
-                            locality: visiblePlace.place.locality,
-                            region: visiblePlace.place.region,
-                            country: visiblePlace.place.country,
-                            latitude: visiblePlace.place.latitude,
-                            longitude: visiblePlace.place.longitude,
-                            sourceProvider: visiblePlace.place.sourceProvider,
-                            sourceProviderPlaceID: visiblePlace.place.sourceProviderPlaceID,
-                            confidence: visiblePlace.place.confidence ?? 1
-                        ),
-                        status: .been,
-                        visibility: visiblePlace.userPlace.visibility,
-                        note: visiblePlace.userPlace.note,
-                        sourceType: .manual,
-                        backend: auth.isSignedIn ? backend : nil
-                    )
-                    mapSearchMessage = "Marked as been."
-                }
-            } else {
-                mapSearchMessage = "Editing saved places is coming next."
-            }
+            mapSaveFlow = MapPlaceSaveContext.editVisiblePlace(
+                visiblePlace,
+                attributes: store.attributes(for: visiblePlace.userPlace.id)
+            )
         case .none:
             break
         }
@@ -460,6 +431,57 @@ struct MapScreen: View {
         store.currentUserVisiblePlaces.contains { mine in
             mine.place.id == visiblePlace.place.id
                 || mine.place.canonicalName.caseInsensitiveCompare(visiblePlace.place.canonicalName) == .orderedSame
+        }
+    }
+
+    @MainActor
+    private func saveMapFlowSubmission(_ submission: MapPlaceSaveSubmission) async -> SaveResult? {
+        switch submission.context.mode {
+        case .add(let sourceType):
+            if sourceType == .socialSave, !auth.isSignedIn {
+                mapSaveFlow = nil
+                auth.presentGate(for: .socialSave)
+                return nil
+            }
+
+            let result = await store.saveCandidate(
+                submission.context.candidate,
+                status: submission.status,
+                visibility: submission.visibility,
+                note: submission.note,
+                sourceType: sourceType,
+                attributes: submission.attributes,
+                backend: auth.isSignedIn ? backend : nil
+            )
+            selectedSearchCandidateID = nil
+            selectedPlaceID = result.userPlaceID
+            mapSearchCandidates.removeAll { $0.id == submission.context.candidate.id }
+            mapSearchMessage = "Added to your map."
+
+            if !auth.isSignedIn {
+                auth.presentGate(for: .syncPlace)
+            }
+
+            return result
+        case .edit(let visiblePlace):
+            let result = await store.saveCandidate(
+                submission.context.candidate,
+                status: submission.status,
+                visibility: submission.visibility,
+                note: submission.note,
+                sourceType: AddSourceType(rawValue: visiblePlace.userPlace.sourceType) ?? .manual,
+                attributes: submission.attributes,
+                backend: auth.isSignedIn ? backend : nil
+            )
+            selectedSearchCandidateID = nil
+            selectedPlaceID = result.userPlaceID
+            mapSearchMessage = "Updated saved place."
+
+            if !auth.isSignedIn {
+                auth.presentGate(for: .syncPlace)
+            }
+
+            return result
         }
     }
 
@@ -1098,6 +1120,584 @@ private struct PlaceSaveSummary: Identifiable {
     let attributes: [LocalPlaceAttribute]
 
     var id: String { visiblePlace.userPlace.id }
+}
+
+private enum MapPlaceSaveMode {
+    case add(AddSourceType)
+    case edit(VisiblePlace)
+}
+
+private struct MapPlaceSaveContext: Identifiable {
+    let id = UUID()
+    let candidate: PlaceCandidate
+    let mode: MapPlaceSaveMode
+    let initialStatus: PlaceStatus
+    let initialVisibility: PlaceVisibility
+    let initialNote: String
+    let initialAnswers: [String: Set<String>]
+
+    var title: String {
+        switch mode {
+        case .add:
+            "save this place"
+        case .edit:
+            "edit this place"
+        }
+    }
+
+    var subtitle: String {
+        switch mode {
+        case .add:
+            "pick status, visibility, and a few details."
+        case .edit:
+            "update what future you sees on the map."
+        }
+    }
+
+    var saveTitle: String {
+        switch mode {
+        case .add:
+            "save to my map"
+        case .edit:
+            "update my map"
+        }
+    }
+
+    static func addCandidate(
+        _ candidate: PlaceCandidate,
+        sourceType: AddSourceType,
+        defaultVisibility: PlaceVisibility
+    ) -> MapPlaceSaveContext {
+        MapPlaceSaveContext(
+            candidate: candidate,
+            mode: .add(sourceType),
+            initialStatus: .wannaGo,
+            initialVisibility: defaultVisibility,
+            initialNote: "",
+            initialAnswers: [:]
+        )
+    }
+
+    static func addVisiblePlace(
+        _ visiblePlace: VisiblePlace,
+        defaultVisibility: PlaceVisibility
+    ) -> MapPlaceSaveContext {
+        MapPlaceSaveContext(
+            candidate: candidate(from: visiblePlace),
+            mode: .add(.socialSave),
+            initialStatus: .wannaGo,
+            initialVisibility: defaultVisibility,
+            initialNote: "",
+            initialAnswers: [:]
+        )
+    }
+
+    static func editVisiblePlace(
+        _ visiblePlace: VisiblePlace,
+        attributes: [LocalPlaceAttribute]
+    ) -> MapPlaceSaveContext {
+        MapPlaceSaveContext(
+            candidate: candidate(from: visiblePlace),
+            mode: .edit(visiblePlace),
+            initialStatus: visiblePlace.userPlace.status,
+            initialVisibility: visiblePlace.userPlace.visibility,
+            initialNote: visiblePlace.userPlace.note ?? "",
+            initialAnswers: initialAnswers(from: attributes)
+        )
+    }
+
+    private static func candidate(from visiblePlace: VisiblePlace) -> PlaceCandidate {
+        PlaceCandidate(
+            id: visiblePlace.place.id,
+            name: visiblePlace.place.canonicalName,
+            category: visiblePlace.place.category,
+            address: visiblePlace.place.address,
+            locality: visiblePlace.place.locality,
+            region: visiblePlace.place.region,
+            country: visiblePlace.place.country,
+            latitude: visiblePlace.place.latitude,
+            longitude: visiblePlace.place.longitude,
+            sourceProvider: visiblePlace.place.sourceProvider,
+            sourceProviderPlaceID: visiblePlace.place.sourceProviderPlaceID,
+            confidence: visiblePlace.place.confidence ?? 1
+        )
+    }
+
+    private static func initialAnswers(from attributes: [LocalPlaceAttribute]) -> [String: Set<String>] {
+        var answers: [String: Set<String>] = [:]
+        let decoder = JSONDecoder()
+
+        for attribute in attributes {
+            guard let data = attribute.valueJSON.data(using: .utf8) else { continue }
+            if let values = try? decoder.decode([String].self, from: data) {
+                answers[attribute.questionKey] = Set(values)
+            } else if let value = try? decoder.decode(String.self, from: data) {
+                answers[attribute.questionKey] = [value]
+            }
+        }
+
+        return answers
+    }
+}
+
+private struct MapPlaceSaveSubmission {
+    let context: MapPlaceSaveContext
+    let status: PlaceStatus
+    let visibility: PlaceVisibility
+    let note: String?
+    let attributes: [PlaceAttributeDraft]
+}
+
+private enum MapPlaceSaveStep {
+    case confirm
+    case details
+}
+
+private struct MapPlaceSaveFlowSheet: View {
+    let context: MapPlaceSaveContext
+    let onSave: (MapPlaceSaveSubmission) async -> SaveResult?
+    @Environment(\.dismiss) private var dismiss
+    @State private var step: MapPlaceSaveStep = .confirm
+    @State private var selectedStatus: PlaceStatus
+    @State private var selectedVisibility: PlaceVisibility
+    @State private var selectedAnswers: [String: Set<String>]
+    @State private var note: String
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    init(context: MapPlaceSaveContext, onSave: @escaping (MapPlaceSaveSubmission) async -> SaveResult?) {
+        self.context = context
+        self.onSave = onSave
+        _selectedStatus = State(initialValue: context.initialStatus)
+        _selectedVisibility = State(initialValue: context.initialVisibility)
+        _selectedAnswers = State(initialValue: context.initialAnswers)
+        _note = State(initialValue: context.initialNote)
+    }
+
+    private var questionBlocks: [AddQuestionBlock] {
+        AddQuestionTemplates.blocks(category: context.candidate.category, status: selectedStatus)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
+                    header
+
+                    switch step {
+                    case .confirm:
+                        confirmContent
+                    case .details:
+                        detailsContent
+                    }
+                }
+                .padding(WanderTheme.spacing4)
+                .padding(.bottom, WanderTheme.spacing6)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(WanderTheme.canvasWarm.color)
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
+            HStack {
+                if step == .details {
+                    Button {
+                        errorMessage = nil
+                        step = .confirm
+                    } label: {
+                        Label("back", systemImage: "chevron.left")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(WanderTheme.terracotta.color)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Spacer()
+
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .black))
+                        .frame(width: 32, height: 32)
+                        .foregroundStyle(WanderTheme.textInk.color)
+                        .background(WanderTheme.surfaceSand.color)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close")
+            }
+
+            Text(context.title)
+                .font(.system(size: 28, weight: .black))
+                .foregroundStyle(WanderTheme.textInk.color)
+            Text(context.subtitle)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(WanderTheme.textMuted.color)
+        }
+    }
+
+    private var confirmContent: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
+            candidateCard
+
+            MapSavePickerBlock(title: "I've...") {
+                HStack(spacing: WanderTheme.spacing2) {
+                    MapSaveChoicePill(title: "been", isSelected: selectedStatus == .been) {
+                        selectedStatus = .been
+                    }
+                    MapSaveChoicePill(title: "wanna go", isSelected: selectedStatus == .wannaGo) {
+                        selectedStatus = .wannaGo
+                    }
+                }
+            }
+
+            MapSavePickerBlock(title: "who can see this") {
+                VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
+                    HStack(spacing: WanderTheme.spacing2) {
+                        ForEach(PlaceVisibility.allCases, id: \.rawValue) { visibility in
+                            MapSaveChoicePill(title: visibility.displayTitle, isSelected: selectedVisibility == visibility) {
+                                selectedVisibility = visibility
+                            }
+                        }
+                    }
+                    Text(selectedVisibility.helperCopy)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(WanderTheme.textMuted.color)
+                }
+            }
+
+            WanderPrimaryButton(title: "continue to details", systemImage: "arrow.right") {
+                prepareDetails()
+            }
+        }
+    }
+
+    private var detailsContent: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
+            candidateCard
+
+            ForEach(questionBlocks) { block in
+                MapSaveQuestionBlock(title: block.title, tag: block.tag) {
+                    MapSaveQuestionOptions(
+                        block: block,
+                        selectedValues: selectedAnswers[block.key] ?? Set(block.defaultValues)
+                    ) { option in
+                        toggleAnswer(option, in: block)
+                    }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
+                Text("a note for future you")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(WanderTheme.textMuted.color)
+                TextField("best table, what to order, who told you...", text: $note, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .foregroundStyle(WanderTheme.textInk.color)
+                    .tint(WanderTheme.terracotta.color)
+                    .lineLimit(3, reservesSpace: true)
+                    .padding(WanderTheme.spacing3)
+                    .background(WanderTheme.surfaceRaised.color)
+                    .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+            }
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(WanderTheme.terracottaDark.color)
+                    .padding(WanderTheme.spacing3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(WanderTheme.surfaceBone.color)
+                    .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusMedium))
+            }
+
+            WanderPrimaryButton(
+                title: isSaving ? "saving..." : context.saveTitle,
+                systemImage: "checkmark",
+                isDisabled: isSaving
+            ) {
+                save()
+            }
+        }
+    }
+
+    private var candidateCard: some View {
+        HStack(spacing: WanderTheme.spacing3) {
+            CategoryThumb(category: context.candidate.category)
+
+            VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
+                Text(context.candidate.name)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(WanderTheme.textInk.color)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.84)
+                Text(candidateSubtitle)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(WanderTheme.textMuted.color)
+                    .lineLimit(2)
+                Text("\(selectedStatus.displayTitle) · \(selectedVisibility.displayTitle)")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundStyle(WanderTheme.terracotta.color)
+            }
+
+            Spacer()
+        }
+        .padding(WanderTheme.spacing3)
+        .background(WanderTheme.surfaceBone.color)
+        .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+    }
+
+    private var candidateSubtitle: String {
+        [
+            context.candidate.address,
+            context.candidate.locality,
+            context.candidate.category.isEmpty ? nil : context.candidate.category
+        ]
+        .compactMap { value -> String? in
+            let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed?.isEmpty == false ? trimmed : nil
+        }
+        .joined(separator: " · ")
+    }
+
+    private func prepareDetails() {
+        let allowedKeys = Set(questionBlocks.map(\.key))
+        var nextAnswers = selectedAnswers.filter { allowedKeys.contains($0.key) }
+
+        for block in questionBlocks where nextAnswers[block.key] == nil {
+            nextAnswers[block.key] = Set(block.defaultValues)
+        }
+
+        selectedAnswers = nextAnswers
+        errorMessage = nil
+        step = .details
+    }
+
+    private func toggleAnswer(_ option: String, in block: AddQuestionBlock) {
+        var values = selectedAnswers[block.key] ?? Set(block.defaultValues)
+
+        switch block.kind {
+        case .singleChoice:
+            values = [option]
+        case .multiTag:
+            if values.contains(option) {
+                values.remove(option)
+            } else {
+                values.insert(option)
+            }
+        }
+
+        selectedAnswers[block.key] = values
+    }
+
+    private func attributeDrafts() -> [PlaceAttributeDraft] {
+        questionBlocks.compactMap { block in
+            let values = orderedSelections(for: block)
+            guard !values.isEmpty else { return nil }
+
+            switch block.kind {
+            case .singleChoice:
+                return PlaceAttributeDraft(questionKey: block.key, valueType: block.valueType, stringValue: values[0])
+            case .multiTag:
+                return PlaceAttributeDraft(questionKey: block.key, valueType: block.valueType, stringValues: values)
+            }
+        }
+    }
+
+    private func orderedSelections(for block: AddQuestionBlock) -> [String] {
+        let values = selectedAnswers[block.key] ?? Set(block.defaultValues)
+        return block.options.filter { values.contains($0) }
+    }
+
+    private func save() {
+        guard !isSaving else { return }
+        isSaving = true
+        errorMessage = nil
+
+        let submission = MapPlaceSaveSubmission(
+            context: context,
+            status: selectedStatus,
+            visibility: selectedVisibility,
+            note: note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : note,
+            attributes: attributeDrafts()
+        )
+
+        Task {
+            let result = await onSave(submission)
+            await MainActor.run {
+                isSaving = false
+                if result != nil {
+                    dismiss()
+                } else {
+                    errorMessage = "Sign in to finish this save."
+                }
+            }
+        }
+    }
+}
+
+private struct MapSavePickerBlock<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
+            Text(title)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(WanderTheme.textMuted.color)
+            content
+        }
+    }
+}
+
+private struct MapSaveChoicePill: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 13, weight: .bold))
+                .frame(minHeight: WanderTheme.tapMinimum)
+                .padding(.horizontal, WanderTheme.spacing3)
+                .background(isSelected ? WanderTheme.textInk.color : WanderTheme.surfaceRaised.color)
+                .foregroundStyle(isSelected ? WanderTheme.textOnAction.color : WanderTheme.textInk.color)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(WanderTheme.borderHairline.color))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct MapSaveQuestionBlock<Content: View>: View {
+    let title: String
+    let tag: String
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
+            HStack {
+                Text(title)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(WanderTheme.textInk.color)
+                Spacer()
+                Text(tag)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(WanderTheme.textMuted.color)
+            }
+            content
+        }
+        .padding(WanderTheme.spacing3)
+        .background(WanderTheme.surfaceBone.color)
+        .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+    }
+}
+
+private struct MapSaveQuestionOptions: View {
+    let block: AddQuestionBlock
+    let selectedValues: Set<String>
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        MapSaveWrappingChipLayout(horizontalSpacing: WanderTheme.spacing2, verticalSpacing: WanderTheme.spacing2) {
+            ForEach(block.options, id: \.self) { option in
+                Button {
+                    onSelect(option)
+                } label: {
+                    WanderChip(title: option, isSelected: selectedValues.contains(option))
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+private struct MapSaveWrappingChipLayout: Layout {
+    var horizontalSpacing: CGFloat
+    var verticalSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = rows(for: subviews, maxWidth: proposal.width ?? .greatestFiniteMagnitude)
+        return CGSize(width: proposal.width ?? rows.width, height: rows.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let rows = rows(for: subviews, maxWidth: bounds.width)
+        var y = bounds.minY
+
+        for row in rows.items {
+            var x = bounds.minX
+            for item in row.items {
+                subviews[item.index].place(
+                    at: CGPoint(x: x, y: y),
+                    proposal: ProposedViewSize(width: item.size.width, height: item.size.height)
+                )
+                x += item.size.width + horizontalSpacing
+            }
+            y += row.height + verticalSpacing
+        }
+    }
+
+    private func rows(for subviews: Subviews, maxWidth: CGFloat) -> ChipRows {
+        var rows: [ChipRow] = []
+        var currentItems: [ChipItem] = []
+        var currentWidth: CGFloat = 0
+        var currentHeight: CGFloat = 0
+        let effectiveMaxWidth = max(1, maxWidth)
+
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let nextWidth = currentItems.isEmpty ? size.width : currentWidth + horizontalSpacing + size.width
+
+            if nextWidth > effectiveMaxWidth, !currentItems.isEmpty {
+                rows.append(ChipRow(items: currentItems, width: currentWidth, height: currentHeight))
+                currentItems = [ChipItem(index: index, size: size)]
+                currentWidth = size.width
+                currentHeight = size.height
+            } else {
+                currentItems.append(ChipItem(index: index, size: size))
+                currentWidth = nextWidth
+                currentHeight = max(currentHeight, size.height)
+            }
+        }
+
+        if !currentItems.isEmpty {
+            rows.append(ChipRow(items: currentItems, width: currentWidth, height: currentHeight))
+        }
+
+        return ChipRows(items: rows, horizontalSpacing: horizontalSpacing, verticalSpacing: verticalSpacing)
+    }
+
+    private struct ChipItem {
+        let index: Int
+        let size: CGSize
+    }
+
+    private struct ChipRow {
+        let items: [ChipItem]
+        let width: CGFloat
+        let height: CGFloat
+    }
+
+    private struct ChipRows {
+        let items: [ChipRow]
+        let horizontalSpacing: CGFloat
+        let verticalSpacing: CGFloat
+
+        var width: CGFloat {
+            items.map(\.width).max() ?? 0
+        }
+
+        var height: CGFloat {
+            guard !items.isEmpty else { return 0 }
+            return items.reduce(0) { $0 + $1.height } + verticalSpacing * CGFloat(max(0, items.count - 1))
+        }
+    }
 }
 
 private struct SearchCandidateSheet: View {

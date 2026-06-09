@@ -1990,3 +1990,30 @@ Completion:
 - App Store Connect build id: `66d14c39-ab78-4b66-a05b-488a36f4a6c2`.
 - Build `0.1 (18)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
 - Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
+
+## 2026-06-09 12:32 PDT - Codex - Map Save/Edit Flow
+
+Agent: Codex
+Branch: `main`
+Starting commit: `8c26a11`
+Starting status: worktree clean.
+
+Goal: replace Map direct-save/placeholder edit behavior with a real save/edit sheet that captures the same core data as Add: been/wanna, visibility, category-specific question answers, and note.
+
+Expected files to touch:
+
+- `Wander/Features/Map/MapScreen.swift`
+- `Wander/Features/Add/AddScreen.swift`
+- `Wander/Features/Add/AddQuestionTemplates.swift`
+- `Wander.xcodeproj/project.pbxproj`
+- `docs/agent-log.md`
+
+Checkpoint:
+
+- Extracted Add category question templates into shared `Wander/Features/Add/AddQuestionTemplates.swift`.
+- Map unsaved result `+` now opens a save sheet with status, visibility, category-specific answers, and note instead of direct-saving.
+- Map social place `+` now opens the same save sheet; final save still requires sign-in for social saves.
+- Map saved-place pencil now opens the same flow prefilled with existing status, visibility, note, and answer attributes.
+- The flow updates saved places through `WanderStore.saveCandidate`, so persistence/sync state paths remain shared.
+- `xcodegen generate`: passed.
+- Full test suite passed with elevated `xcodebuild`.
