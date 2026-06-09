@@ -25,10 +25,10 @@ Use this as a checkoff script for the next TestFlight build. Mark each item pass
 ## Add Flow Navigation
 
 - [ ] Tap Add tab from another tab and see the Add home/source picker.
-- [ ] Start current-location add, reach "is this the one?", then tap `back to add` and return to Add home.
-- [ ] Start current-location add, reach "is this the one?", then tap `pick another nearby place` and return to Add home.
-- [ ] Start manual add, reach "is this the one?", tap `search again`, and return to manual search with prior text preserved.
-- [ ] Reach quick-details, tap `change place`, and return to the prior candidate/search step.
+- [ ] Start current-location add, reach "is this the one?", and confirm there are no extra `pick another nearby place` / `back to add` buttons.
+- [ ] From "is this the one?", tap the upper-left back control and return to the prior Add step.
+- [ ] Reach quick-details and confirm there are no extra `change place` / `back to add` buttons.
+- [ ] From quick-details, tap the upper-left back control and return to "is this the one?".
 - [ ] Leave Add for Map/Profile, return to Add, and confirm it has reset to Add home.
 
 ## Add Quick Details

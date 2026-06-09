@@ -298,14 +298,6 @@ struct AddScreen: View {
                 }
             }
 
-            RecoveryActionsRow(
-                primaryTitle: selectedSource.searchAgainTitle,
-                primarySystemImage: "magnifyingglass",
-                secondaryTitle: "back to add",
-                primaryAction: returnToSearchForCurrentSource,
-                secondaryAction: reset
-            )
-
             PickerBlock(title: "I've...") {
                 HStack(spacing: WanderTheme.spacing2) {
                     ChoicePill(title: "been", isSelected: selectedStatus == .been) { selectedStatus = .been }
@@ -353,14 +345,6 @@ struct AddScreen: View {
                 .background(WanderTheme.surfaceBone.color)
                 .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusMedium))
             }
-
-            RecoveryActionsRow(
-                primaryTitle: "change place",
-                primarySystemImage: "magnifyingglass",
-                secondaryTitle: "back to add",
-                primaryAction: returnToSearchForCurrentSource,
-                secondaryAction: reset
-            )
 
             ForEach(currentQuestionBlocks) { block in
                 QuestionBlock(title: block.title, tag: block.tag) {
@@ -507,23 +491,6 @@ struct AddScreen: View {
             step = .source
         case .source, .saved:
             break
-        }
-    }
-
-    private func returnToSearchForCurrentSource() {
-        resolutionMessage = nil
-        selectedCandidateID = nil
-        selectedAnswers = [:]
-
-        switch selectedSource {
-        case .manual:
-            step = .manual
-        case .link:
-            step = .link
-        case .photo:
-            step = .photo
-        case .currentLocation, .socialSave:
-            step = .source
         }
     }
 
@@ -757,23 +724,6 @@ private enum AddStep {
             true
         case .source, .saved:
             false
-        }
-    }
-}
-
-private extension AddSourceType {
-    var searchAgainTitle: String {
-        switch self {
-        case .currentLocation:
-            "pick another nearby place"
-        case .link:
-            "try a different link"
-        case .manual:
-            "search again"
-        case .photo:
-            "choose another photo"
-        case .socialSave:
-            "change place"
         }
     }
 }
@@ -1110,43 +1060,6 @@ private struct LabeledField: View {
                 .padding(WanderTheme.spacing3)
                 .background(WanderTheme.surfaceRaised.color)
                 .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusMedium))
-        }
-    }
-}
-
-private struct RecoveryActionsRow: View {
-    let primaryTitle: String
-    let primarySystemImage: String
-    let secondaryTitle: String
-    let primaryAction: () -> Void
-    let secondaryAction: () -> Void
-
-    var body: some View {
-        HStack(spacing: WanderTheme.spacing2) {
-            Button(action: primaryAction) {
-                Label(primaryTitle, systemImage: primarySystemImage)
-                    .font(.system(size: 13, weight: .bold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .foregroundStyle(WanderTheme.terracottaDark.color)
-                    .background(WanderTheme.surfaceBone.color)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(WanderTheme.borderHairline.color, lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-
-            Button(action: secondaryAction) {
-                Label(secondaryTitle, systemImage: "house.fill")
-                    .font(.system(size: 13, weight: .bold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .foregroundStyle(WanderTheme.textInk.color)
-                    .background(WanderTheme.surfaceSand.color)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
         }
     }
 }

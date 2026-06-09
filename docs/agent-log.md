@@ -1532,3 +1532,34 @@ Checkpoint:
 - App Store Connect build id for `0.1 (11)`: `3d9db598-6cdb-4d49-8cb5-4892de6ff55d`; processing state `VALID`.
 - Set export compliance to `usesNonExemptEncryption=false`, attached build `0.1 (11)` to public group `Wander Alpha`, and submitted it for external TestFlight review.
 - Final App Store Connect check: build `0.1 (11)` is `VALID`, `usesNonExemptEncryption=false`, and external beta review state is `APPROVED`.
+
+## 2026-06-08 17:39 PDT - Codex - Build 12 Add Navigation Cleanup
+
+Agent: Codex
+Branch: `main`
+Starting commit: `8d1e758`
+Starting status: local `main` matched `origin/main`; worktree clean before this log entry.
+
+Goal: remove redundant Add-flow recovery buttons because the upper-left back control is the intended navigation escape.
+
+Expected files to touch:
+
+- `Wander/Features/Add/AddScreen.swift`
+- `docs/qa/2026-06-08-build-11-pre-m6-test-checklist.md`
+- `docs/agent-log.md`
+
+Decision:
+
+- Remove the `try a different link` / `back to add` recovery row from Add confirmation.
+- Remove the `change place` / `back to add` recovery row from Add details.
+- Keep the upper-left back button as the single back affordance inside Add.
+
+Checkpoint:
+
+- Removed both `RecoveryActionsRow` usages from Add confirmation/details.
+- Removed the now-unused `RecoveryActionsRow` view, `AddSourceType.searchAgainTitle`, and `returnToSearchForCurrentSource()`.
+- Updated the QA checklist to verify the extra buttons are absent and the upper-left back control handles navigation.
+- Ran full tests:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: passed.
+- No separate TestFlight upload for this micro-cleanup yet; include it in the next M6/TestFlight build unless Joe asks for an immediate build.
