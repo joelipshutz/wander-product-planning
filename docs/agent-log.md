@@ -1822,3 +1822,51 @@ Completion:
 - App Store Connect build id: `9a98cbc5-8988-4952-9765-54e8f55d513d`.
 - Build `0.1 (16)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
 - Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
+
+## 2026-06-09 11:18 PDT - Codex - Rich Place Profile Sheet
+
+Agent: Codex
+Branch: `main`
+Starting commit: `15473c0`
+Starting status: worktree clean.
+
+Goal: implement Joe's no-billing rich place profile direction for the Map selected-place sheet: Beli/Slate-inspired expanded profile, social proof, share, Google Maps directions, own captured answers, friend notes/reviews, and no empty metadata rows for data we cannot actually deliver.
+
+Coordination:
+
+- Spawned read-only subagent Maxwell to inspect `MapScreen.swift` integration points and SwiftUI gotchas.
+- Spawned read-only subagent Averroes to audit current metadata availability and no-billing docs/QA implications.
+- Keep code implementation local because `Wander/Features/Map/MapScreen.swift` is conflict-prone.
+
+Expected files to touch:
+
+- `Wander/Features/Map/MapScreen.swift`
+- `Wander/Services/PlaceExternalLinks.swift`
+- `WanderTests/PlaceExternalLinksTests.swift`
+- `docs/decisions.md`
+- `docs/open-questions.md`
+- `docs/qa/*`
+- `docs/agent-log.md`
+- `project.yml`
+- `Wander.xcodeproj/project.pbxproj`
+
+Checkpoint:
+
+- Added `PlaceExternalLinks` for keyless Google Maps directions/search/share URLs; no Google SDK/API key or paid place metadata provider is introduced.
+- Reworked the selected Map `PlaceSheet` expanded state into a scrollable place profile: hero, social proof, share icon, directions action, real place facts, "your save", and friend save cards.
+- The expanded profile only renders fields Wander actually has. It intentionally omits website, phone, hours, cuisine, order, ratings, and photos until a free/source-owned data path exists.
+- Removed the Map profile sheet's fake `Los Angeles` fallback when locality/address is missing.
+- Added `PlaceExternalLinksTests` and `docs/qa/2026-06-09-build-17-rich-place-profile-checklist.md`.
+- Updated `docs/decisions.md` and `docs/open-questions.md` with the no-billing/no-empty metadata constraint.
+- `xcodegen generate`: passed.
+- Initial sandboxed `xcodebuild test` failed on CoreSimulator/SwiftPM cache permissions, not app code.
+- Escalated Swift tests passed, then passed again after bumping build number to `0.1 (17)`.
+- Archived `/private/tmp/Wander-0.1-build17.xcarchive` successfully.
+- Uploaded build `0.1 (17)` to App Store Connect.
+
+Completion:
+
+- App Store Connect build id: `4d38f9a2-e228-4842-bd97-1da5acd4e3fd`.
+- Build `0.1 (17)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
+- Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
+- Remaining follow-up: remote visible-place attributes still need hydration into the expanded profile; local saves and fixture-backed social saves show their answer chips now.

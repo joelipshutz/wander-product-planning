@@ -223,8 +223,7 @@ struct MapScreen: View {
                 } else if let selectedPlace {
                     PlaceSheet(
                         visiblePlace: selectedPlace,
-                        savers: savers(for: selectedPlace),
-                        attributes: store.attributes(for: selectedPlace.userPlace.id),
+                        saves: saveSummaries(for: selectedPlace),
                         currentUserID: store.currentUser.id,
                         action: action(for: selectedPlace),
                         isExpanded: $isPlaceSheetExpanded
@@ -293,15 +292,29 @@ struct MapScreen: View {
     }
 
     private func savers(for selectedPlace: VisiblePlace) -> [LocalProfile] {
+        saveSummaries(for: selectedPlace).map(\.visiblePlace.owner)
+    }
+
+    private func saveSummaries(for selectedPlace: VisiblePlace) -> [PlaceSaveSummary] {
         var seen = Set<String>()
-        return visiblePlaces
+        let summaries = visiblePlaces
             .filter { $0.place.id == selectedPlace.place.id }
-            .map(\.owner)
-            .filter { profile in
-                guard !seen.contains(profile.id) else { return false }
-                seen.insert(profile.id)
+            .filter { visiblePlace in
+                guard !seen.contains(visiblePlace.userPlace.id) else { return false }
+                seen.insert(visiblePlace.userPlace.id)
                 return true
             }
+            .map { visiblePlace in
+                PlaceSaveSummary(visiblePlace: visiblePlace, attributes: store.attributes(for: visiblePlace.userPlace.id))
+            }
+
+        return summaries.sorted { lhs, rhs in
+            if lhs.visiblePlace.owner.id == store.currentUser.id { return true }
+            if rhs.visiblePlace.owner.id == store.currentUser.id { return false }
+            if lhs.visiblePlace.id == selectedPlace.id { return true }
+            if rhs.visiblePlace.id == selectedPlace.id { return false }
+            return lhs.visiblePlace.owner.displayName.localizedCaseInsensitiveCompare(rhs.visiblePlace.owner.displayName) == .orderedAscending
+        }
     }
 
     private func submitMapSearch() {
@@ -1073,6 +1086,13 @@ private enum PlaceSheetAction {
     }
 }
 
+private struct PlaceSaveSummary: Identifiable {
+    let visiblePlace: VisiblePlace
+    let attributes: [LocalPlaceAttribute]
+
+    var id: String { visiblePlace.userPlace.id }
+}
+
 private struct SearchCandidateSheet: View {
     let candidate: PlaceCandidate
     let onSave: () -> Void
@@ -1141,12 +1161,12 @@ private struct SearchCandidateSheet: View {
 
 private struct PlaceSheet: View {
     let visiblePlace: VisiblePlace
-    let savers: [LocalProfile]
-    let attributes: [LocalPlaceAttribute]
+    let saves: [PlaceSaveSummary]
     let currentUserID: String
     let action: PlaceSheetAction
     @Binding var isExpanded: Bool
     let onAction: () -> Void
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
@@ -1158,7 +1178,10 @@ private struct PlaceSheet: View {
                 .accessibilityLabel(isExpanded ? "Place details expanded" : "Swipe up for place details")
 
             if isExpanded {
-                expandedContent
+                ScrollView(showsIndicators: false) {
+                    expandedContent
+                }
+                .frame(maxHeight: 560)
             } else {
                 compactContent
             }
@@ -1187,10 +1210,12 @@ private struct PlaceSheet: View {
                             .minimumScaleFactor(0.82)
                         StatusBadge(status: visiblePlace.userPlace.status)
                     }
-                    Text("\(visiblePlace.place.locality ?? "Los Angeles") · \(visiblePlace.place.category)")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(WanderTheme.textMuted.color)
-                        .lineLimit(1)
+                    if let subtitle = compactSubtitle {
+                        Text(subtitle)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(WanderTheme.textMuted.color)
+                            .lineLimit(1)
+                    }
                     if let note = visiblePlace.userPlace.note {
                         Text("\"\(note)\"")
                             .font(.system(size: 13))
@@ -1211,73 +1236,186 @@ private struct PlaceSheet: View {
 
     private var expandedContent: some View {
         VStack(alignment: .leading, spacing: WanderTheme.spacing4) {
-            HStack(alignment: .top, spacing: WanderTheme.spacing3) {
-                CategoryThumb(category: visiblePlace.place.category)
-                VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
-                    Text(visiblePlace.place.canonicalName)
-                        .font(.system(size: 24, weight: .black))
-                        .foregroundStyle(WanderTheme.textInk.color)
-                        .lineLimit(2)
-                    Text("\(visiblePlace.place.locality ?? "Los Angeles") · \(visiblePlace.place.category)")
+            expandedHeader
+            SocialProofRow(savers: savers, currentUserID: currentUserID, visibility: visiblePlace.userPlace.visibility)
+            externalActions
+
+            if !placeFacts.isEmpty {
+                factSection(title: "place", facts: placeFacts)
+            }
+
+            if let ownSave {
+                VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
+                    sectionTitle("your save")
+                    SaveReviewCard(summary: ownSave, currentUserID: currentUserID, emphasis: true)
+                }
+            }
+
+            if !friendSaves.isEmpty {
+                VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
+                    sectionTitle("friends' thoughts")
+                    ForEach(friendSaves) { summary in
+                        SaveReviewCard(summary: summary, currentUserID: currentUserID, emphasis: false)
+                    }
+                }
+            }
+        }
+        .padding(.bottom, WanderTheme.spacing1)
+    }
+
+    private var expandedHeader: some View {
+        HStack(alignment: .top, spacing: WanderTheme.spacing3) {
+            CategoryThumb(category: visiblePlace.place.category)
+            VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
+                Text(visiblePlace.place.canonicalName)
+                    .font(.system(size: 26, weight: .black))
+                    .foregroundStyle(WanderTheme.textInk.color)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.78)
+
+                if let subtitle = expandedSubtitle {
+                    Text(subtitle)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(WanderTheme.textMuted.color)
-                    StatusBadge(status: visiblePlace.userPlace.status)
+                        .lineLimit(2)
                 }
-                Spacer()
-                actionButton(size: 48, iconSize: 22)
+
+                StatusBadge(status: visiblePlace.userPlace.status)
             }
-
-            SocialProofRow(savers: savers, currentUserID: currentUserID, visibility: visiblePlace.userPlace.visibility)
-
-            if let note = visiblePlace.userPlace.note {
-                VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
-                    Text("note")
-                        .font(.system(size: 12, weight: .black))
-                        .foregroundStyle(WanderTheme.textMuted.color)
-                    Text(note)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(WanderTheme.textInk.color)
-                }
-                .padding(WanderTheme.spacing3)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(WanderTheme.surfaceSand.color)
-                .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+            Spacer(minLength: WanderTheme.spacing2)
+            VStack(spacing: WanderTheme.spacing2) {
+                shareButton
+                actionButton(size: 42, iconSize: 18)
             }
-
-            detailTagsSection
         }
     }
 
-    private var detailTagsSection: some View {
-        VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
-            Text("answers")
-                .font(.system(size: 12, weight: .black))
-                .foregroundStyle(WanderTheme.textMuted.color)
+    private var externalActions: some View {
+        HStack(spacing: WanderTheme.spacing2) {
+            if let directionsURL {
+                PlaceExternalActionButton(title: "Directions", systemImage: "arrow.triangle.turn.up.right.diamond.fill") {
+                    openURL(directionsURL)
+                }
+            }
+        }
+    }
 
+    @ViewBuilder
+    private var shareButton: some View {
+        if let shareURL {
+            ShareLink(item: shareURL, subject: Text(visiblePlace.place.canonicalName), message: Text(shareText)) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 17, weight: .black))
+                    .frame(width: 42, height: 42)
+                    .background(WanderTheme.surfaceSand.color)
+                    .foregroundStyle(WanderTheme.textInk.color)
+                    .clipShape(Circle())
+            }
+            .accessibilityLabel("Share place")
+        }
+    }
+
+    private func factSection(title: String, facts: [PlaceFact]) -> some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
+            sectionTitle(title)
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 104), spacing: WanderTheme.spacing2)],
+                columns: [GridItem(.adaptive(minimum: 106), spacing: WanderTheme.spacing2)],
                 alignment: .leading,
                 spacing: WanderTheme.spacing2
             ) {
-                ForEach(detailFacts) { fact in
+                ForEach(facts) { fact in
                     PlaceFactPill(title: fact.title, systemImage: fact.systemImage)
                 }
             }
         }
     }
 
-    private var detailFacts: [PlaceFact] {
-        var facts: [PlaceFact] = [
-            PlaceFact(title: visiblePlace.userPlace.status.displayTitle, systemImage: visiblePlace.userPlace.status == .been ? "checkmark.circle.fill" : "circle.dashed"),
-            PlaceFact(title: visiblePlace.userPlace.visibility.displayTitle, systemImage: "eye.fill")
-        ]
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 12, weight: .black))
+            .textCase(.uppercase)
+            .foregroundStyle(WanderTheme.textMuted.color)
+    }
 
-        facts.append(contentsOf: attributes.flatMap(facts(for:)))
-        facts.append(PlaceFact(title: visiblePlace.userPlace.sourceType.replacingOccurrences(of: "_", with: " "), systemImage: "tray.full.fill"))
+    private var savers: [LocalProfile] {
+        saves.map(\.visiblePlace.owner)
+    }
+
+    private var ownSave: PlaceSaveSummary? {
+        saves.first { $0.visiblePlace.owner.id == currentUserID }
+    }
+
+    private var friendSaves: [PlaceSaveSummary] {
+        saves.filter { $0.visiblePlace.owner.id != currentUserID }
+    }
+
+    private var compactSubtitle: String? {
+        joinedText([visiblePlace.place.locality, categoryDisplay])
+    }
+
+    private var expandedSubtitle: String? {
+        joinedText([addressLine, categoryDisplay])
+    }
+
+    private var addressLine: String? {
+        let address = trimmed(visiblePlace.place.address)
+        if let address {
+            return address
+        }
+        return joinedText([visiblePlace.place.locality, visiblePlace.place.region])
+    }
+
+    private var categoryDisplay: String? {
+        let category = trimmed(visiblePlace.place.category)
+        return category == "place" ? nil : category
+    }
+
+    private var placeFacts: [PlaceFact] {
+        var facts: [PlaceFact] = []
+        if let categoryDisplay {
+            facts.append(PlaceFact(title: categoryDisplay, systemImage: WanderPlaceCategory.symbolName(for: visiblePlace.place.category)))
+        }
+        if let addressLine {
+            facts.append(PlaceFact(title: addressLine, systemImage: "mappin.and.ellipse"))
+        }
         return facts
     }
 
-    private func facts(for attribute: LocalPlaceAttribute) -> [PlaceFact] {
+    private var directionsURL: URL? {
+        PlaceExternalLinks.googleMapsDirectionsURL(
+            placeName: visiblePlace.place.canonicalName,
+            latitude: visiblePlace.place.latitude,
+            longitude: visiblePlace.place.longitude
+        )
+    }
+
+    private var shareURL: URL? {
+        PlaceExternalLinks.googleMapsSearchURL(
+            placeName: visiblePlace.place.canonicalName,
+            address: visiblePlace.place.address,
+            locality: visiblePlace.place.locality
+        )
+    }
+
+    private var shareText: String {
+        PlaceExternalLinks.shareSummary(
+            placeName: visiblePlace.place.canonicalName,
+            locality: visiblePlace.place.locality,
+            status: visiblePlace.userPlace.status
+        )
+    }
+
+    private func joinedText(_ values: [String?]) -> String? {
+        let parts = values.compactMap(trimmed)
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private func trimmed(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed?.isEmpty == false ? trimmed : nil
+    }
+
+    private static func facts(for attribute: LocalPlaceAttribute) -> [PlaceFact] {
         if attribute.valueType == "multi_tag" {
             return decodedStringArray(from: attribute.valueJSON).map { value in
                 PlaceFact(title: value, systemImage: icon(for: attribute.questionKey))
@@ -1288,7 +1426,7 @@ private struct PlaceSheet: View {
         return [PlaceFact(title: value, systemImage: icon(for: attribute.questionKey))]
     }
 
-    private func icon(for questionKey: String) -> String {
+    private static func icon(for questionKey: String) -> String {
         switch questionKey {
         case "rating_signal": "heart.fill"
         case "work_setup": "laptopcomputer"
@@ -1299,12 +1437,12 @@ private struct PlaceSheet: View {
         }
     }
 
-    private func decodedString(from valueJSON: String) -> String? {
+    private static func decodedString(from valueJSON: String) -> String? {
         guard let data = valueJSON.data(using: .utf8) else { return nil }
         return try? JSONDecoder().decode(String.self, from: data)
     }
 
-    private func decodedStringArray(from valueJSON: String) -> [String] {
+    private static func decodedStringArray(from valueJSON: String) -> [String] {
         guard let data = valueJSON.data(using: .utf8) else { return [] }
         return (try? JSONDecoder().decode([String].self, from: data)) ?? []
     }
@@ -1338,6 +1476,149 @@ private struct PlaceFact: Identifiable {
     var id: String { "\(systemImage)-\(title)" }
     let title: String
     let systemImage: String
+}
+
+private struct PlaceExternalActionButton: View {
+    let title: String
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: WanderTheme.spacing1) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 13, weight: .black))
+                Text(title)
+                    .font(.system(size: 13, weight: .black))
+                    .lineLimit(1)
+            }
+            .frame(minHeight: 42)
+            .padding(.horizontal, WanderTheme.spacing4)
+            .background(WanderTheme.surfaceRaised.color)
+            .foregroundStyle(WanderTheme.textInk.color)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(WanderTheme.borderHairline.color, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+    }
+}
+
+private struct SaveReviewCard: View {
+    let summary: PlaceSaveSummary
+    let currentUserID: String
+    let emphasis: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
+            HStack(alignment: .center, spacing: WanderTheme.spacing2) {
+                WanderAvatar(initials: owner.initials, size: 34, color: avatarColor)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(owner.id == currentUserID ? "You" : owner.displayName)
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(WanderTheme.textInk.color)
+                    Text("@\(owner.handle)")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(WanderTheme.textMuted.color)
+                }
+                Spacer()
+                StatusBadge(status: userPlace.status)
+            }
+
+            if let note {
+                Text(note)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(WanderTheme.textInk.color)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !facts.isEmpty {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 104), spacing: WanderTheme.spacing2)],
+                    alignment: .leading,
+                    spacing: WanderTheme.spacing2
+                ) {
+                    ForEach(facts) { fact in
+                        PlaceFactPill(title: fact.title, systemImage: fact.systemImage)
+                    }
+                }
+            }
+        }
+        .padding(WanderTheme.spacing3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(emphasis ? WanderTheme.surfaceSand.color : WanderTheme.surfaceRaised.color)
+        .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+        .overlay(
+            RoundedRectangle(cornerRadius: WanderTheme.radiusLarge)
+                .stroke(emphasis ? WanderTheme.borderStrong.color.opacity(0.5) : WanderTheme.borderHairline.color, lineWidth: 1)
+        )
+    }
+
+    private var owner: LocalProfile {
+        summary.visiblePlace.owner
+    }
+
+    private var userPlace: LocalUserPlace {
+        summary.visiblePlace.userPlace
+    }
+
+    private var note: String? {
+        let trimmed = userPlace.note?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed?.isEmpty == false ? trimmed : nil
+    }
+
+    private var facts: [PlaceFact] {
+        var facts: [PlaceFact] = []
+
+        if owner.id == currentUserID {
+            facts.append(PlaceFact(title: userPlace.visibility.displayTitle, systemImage: "eye.fill"))
+        }
+
+        if let ratingSignal = userPlace.ratingSignal,
+           !summary.attributes.contains(where: { $0.questionKey == "rating_signal" }) {
+            facts.append(PlaceFact(title: ratingSignal, systemImage: "heart.fill"))
+        }
+
+        facts.append(contentsOf: summary.attributes.flatMap(attributeFacts(for:)))
+        return facts
+    }
+
+    private var avatarColor: Color {
+        if owner.id == currentUserID { return WanderTheme.terracotta.color }
+        return owner.handle == "ryan" ? WanderTheme.avatarRyan.color : WanderTheme.pinSocial.color
+    }
+
+    private func attributeFacts(for attribute: LocalPlaceAttribute) -> [PlaceFact] {
+        if attribute.valueType == "multi_tag" {
+            return decodedStringArray(from: attribute.valueJSON).map { value in
+                PlaceFact(title: value, systemImage: icon(for: attribute.questionKey))
+            }
+        }
+
+        guard let value = decodedString(from: attribute.valueJSON) else { return [] }
+        return [PlaceFact(title: value, systemImage: icon(for: attribute.questionKey))]
+    }
+
+    private func icon(for questionKey: String) -> String {
+        switch questionKey {
+        case "rating_signal": "heart.fill"
+        case "work_setup": "laptopcomputer"
+        case "strenuousness": "figure.hiking"
+        case "price": "dollarsign.circle.fill"
+        case "occasion", "best_for": "sparkles"
+        default: "tag.fill"
+        }
+    }
+
+    private func decodedString(from valueJSON: String) -> String? {
+        guard let data = valueJSON.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(String.self, from: data)
+    }
+
+    private func decodedStringArray(from valueJSON: String) -> [String] {
+        guard let data = valueJSON.data(using: .utf8) else { return [] }
+        return (try? JSONDecoder().decode([String].self, from: data)) ?? []
+    }
 }
 
 private struct SocialProofRow: View {

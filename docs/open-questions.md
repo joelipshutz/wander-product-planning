@@ -1,6 +1,6 @@
 # Open Questions
 
-Last updated: 2026-06-05
+Last updated: 2026-06-09
 
 These are the known unresolved questions and risks. Some are intentionally deferred; do not reopen locked decisions unless Joe asks.
 
@@ -24,6 +24,14 @@ These are the known unresolved questions and risks. Some are intentionally defer
 | How should remote row attributes hydrate local UI? | Defer to the next remote data slice. | Current remote `attributes` decode but are not upserted into `placeAttributes`, so expanded map sheets/social-save copies may omit backend answers until hydration is implemented. |
 | How should remote relationship/filter metadata hydrate local UI? | Push filters to RPC and/or return viewer relationship in DTO. | Current remote visible-place cache still applies some local relationship filtering, which can hide backend-authorized rows if local follow cache is stale. |
 | Which analytics provider? | Keep vendor-neutral interface; choose provider later. | PostHog is likely but not locked. |
+
+## Rich Place Profile Follow-Ups
+
+| Question | Recommendation | Notes |
+|---|---|---|
+| Should Wander store website, phone, hours, cuisine, order, menu, or reservation metadata? | Add optional, source-provenanced fields later only when populated by a free/source-owned path. | Do not show placeholders or blank rows. No paid place metadata provider is selected. |
+| How should private notes work? | Add a separate private-note model field later if product decides it is needed. | Current `LocalUserPlace.note` is a single note field, so UI should label it as the user's note rather than pretending public/private notes both exist. |
+| How do remote attributes reach expanded place profiles? | Hydrate `RemotePlaceAttributeDTO` into local `placeAttributes` or pass attributes through `VisiblePlace`. | Until this is done, expanded profiles may show full local answer chips but omit answer chips for remote-only social rows. |
 
 ## Needs Answer Before M5
 
