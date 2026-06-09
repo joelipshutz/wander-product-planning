@@ -1782,3 +1782,43 @@ Completion:
 - App Store Connect build id: `2043c8e6-4972-4cbf-9de2-6e71d25af235`.
 - Build `0.1 (15)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
 - Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
+
+## 2026-06-08 20:58 PDT - Codex - Map Search Typeahead
+
+Agent: Codex
+Branch: `main`
+Starting commit: `51a7231`
+Starting status: worktree clean before this log entry. Mission Control localhost task create failed because `localhost:4000` was not reachable.
+
+Goal: add typeahead suggestions to the Map search bar so short prefixes like `MCD` surface matching places such as McDonald's before submit.
+
+Expected files to touch:
+
+- `Wander/Features/Map/MapScreen.swift`
+- `WanderTests/*` if logic is extracted enough to test directly
+- `docs/agent-log.md`
+- `docs/qa/*`
+- `project.yml`
+- `Wander.xcodeproj/project.pbxproj`
+
+Initial approach:
+
+- Keep saved/network matches first because Map search is still primarily the user's trusted map.
+- Add debounced MapKit-backed suggestions for unsaved nearby POIs after at least two characters.
+- Tapping a suggestion should run the same selection/search behavior as submit, rather than creating a second save path.
+
+Completion:
+
+- Added Map search typeahead with saved/network matches first and debounced MapKit POI suggestions after two characters.
+- Tapping a saved/network suggestion selects and centers the existing saved/social pin.
+- Tapping an unsaved MapKit suggestion centers the map, shows the blue unsaved pin, and opens the existing unsaved-result sheet with `+`.
+- Added `docs/qa/2026-06-08-build-16-map-typeahead-checklist.md`.
+- `xcodegen generate`: passed.
+- `git diff --check`: passed.
+- Swift tests passed:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Build number bumped to `0.1 (16)` and regenerated `Wander.xcodeproj`.
+- Archived and uploaded `/private/tmp/Wander-0.1-build16.xcarchive`.
+- App Store Connect build id: `9a98cbc5-8988-4952-9765-54e8f55d513d`.
+- Build `0.1 (16)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
+- Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.

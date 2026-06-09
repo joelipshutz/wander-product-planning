@@ -11,6 +11,10 @@ struct MapScreen: View {
     @State private var mapQuery = ""
     @State private var mapSearchMessage: String?
     @State private var mapSearchCandidates: [PlaceCandidate] = []
+    @State private var typeaheadSuggestions: [MapSearchSuggestion] = []
+    @State private var isLoadingTypeahead = false
+    @State private var typeaheadTask: Task<Void, Never>?
+    @State private var suppressedTypeaheadQuery: String?
     @State private var isSearchingMapKit = false
     @State private var selectedFilters: Set<MapFilter> = [.you, .social, .been, .wanna]
     @State private var currentSearchRegion = Self.defaultRegion
@@ -25,6 +29,10 @@ struct MapScreen: View {
 
     private let initialPlaceQuery: String?
 
+    private var baseVisiblePlaces: [VisiblePlace] {
+        store.visiblePlaces(filters: filters)
+    }
+
     init(
         initialPlaceQuery: String? = Self.resolvedInitialMapPlaceQuery(),
         startsExpanded: Bool = ProcessInfo.processInfo.arguments.contains("-WanderMapSheetExpanded")
@@ -34,7 +42,7 @@ struct MapScreen: View {
     }
 
     private var visiblePlaces: [VisiblePlace] {
-        let places = store.visiblePlaces(filters: filters)
+        let places = baseVisiblePlaces
         let normalizedQuery = mapQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !normalizedQuery.isEmpty else { return places }
 
@@ -85,6 +93,13 @@ struct MapScreen: View {
 
     private var currentViewport: MapViewport {
         MapViewport(minLatitude: 33.95, minLongitude: -118.45, maxLatitude: 34.2, maxLongitude: -118.12)
+    }
+
+    private var shouldShowTypeahead: Bool {
+        let normalized = Self.normalized(mapQuery)
+        return normalized.count >= 2
+            && suppressedTypeaheadQuery != normalized
+            && (isLoadingTypeahead || !typeaheadSuggestions.isEmpty)
     }
 
     var body: some View {
@@ -144,7 +159,14 @@ struct MapScreen: View {
                         userInitials: store.currentUser.initials,
                         onSubmit: submitMapSearch
                     )
-                    if let mapSearchMessage {
+                    if shouldShowTypeahead {
+                        MapTypeaheadList(
+                            suggestions: typeaheadSuggestions,
+                            isLoading: isLoadingTypeahead,
+                            onSelect: selectTypeaheadSuggestion
+                        )
+                        .padding(.horizontal, WanderTheme.spacing3)
+                    } else if let mapSearchMessage {
                         MapSearchMessage(text: mapSearchMessage)
                             .padding(.horizontal, WanderTheme.spacing3)
                     }
@@ -234,13 +256,14 @@ struct MapScreen: View {
             }
         }
         .onChange(of: mapQuery) { _, _ in
-            mapSearchMessage = nil
-            mapSearchCandidates = []
-            selectedSearchCandidateID = nil
+            handleMapQueryChange()
             if let firstVisibleID = visiblePlaceIDs.first, !visiblePlaceIDs.contains(selectedPlaceID ?? "") {
                 selectedPlaceID = firstVisibleID
                 isPlaceSheetExpanded = false
             }
+        }
+        .onDisappear {
+            typeaheadTask?.cancel()
         }
     }
 
@@ -282,6 +305,10 @@ struct MapScreen: View {
     }
 
     private func submitMapSearch() {
+        suppressedTypeaheadQuery = Self.normalized(mapQuery)
+        typeaheadTask?.cancel()
+        typeaheadSuggestions = []
+        isLoadingTypeahead = false
         Task {
             await runMapSearch()
         }
@@ -326,7 +353,7 @@ struct MapScreen: View {
         }
     }
 
-    private func mapKitCandidates(for query: String) async throws -> [PlaceCandidate] {
+    private func mapKitCandidates(for query: String, limit: Int = 8) async throws -> [PlaceCandidate] {
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = query
         request.region = currentSearchRegion
@@ -359,6 +386,8 @@ struct MapScreen: View {
                 confidence: item.pointOfInterestCategory == nil ? 0.72 : 0.86
             )
         }
+        .prefix(limit)
+        .map { $0 }
     }
 
     private func action(for visiblePlace: VisiblePlace) -> PlaceSheetAction {
@@ -420,9 +449,121 @@ struct MapScreen: View {
     }
 
     private func isAlreadyVisible(candidate: PlaceCandidate) -> Bool {
-        visiblePlaces.contains { visiblePlace in
+        baseVisiblePlaces.contains { visiblePlace in
             visiblePlace.place.sourceProviderPlaceID == candidate.sourceProviderPlaceID
                 || visiblePlace.place.canonicalName.caseInsensitiveCompare(candidate.name) == .orderedSame
+        }
+    }
+
+    private func handleMapQueryChange() {
+        let normalized = Self.normalized(mapQuery)
+        mapSearchMessage = nil
+
+        if normalized == suppressedTypeaheadQuery {
+            typeaheadTask?.cancel()
+            typeaheadSuggestions = []
+            isLoadingTypeahead = false
+            return
+        }
+
+        suppressedTypeaheadQuery = nil
+        mapSearchCandidates = []
+        selectedSearchCandidateID = nil
+        scheduleTypeahead(for: mapQuery)
+    }
+
+    private func scheduleTypeahead(for query: String) {
+        typeaheadTask?.cancel()
+        let normalized = Self.normalized(query)
+
+        guard normalized.count >= 2 else {
+            typeaheadSuggestions = []
+            isLoadingTypeahead = false
+            return
+        }
+
+        typeaheadSuggestions = savedTypeaheadSuggestions(for: query)
+        isLoadingTypeahead = true
+
+        typeaheadTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 280_000_000)
+            guard !Task.isCancelled else { return }
+
+            let candidates = (try? await mapKitCandidates(for: query, limit: 6)) ?? []
+            guard !Task.isCancelled, Self.normalized(mapQuery) == normalized else { return }
+
+            let savedSuggestions = savedTypeaheadSuggestions(for: query)
+            let seenTitles = Set(savedSuggestions.map { Self.normalized($0.title) })
+            let mapSuggestions = candidates
+                .filter { !isAlreadyVisible(candidate: $0) }
+                .filter { !seenTitles.contains(Self.normalized($0.name)) }
+                .prefix(max(0, 6 - savedSuggestions.count))
+                .map(MapSearchSuggestion.mapKit)
+
+            typeaheadSuggestions = Array((savedSuggestions + mapSuggestions).prefix(6))
+            isLoadingTypeahead = false
+        }
+    }
+
+    private func savedTypeaheadSuggestions(for query: String) -> [MapSearchSuggestion] {
+        let normalized = Self.normalized(query)
+        guard !normalized.isEmpty else { return [] }
+
+        var seenPlaceIDs = Set<String>()
+        return baseVisiblePlaces
+            .filter { visiblePlace in
+                matchesTypeahead(visiblePlace, normalizedQuery: normalized)
+            }
+            .sorted { lhs, rhs in
+                let lhsIsMine = lhs.owner.id == store.currentUser.id
+                let rhsIsMine = rhs.owner.id == store.currentUser.id
+                if lhsIsMine != rhsIsMine { return lhsIsMine }
+                return lhs.place.canonicalName.localizedCaseInsensitiveCompare(rhs.place.canonicalName) == .orderedAscending
+            }
+            .compactMap { visiblePlace in
+                let placeID = visiblePlace.place.id
+                guard !seenPlaceIDs.contains(placeID) else { return nil }
+                seenPlaceIDs.insert(placeID)
+                return MapSearchSuggestion.saved(visiblePlace)
+            }
+            .prefix(3)
+            .map { $0 }
+    }
+
+    private func matchesTypeahead(_ visiblePlace: VisiblePlace, normalizedQuery: String) -> Bool {
+        [
+            visiblePlace.place.canonicalName,
+            visiblePlace.place.category,
+            visiblePlace.place.locality,
+            visiblePlace.owner.displayName,
+            "@\(visiblePlace.owner.handle)",
+            visiblePlace.userPlace.note,
+            visiblePlace.userPlace.ratingSignal
+        ]
+        .compactMap { $0 }
+        .contains { Self.normalized($0).contains(normalizedQuery) }
+    }
+
+    private func selectTypeaheadSuggestion(_ suggestion: MapSearchSuggestion) {
+        typeaheadTask?.cancel()
+        isLoadingTypeahead = false
+        typeaheadSuggestions = []
+        suppressedTypeaheadQuery = Self.normalized(suggestion.title)
+        mapQuery = suggestion.title
+        mapSearchMessage = nil
+
+        switch suggestion.source {
+        case .saved(let visiblePlace):
+            selectedPlaceID = visiblePlace.id
+            selectedSearchCandidateID = nil
+            mapSearchCandidates = []
+            center(on: visiblePlace)
+        case .mapKit(let candidate):
+            selectedPlaceID = nil
+            selectedSearchCandidateID = candidate.id
+            mapSearchCandidates = isAlreadyVisible(candidate: candidate) ? [] : [candidate]
+            center(on: candidate)
+            mapSearchMessage = "Map result. Tap + to add it."
         }
     }
 
@@ -434,6 +575,15 @@ struct MapScreen: View {
         position = .region(
             MKCoordinateRegion(
                 center: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+                span: MKCoordinateSpan(latitudeDelta: 0.035, longitudeDelta: 0.04)
+            )
+        )
+    }
+
+    private func center(on visiblePlace: VisiblePlace) {
+        position = .region(
+            MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: visiblePlace.place.latitude, longitude: visiblePlace.place.longitude),
                 span: MKCoordinateSpan(latitudeDelta: 0.035, longitudeDelta: 0.04)
             )
         )
@@ -525,6 +675,10 @@ struct MapScreen: View {
 
         return arguments[valueIndex]
     }
+
+    private static func normalized(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
 }
 
 private enum MapFilter: String, CaseIterable, Identifiable {
@@ -551,6 +705,61 @@ private enum MapFilter: String, CaseIterable, Identifiable {
         case .been: "checkmark.circle.fill"
         case .wanna: "circle.dashed"
         }
+    }
+}
+
+private struct MapSearchSuggestion: Identifiable {
+    enum Source {
+        case saved(VisiblePlace)
+        case mapKit(PlaceCandidate)
+    }
+
+    let id: String
+    let title: String
+    let subtitle: String
+    let category: String
+    let source: Source
+
+    static func saved(_ visiblePlace: VisiblePlace) -> MapSearchSuggestion {
+        let subtitle = [
+            visiblePlace.owner.displayName,
+            visiblePlace.place.locality,
+            visiblePlace.place.category
+        ]
+        .compactMap { value -> String? in
+            let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed?.isEmpty == false ? trimmed : nil
+        }
+        .joined(separator: " · ")
+
+        return MapSearchSuggestion(
+            id: "saved_\(visiblePlace.id)",
+            title: visiblePlace.place.canonicalName,
+            subtitle: subtitle.isEmpty ? "saved on Wander" : subtitle,
+            category: visiblePlace.place.category,
+            source: .saved(visiblePlace)
+        )
+    }
+
+    static func mapKit(_ candidate: PlaceCandidate) -> MapSearchSuggestion {
+        let subtitle = [
+            candidate.locality,
+            candidate.category == "place" ? nil : candidate.category,
+            "not saved"
+        ]
+        .compactMap { value -> String? in
+            let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed?.isEmpty == false ? trimmed : nil
+        }
+        .joined(separator: " · ")
+
+        return MapSearchSuggestion(
+            id: "mapkit_\(candidate.id)",
+            title: candidate.name,
+            subtitle: subtitle,
+            category: candidate.category,
+            source: .mapKit(candidate)
+        )
     }
 }
 
@@ -592,6 +801,102 @@ private struct SearchBar: View {
         .overlay(Capsule().stroke(WanderTheme.borderHairline.color))
         .shadow(color: WanderTheme.textInk.color.opacity(0.08), radius: 10, x: 0, y: 5)
         .padding(.horizontal, WanderTheme.spacing3)
+    }
+}
+
+private struct MapTypeaheadList: View {
+    let suggestions: [MapSearchSuggestion]
+    let isLoading: Bool
+    let onSelect: (MapSearchSuggestion) -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(suggestions) { suggestion in
+                Button {
+                    onSelect(suggestion)
+                } label: {
+                    MapTypeaheadRow(suggestion: suggestion)
+                }
+                .buttonStyle(.plain)
+
+                if suggestion.id != suggestions.last?.id {
+                    Divider()
+                        .overlay(WanderTheme.borderHairline.color)
+                        .padding(.leading, 52)
+                }
+            }
+
+            if isLoading {
+                HStack(spacing: WanderTheme.spacing2) {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(WanderTheme.terracotta.color)
+                    Text(suggestions.isEmpty ? "looking nearby..." : "checking nearby...")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(WanderTheme.textMuted.color)
+                    Spacer()
+                }
+                .padding(.horizontal, WanderTheme.spacing3)
+                .padding(.vertical, WanderTheme.spacing2)
+                .accessibilityLabel("Looking for nearby places")
+            }
+        }
+        .background(WanderTheme.surfaceRaised.color)
+        .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+        .overlay(
+            RoundedRectangle(cornerRadius: WanderTheme.radiusLarge)
+                .stroke(WanderTheme.borderHairline.color, lineWidth: 1)
+        )
+        .shadow(color: WanderTheme.textInk.color.opacity(0.1), radius: 12, x: 0, y: 6)
+    }
+}
+
+private struct MapTypeaheadRow: View {
+    let suggestion: MapSearchSuggestion
+
+    var body: some View {
+        HStack(spacing: WanderTheme.spacing2) {
+            Image(systemName: WanderPlaceCategory.symbolName(for: suggestion.category))
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(iconColor)
+                .frame(width: 34, height: 34)
+                .background(iconBackground)
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(suggestion.title)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(WanderTheme.textInk.color)
+                    .lineLimit(1)
+                Text(suggestion.subtitle)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(WanderTheme.textMuted.color)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Image(systemName: isSavedSuggestion ? "checkmark.circle.fill" : "plus.circle.fill")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(isSavedSuggestion ? WanderTheme.stateSuccess.color : WanderTheme.pinSocial.color)
+        }
+        .padding(.horizontal, WanderTheme.spacing3)
+        .padding(.vertical, WanderTheme.spacing2)
+        .contentShape(Rectangle())
+        .accessibilityLabel("\(suggestion.title), \(suggestion.subtitle)")
+    }
+
+    private var isSavedSuggestion: Bool {
+        if case .saved = suggestion.source { return true }
+        return false
+    }
+
+    private var iconColor: Color {
+        isSavedSuggestion ? WanderTheme.terracotta.color : WanderTheme.pinSocial.color
+    }
+
+    private var iconBackground: Color {
+        isSavedSuggestion ? WanderTheme.terracottaTint.color : WanderTheme.skyTint.color
     }
 }
 
