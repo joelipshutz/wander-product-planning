@@ -2144,3 +2144,26 @@ Expected files to touch:
 - `project.yml`
 - `Wander.xcodeproj/project.pbxproj`
 - `docs/agent-log.md`
+
+## 2026-06-09 15:44 PDT - Codex - Discover Place Row Detail Fix
+
+Agent: Codex
+Branch: `main`
+Starting commit: `31e2dfd`
+Starting status: worktree clean.
+
+Goal: fix Discover place rows so tapping a place opens a design-compliant place detail surface instead of the saver profile, while keeping profile access secondary inside the place card.
+
+Expected files to touch:
+
+- `Wander/Features/Discover/DiscoverScreen.swift`
+- `docs/agent-log.md`
+
+Completion:
+
+- Discover place rows now open a place detail sheet instead of jumping directly to the saver profile.
+- Saver/profile access remains available from the place detail sheet.
+- The Discover plus action is hidden for places already saved by the current user.
+- The new place sheet mirrors the Map sheet style and only shows metadata currently available without paid/billing-backed APIs: category, address/locality, directions, share, saved-by context, note, and saved answer chips.
+- `git diff --check`: passed.
+- Full elevated `xcodebuild test`: passed, 80 tests.
