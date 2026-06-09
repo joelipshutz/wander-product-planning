@@ -2069,6 +2069,18 @@ Checkpoint:
 - `git diff --check`: passed.
 - Full `xcodebuild test`: passed.
 
+Completion:
+
+- Bumped `CURRENT_PROJECT_VERSION` to `20` in `project.yml`.
+- Regenerated `Wander.xcodeproj` with `xcodegen generate`.
+- Full `xcodebuild test`: passed again after project generation.
+- Commit `caa40f1` (`feat: refresh social place data`) pushed to `origin/main`.
+- Archived `/private/tmp/Wander-0.1-build20.xcarchive`.
+- Uploaded build `0.1 (20)` to App Store Connect.
+- App Store Connect build id: `aceee488-a4d7-4759-ba6d-63a16c9c9ca7`.
+- Build `0.1 (20)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
+- Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
+
 ## 2026-06-09 12:41 PDT - Codex - Build 19 TestFlight Package
 
 Agent: Codex
