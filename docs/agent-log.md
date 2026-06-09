@@ -1460,7 +1460,7 @@ Expected files to touch:
 - `Wander/App/WanderRootView.swift`
 - `Wander/Features/Add/AddScreen.swift`
 - `Wander/Features/Map/MapScreen.swift`
-- `docs/qa/2026-06-06-build-10-cleanup-test-checklist.md`
+- `docs/qa/2026-06-08-build-11-pre-m6-test-checklist.md`
 - `docs/agent-log.md`
 
 Plan:
@@ -1480,7 +1480,7 @@ Checkpoint:
 - Added Add-flow recovery actions on confirmation/details screens: search/change place and back to Add home.
 - Reset Add to source picker when the user leaves the Add tab and returns.
 - Replaced Add quick-details `LazyVGrid` chips with a custom wrapping layout to remove spacing holes.
-- Added QA checklist: `docs/qa/2026-06-06-build-10-cleanup-test-checklist.md`.
+- Added QA checklist, now carried forward at `docs/qa/2026-06-08-build-11-pre-m6-test-checklist.md`.
 - Ran full tests:
   `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
 - Result: passed before and after the build-number bump/project regeneration.
@@ -1491,3 +1491,44 @@ Checkpoint:
 - App Store Connect build id for `0.1 (10)`: `128f2b2b-3523-4620-beb5-72bef23ceaa6`; processing state `VALID`.
 - Set export compliance to `usesNonExemptEncryption=false`, attached build `0.1 (10)` to public group `Wander Alpha`, and submitted it for external TestFlight review.
 - Final App Store Connect check: build `0.1 (10)` is `VALID`, `usesNonExemptEncryption=false`, and external beta review state is `APPROVED`.
+
+## 2026-06-08 00:00 PDT - Codex - Build 11 Map Search Scope Fix
+
+Agent: Codex
+Branch: `main`
+Starting commit: `3f32589`
+Starting status: local `main` matched `origin/main`; worktree clean before this log entry.
+
+Goal: fix Joe's Build 10 TestFlight finding that logged-out Map search behaves like global Apple Maps search and shows unsaved candidates as saveable/saved.
+
+Expected files to touch:
+
+- `Wander/Features/Map/MapScreen.swift`
+- `docs/qa/2026-06-08-build-11-pre-m6-test-checklist.md`
+- `docs/setup.md`
+- `docs/agent-log.md`
+- `project.yml`
+- `Wander.xcodeproj/project.pbxproj`
+
+Decision:
+
+- Map search must only search places already visible in the user's map graph: own saved places plus visible network places.
+- Global place lookup/search belongs in Add, not Map.
+- Map may still allow saving a social/network place someone else saved, but it should not create transient global candidates from arbitrary map search text.
+
+Checkpoint:
+
+- Removed the Build 10 transient global Map search candidate path from `MapScreen`.
+- Map search now filters only `store.visiblePlaces(filters:)`, covering saved own places and visible network/social places.
+- Removed `store.manualCandidates(...)` from Map; that global lookup remains in Add.
+- Updated Map search placeholder to `search your map or people...`.
+- Updated the QA checklist and renamed it to `docs/qa/2026-06-08-build-11-pre-m6-test-checklist.md`.
+- Bumped `CURRENT_PROJECT_VERSION` to `11` and regenerated `Wander.xcodeproj` with `xcodegen generate`.
+- First sandboxed test attempt failed from Xcode/CoreSimulator cache permission denial, not code.
+- Reran full tests with normal Xcode access:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: passed.
+- Archived `/private/tmp/Wander-0.1-build11.xcarchive` and uploaded build `0.1 (11)`.
+- App Store Connect build id for `0.1 (11)`: `3d9db598-6cdb-4d49-8cb5-4892de6ff55d`; processing state `VALID`.
+- Set export compliance to `usesNonExemptEncryption=false`, attached build `0.1 (11)` to public group `Wander Alpha`, and submitted it for external TestFlight review.
+- Final App Store Connect check: build `0.1 (11)` is `VALID`, `usesNonExemptEncryption=false`, and external beta review state is `APPROVED`.

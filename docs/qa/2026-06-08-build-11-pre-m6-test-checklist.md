@@ -1,13 +1,13 @@
-# Build 10 Cleanup Test Checklist
+# Build 11 Pre-M6 Test Checklist
 
-Date: 2026-06-06
-Scope: pre-M6 UI/interaction cleanup from friend TestFlight feedback.
+Date: 2026-06-08
+Scope: pre-M6 UI/interaction cleanup from friend TestFlight feedback plus the Build 11 Map search scope fix.
 
 Use this as a checkoff script for the next TestFlight build. Mark each item pass/fail and capture a screenshot for any fail.
 
 ## Setup
 
-- [ ] Install TestFlight build `0.1 (10)`.
+- [ ] Install TestFlight build `0.1 (11)`.
 - [ ] Test signed out on a fresh install if possible.
 - [ ] Test signed in with Joe's account or another Clerk account.
 - [ ] Test once with iOS Dark Mode enabled.
@@ -41,12 +41,11 @@ Use this as a checkoff script for the next TestFlight build. Mark each item pass
 
 ## Map Search
 
-- [ ] Tap Map search, type an existing saved place, and see matching pins/sheet.
-- [ ] Tap Map search, type a new place name, press the keyboard Search key, and see candidate pins/sheet.
-- [ ] Search loading indicator appears briefly while searching.
-- [ ] If no candidate is found, a readable error/recovery message appears.
-- [ ] Clear search removes external search candidates and restores normal map pins.
-- [ ] Saving a map search candidate adds it to the user's map without white text regressions.
+- [ ] Tap Map search, type an existing saved or network-visible place, and see matching pins/sheet.
+- [ ] Tap Map search, type a random global place that no one has saved, press the keyboard Search key, and confirm no new candidate pin/sheet appears.
+- [ ] For an unsaved global place query, confirm the recovery message tells the user to use Add for search-everywhere behavior.
+- [ ] Clear search restores normal map pins.
+- [ ] Plus button still saves visible social/network places that someone else already saved.
 
 ## Map Place Sheet
 
@@ -64,7 +63,7 @@ Use this as a checkoff script for the next TestFlight build. Mark each item pass
 - [ ] Existing short Google Maps links still resolve or show the short-link draft copy.
 - [ ] Photo import still creates a draft.
 
-## Known Out Of Scope For Build 10
+## Known Out Of Scope For Build 11
 
 - Backend extraction execution for link/photo sources. M6 owns this.
 - Full TikTok/Instagram/photo OCR extraction.
