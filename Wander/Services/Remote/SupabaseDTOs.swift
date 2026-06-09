@@ -7,6 +7,7 @@ struct RemoteProfileShellDTO: Codable, Equatable {
     let avatarURL: String?
     let bio: String?
     let homeArea: String?
+    let relationship: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -15,16 +16,17 @@ struct RemoteProfileShellDTO: Codable, Equatable {
         case avatarURL = "avatar_url"
         case bio
         case homeArea = "home_area"
+        case relationship
     }
 
-    func profileShell(relationship: ViewerRelationship = .nonFollower) -> ProfileShell {
+    func profileShell(fallbackRelationship: ViewerRelationship = .nonFollower) -> ProfileShell {
         ProfileShell(
             id: id,
             handle: handle,
             displayName: displayName,
             avatarURL: avatarURL,
             bio: bio,
-            relationship: relationship
+            relationship: relationship.flatMap(ViewerRelationship.init(rawValue:)) ?? fallbackRelationship
         )
     }
 }

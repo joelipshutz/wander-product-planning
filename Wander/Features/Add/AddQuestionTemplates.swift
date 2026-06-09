@@ -62,8 +62,9 @@ enum AddQuestionTemplates {
             tag: "scale",
             kind: .singleChoice,
             valueType: "emoji_scale",
-            options: ["meh", "fine", "good", "great"],
-            defaultValues: ["great"]
+            options: ["😐", "🙂", "😍", "🤯"],
+            defaultValues: ["😍"],
+            minimumOptionWidth: 64
         )
     }
 
@@ -127,11 +128,11 @@ enum AddQuestionTemplates {
         AddQuestionBlock(
             key: "occasion",
             title: "best for?",
-            tag: "occasion",
-            kind: .singleChoice,
-            valueType: "single_choice",
+            tag: "multi",
+            kind: .multiTag,
+            valueType: "multi_tag",
             options: ["quick bite", "date night", "group", "rainy night"],
-            defaultValues: ["rainy night"],
+            defaultValues: ["date night", "rainy night"],
             minimumOptionWidth: 104
         ),
         AddQuestionBlock(
@@ -150,11 +151,11 @@ enum AddQuestionTemplates {
         AddQuestionBlock(
             key: "occasion",
             title: "best for?",
-            tag: "occasion",
-            kind: .singleChoice,
-            valueType: "single_choice",
+            tag: "multi",
+            kind: .multiTag,
+            valueType: "multi_tag",
             options: ["first drink", "date", "group", "late"],
-            defaultValues: ["first drink"],
+            defaultValues: ["first drink", "date"],
             minimumOptionWidth: 98
         ),
         AddQuestionBlock(
@@ -173,11 +174,11 @@ enum AddQuestionTemplates {
         AddQuestionBlock(
             key: "best_for",
             title: "best for?",
-            tag: "occasion",
-            kind: .singleChoice,
-            valueType: "single_choice",
+            tag: "multi",
+            kind: .multiTag,
+            valueType: "multi_tag",
             options: ["walk", "picnic", "views", "reset"],
-            defaultValues: ["walk"],
+            defaultValues: ["walk", "reset"],
             minimumOptionWidth: 84
         ),
         AddQuestionBlock(

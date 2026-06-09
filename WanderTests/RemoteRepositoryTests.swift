@@ -78,6 +78,40 @@ final class RemoteRepositoryTests: XCTestCase {
         XCTAssertNil(rpc.calls[0].body["owner_scope"] as Any?)
     }
 
+    func testSocialGraphRepositoriesCallExpectedRPCs() async throws {
+        let rpc = RecordingRPC()
+        let graphJSON = """
+        [
+          {
+            "id": "user_maya",
+            "handle": "maya",
+            "display_name": "Maya Chen",
+            "avatar_url": null,
+            "bio": null,
+            "home_area": "Los Angeles",
+            "relationship": "mutual"
+          }
+        ]
+        """.data(using: .utf8)
+        rpc.responses["profile_following"] = graphJSON
+        rpc.responses["profile_followers"] = graphJSON
+        rpc.responses["profile_relationship"] = #""mutual""#.data(using: .utf8)
+        let repository = SupabaseFollowRepository(rpc: rpc)
+
+        let following = try await repository.following(userID: "user_joe")
+        let followers = try await repository.followers(userID: "user_joe")
+        let relationship = try await repository.relationship(to: "user_maya")
+
+        XCTAssertEqual(following.map(\.handle), ["maya"])
+        XCTAssertEqual(following[0].relationship, .mutual)
+        XCTAssertEqual(followers.map(\.handle), ["maya"])
+        XCTAssertEqual(relationship, .mutual)
+        XCTAssertEqual(rpc.calls.map(\.name), ["profile_following", "profile_followers", "profile_relationship"])
+        XCTAssertEqual(rpc.calls[0].body["profile_id"] as? String, "user_joe")
+        XCTAssertEqual(rpc.calls[1].body["profile_id"] as? String, "user_joe")
+        XCTAssertEqual(rpc.calls[2].body["profile_id"] as? String, "user_maya")
+    }
+
     func testProfileVisiblePlacesCallsExpectedRPCAndMapsRows() async throws {
         let rpc = RecordingRPC()
         rpc.responses["profile_visible_places"] = """

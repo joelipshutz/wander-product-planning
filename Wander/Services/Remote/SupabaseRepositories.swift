@@ -43,15 +43,30 @@ struct SupabaseFollowRepository: FollowRepository {
     }
 
     func followers(userID: String) async throws -> [ProfileShell] {
-        throw WanderRemoteError.notImplemented("followers joined profile RPC")
+        let rows: [RemoteProfileShellDTO] = try await rpc.call(
+            "profile_followers",
+            params: ProfileIDParams(profileID: userID)
+        )
+        return rows.map { $0.profileShell() }
     }
 
     func following(userID: String) async throws -> [ProfileShell] {
-        throw WanderRemoteError.notImplemented("following joined profile RPC")
+        let rows: [RemoteProfileShellDTO] = try await rpc.call(
+            "profile_following",
+            params: ProfileIDParams(profileID: userID)
+        )
+        return rows.map { $0.profileShell() }
     }
 
     func relationship(to userID: String) async throws -> ViewerRelationship {
-        throw WanderRemoteError.notImplemented("relationship read RPC")
+        let response: ProfileRelationshipResponse = try await rpc.call(
+            "profile_relationship",
+            params: ProfileIDParams(profileID: userID)
+        )
+        guard let relationship = ViewerRelationship(rawValue: response.value) else {
+            throw WanderRemoteError.invalidResponse("Unknown profile relationship: \(response.value)")
+        }
+        return relationship
     }
 }
 
@@ -202,6 +217,15 @@ private struct ProfileIDParams: Encodable {
 
     enum CodingKeys: String, CodingKey {
         case profileID = "profile_id"
+    }
+}
+
+private struct ProfileRelationshipResponse: Decodable {
+    let value: String
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        value = try container.decode(String.self)
     }
 }
 

@@ -305,6 +305,20 @@ final class WanderStoreTests: XCTestCase {
         XCTAssertEqual(attributes[0].valueJSON, "\"good\"")
     }
 
+    func testSaveQuestionTemplatesUseEmojiRatingsAndMultiBestFor() {
+        let restaurantBlocks = AddQuestionTemplates.blocks(category: "restaurant", status: .been)
+        let rating = restaurantBlocks.first { $0.key == "rating_signal" }
+        let occasion = restaurantBlocks.first { $0.key == "occasion" }
+        let tags = restaurantBlocks.first { $0.key == "restaurant_tags" }
+
+        XCTAssertEqual(rating?.options, ["😐", "🙂", "😍", "🤯"])
+        XCTAssertEqual(rating?.defaultValues, ["😍"])
+        XCTAssertEqual(occasion?.kind, .multiTag)
+        XCTAssertEqual(occasion?.valueType, "multi_tag")
+        XCTAssertTrue((occasion?.defaultValues.count ?? 0) > 1)
+        XCTAssertEqual(tags?.kind, .multiTag)
+    }
+
     func testFollowersAndFollowingUseGraphEdges() {
         let store = makeStore()
 
@@ -648,6 +662,25 @@ final class WanderStoreTests: XCTestCase {
         XCTAssertEqual(store.attributes(for: "up_remote_maya_maru")[0].valueJSON, "\"yes\"")
     }
 
+    func testRemoteSocialGraphHydratesFollowEdgesAndRelationships() async {
+        let store = WanderStore(fixtures: WanderFixtures.empty())
+        store.apply(authState: .signedIn(AuthSession(userID: "user_live", displayName: "Joe", handle: "joe")))
+        let maya = ProfileShell(id: "user_maya", handle: "maya", displayName: "Maya", avatarURL: nil, bio: nil, relationship: .mutual)
+        let ryan = ProfileShell(id: "user_ryan", handle: "ryan", displayName: "Ryan", avatarURL: nil, bio: nil, relationship: .nonFollower)
+        let followRepository = FakeFollowRepository(followers: [maya], following: [maya, ryan], relationships: ["user_maya": .mutual])
+        let backend = WanderBackend(followRepository: followRepository)
+
+        await store.refreshRemoteSocialGraph(backend: backend)
+
+        XCTAssertEqual(store.following(of: store.currentUser.id).map(\.id), ["user_maya", "user_ryan"])
+        XCTAssertEqual(store.followers(of: store.currentUser.id).map(\.id), ["user_maya"])
+        XCTAssertEqual(store.relationship(to: "user_maya"), .mutual)
+        XCTAssertEqual(store.relationship(to: "user_ryan"), .follower)
+        XCTAssertNotNil(store.profileState(for: "user_maya"))
+        XCTAssertEqual(followRepository.followingUserIDs, ["user_live"])
+        XCTAssertEqual(followRepository.followersUserIDs, ["user_live"])
+    }
+
     func testRemoteSocialSaveMarksLocalCopySynced() async {
         let store = makeStore()
         let socialSaveRepository = FakeSocialPlaceSaveRepository(result: SaveResult(userPlaceID: "up_remote_saved", syncState: .synced))
@@ -843,11 +876,25 @@ private final class FakeProfileRepository: ProfileRepository {
 @MainActor
 private final class FakeFollowRepository: FollowRepository {
     private let error: Error?
+    private let followersResult: [ProfileShell]
+    private let followingResult: [ProfileShell]
+    private let relationships: [String: ViewerRelationship]
     private(set) var followedUserIDs: [String] = []
     private(set) var unfollowedUserIDs: [String] = []
+    private(set) var followersUserIDs: [String] = []
+    private(set) var followingUserIDs: [String] = []
+    private(set) var relationshipUserIDs: [String] = []
 
-    init(error: Error? = nil) {
+    init(
+        error: Error? = nil,
+        followers: [ProfileShell] = [],
+        following: [ProfileShell] = [],
+        relationships: [String: ViewerRelationship] = [:]
+    ) {
         self.error = error
+        self.followersResult = followers
+        self.followingResult = following
+        self.relationships = relationships
     }
 
     func follow(userID: String) async throws {
@@ -865,15 +912,18 @@ private final class FakeFollowRepository: FollowRepository {
     }
 
     func followers(userID: String) async throws -> [ProfileShell] {
-        []
+        followersUserIDs.append(userID)
+        return followersResult
     }
 
     func following(userID: String) async throws -> [ProfileShell] {
-        []
+        followingUserIDs.append(userID)
+        return followingResult
     }
 
     func relationship(to userID: String) async throws -> ViewerRelationship {
-        .nonFollower
+        relationshipUserIDs.append(userID)
+        return relationships[userID] ?? .nonFollower
     }
 }
 

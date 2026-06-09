@@ -516,7 +516,7 @@ struct AddScreen: View {
         generator.notificationOccurred(result?.syncState == .failed ? .warning : .success)
 
         Task {
-            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            try? await Task.sleep(nanoseconds: toast.dismissDelayNanoseconds)
             await MainActor.run {
                 if saveToast?.id == toast.id {
                     saveToast = nil
@@ -841,6 +841,7 @@ private struct AddSaveToast: Identifiable, Equatable {
     let message: String
     let systemImage: String
     let canSignIn: Bool
+    let dismissDelayNanoseconds: UInt64
 
     init(syncState: SyncState, canSignIn: Bool) {
         self.canSignIn = canSignIn
@@ -850,26 +851,32 @@ private struct AddSaveToast: Identifiable, Equatable {
             title = "saved to your map"
             message = "Synced and ready."
             systemImage = "checkmark"
+            dismissDelayNanoseconds = 2_000_000_000
         case .failed:
             title = "saved here"
             message = "Sync needs a retry, but it is still on this phone."
             systemImage = "exclamationmark.arrow.triangle.2.circlepath"
+            dismissDelayNanoseconds = 5_000_000_000
         case .pendingCreate, .pendingUpdate, .pendingDelete:
             title = "saved here"
             message = "Sync is queued."
             systemImage = "arrow.triangle.2.circlepath"
+            dismissDelayNanoseconds = 3_500_000_000
         case .localOnly:
             title = "saved here"
             message = canSignIn ? "Sign in to back it up." : "Kept on this phone."
             systemImage = "checkmark"
+            dismissDelayNanoseconds = canSignIn ? 5_000_000_000 : 2_500_000_000
         case .serverDenied:
             title = "needs review"
             message = "Saved locally until this can sync."
             systemImage = "exclamationmark.triangle"
+            dismissDelayNanoseconds = 5_000_000_000
         case .tombstoned:
             title = "removed"
             message = "This saved place was removed."
             systemImage = "trash"
+            dismissDelayNanoseconds = 3_500_000_000
         }
     }
 }

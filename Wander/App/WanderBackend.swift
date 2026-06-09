@@ -110,6 +110,30 @@ final class WanderBackend: ObservableObject {
         try await followRepository.unfollow(userID: userID)
     }
 
+    func followers(userID: String) async throws -> [ProfileShell] {
+        guard let followRepository else {
+            throw WanderRemoteError.notConfigured
+        }
+
+        return try await followRepository.followers(userID: userID)
+    }
+
+    func following(userID: String) async throws -> [ProfileShell] {
+        guard let followRepository else {
+            throw WanderRemoteError.notConfigured
+        }
+
+        return try await followRepository.following(userID: userID)
+    }
+
+    func relationship(to userID: String) async throws -> ViewerRelationship {
+        guard let followRepository else {
+            throw WanderRemoteError.notConfigured
+        }
+
+        return try await followRepository.relationship(to: userID)
+    }
+
     func block(userID: String) async throws {
         guard let blockRepository else {
             throw WanderRemoteError.notConfigured

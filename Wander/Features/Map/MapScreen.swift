@@ -456,7 +456,7 @@ struct MapScreen: View {
             selectedSearchCandidateID = nil
             selectedPlaceID = result.userPlaceID
             mapSearchCandidates.removeAll { $0.id == submission.context.candidate.id }
-            mapSearchMessage = "Added to your map."
+            showTransientMapSearchMessage("Added to your map.")
 
             if !auth.isSignedIn {
                 auth.presentGate(for: .syncPlace)
@@ -475,13 +475,24 @@ struct MapScreen: View {
             )
             selectedSearchCandidateID = nil
             selectedPlaceID = result.userPlaceID
-            mapSearchMessage = "Updated saved place."
+            showTransientMapSearchMessage("Updated saved place.")
 
             if !auth.isSignedIn {
                 auth.presentGate(for: .syncPlace)
             }
 
             return result
+        }
+    }
+
+    private func showTransientMapSearchMessage(_ message: String) {
+        mapSearchMessage = message
+
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            if mapSearchMessage == message {
+                mapSearchMessage = nil
+            }
         }
     }
 

@@ -721,6 +721,7 @@ final class WanderStore: ObservableObject {
             lastRemoteError = nil
             objectWillChange.send()
             persist()
+            await refreshRemoteSocialGraph(backend: backend)
             await refreshRemoteVisiblePlaces(backend: backend)
         } catch {
             follow.syncStateRaw = SyncState.failed.rawValue
@@ -755,6 +756,7 @@ final class WanderStore: ObservableObject {
             try await backend.unfollow(userID: userID)
             lastRemoteError = nil
             unfollow(userID: userID)
+            await refreshRemoteSocialGraph(backend: backend)
             await refreshRemoteVisiblePlaces(backend: backend)
         } catch {
             follow.syncStateRaw = SyncState.failed.rawValue
@@ -805,6 +807,7 @@ final class WanderStore: ObservableObject {
             lastRemoteError = nil
             objectWillChange.send()
             persist()
+            await refreshRemoteSocialGraph(backend: backend)
             await refreshRemoteVisiblePlaces(backend: backend)
         } catch {
             block.syncStateRaw = SyncState.failed.rawValue
@@ -839,6 +842,7 @@ final class WanderStore: ObservableObject {
             try await backend.unblock(userID: userID)
             lastRemoteError = nil
             unblock(userID: userID)
+            await refreshRemoteSocialGraph(backend: backend)
             await refreshRemoteVisiblePlaces(backend: backend)
         } catch {
             block.syncStateRaw = SyncState.failed.rawValue
@@ -878,10 +882,33 @@ final class WanderStore: ObservableObject {
             remoteVisiblePlaceCache.removeAll { $0.owner.id == profileID }
             remoteVisiblePlaceCache.append(contentsOf: visiblePlaces)
             hydrateRemoteVisiblePlaceMetadata(visiblePlaces)
+            try await refreshRemoteRelationship(to: profileID, backend: backend)
             lastRemoteError = nil
         } catch {
             lastRemoteError = remoteErrorMessage(error)
         }
+    }
+
+    func refreshRemoteSocialGraph(userID: String? = nil, backend: WanderBackend?) async {
+        guard let backend else {
+            return
+        }
+
+        let graphUserID = userID ?? currentUser.id
+
+        do {
+            let following = try await backend.following(userID: graphUserID)
+            let followers = try await backend.followers(userID: graphUserID)
+            upsertRemoteSocialGraph(userID: graphUserID, following: following, followers: followers)
+            lastRemoteError = nil
+        } catch {
+            lastRemoteError = remoteErrorMessage(error)
+        }
+    }
+
+    private func refreshRemoteRelationship(to profileID: String, backend: WanderBackend) async throws {
+        let relationship = try await backend.relationship(to: profileID)
+        applyRemoteRelationship(profileID: profileID, relationship: relationship)
     }
 
     func blockedProfiles() -> [ProfileShell] {
@@ -1162,6 +1189,73 @@ final class WanderStore: ObservableObject {
         placeAttributes.append(contentsOf: attributes)
         objectWillChange.send()
         persist()
+    }
+
+    private func upsertRemoteSocialGraph(userID: String, following: [ProfileShell], followers: [ProfileShell]) {
+        upsertRemoteProfileShells(following + followers)
+
+        let followingIDs = Set(following.map(\.id)).subtracting([userID])
+        let followerIDs = Set(followers.map(\.id)).subtracting([userID])
+
+        follows.removeAll { follow in
+            follow.localID.hasPrefix("remote_follow_")
+                && (follow.followerUserID == userID || follow.followedUserID == userID)
+        }
+
+        for followedID in followingIDs where !isBlockedBetweenCurrentUser(and: followedID) {
+            upsertRemoteFollow(followerUserID: userID, followedUserID: followedID)
+        }
+
+        for followerID in followerIDs where !isBlockedBetweenCurrentUser(and: followerID) {
+            upsertRemoteFollow(followerUserID: followerID, followedUserID: userID)
+        }
+
+        objectWillChange.send()
+        persist()
+    }
+
+    private func applyRemoteRelationship(profileID: String, relationship: ViewerRelationship) {
+        guard profileID != currentUser.id else { return }
+
+        let currentToProfileID = remoteFollowLocalID(followerUserID: currentUser.id, followedUserID: profileID)
+        let profileToCurrentID = remoteFollowLocalID(followerUserID: profileID, followedUserID: currentUser.id)
+
+        follows.removeAll { follow in
+            follow.localID == currentToProfileID || follow.localID == profileToCurrentID
+        }
+
+        switch relationship {
+        case .owner, .nonFollower:
+            break
+        case .follower:
+            upsertRemoteFollow(followerUserID: currentUser.id, followedUserID: profileID)
+        case .mutual:
+            upsertRemoteFollow(followerUserID: currentUser.id, followedUserID: profileID)
+            upsertRemoteFollow(followerUserID: profileID, followedUserID: currentUser.id)
+        }
+
+        objectWillChange.send()
+        persist()
+    }
+
+    private func upsertRemoteFollow(followerUserID: String, followedUserID: String) {
+        guard followerUserID != followedUserID,
+              !follows.contains(where: { $0.followerUserID == followerUserID && $0.followedUserID == followedUserID })
+        else { return }
+
+        follows.append(
+            LocalFollow(
+                localID: remoteFollowLocalID(followerUserID: followerUserID, followedUserID: followedUserID),
+                followerUserID: followerUserID,
+                followedUserID: followedUserID,
+                source: .profile,
+                syncState: .synced
+            )
+        )
+    }
+
+    private func remoteFollowLocalID(followerUserID: String, followedUserID: String) -> String {
+        "remote_follow_\(slug(followerUserID))_\(slug(followedUserID))"
     }
 
     private func upsertRemoteProfileShells(_ shells: [ProfileShell]) {

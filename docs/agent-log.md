@@ -2034,6 +2034,43 @@ Completion:
 
 - Commit `a71a909` (`feat: add map save edit flow`) pushed to `origin/main`.
 
+## 2026-06-09 15:17 PDT - Codex - Build 21 Social Graph And Save Questions
+
+Agent: Codex
+Branch: `main`
+Starting commit: `fa71dad`
+Starting status: worktree clean.
+
+Goal: finish the next alpha batch instead of asking Joe to test partial social graph behavior: make best-for fields multi-select, make rating chips emoji-based, make save success quieter/short-lived, and wire the remaining remote social graph list/relationship hydration path.
+
+Expected files to touch:
+
+- `Wander/Features/Add/AddQuestionTemplates.swift`
+- `Wander/Features/Add/AddScreen.swift`
+- `Wander/Features/Map/MapScreen.swift`
+- `Wander/App/WanderBackend.swift`
+- `Wander/Services/Remote/*`
+- `Wander/Services/WanderLocalStore.swift`
+- `WanderTests/*`
+- `supabase/migrations/*`
+- `docs/agent-log.md`
+- `project.yml`
+- `Wander.xcodeproj/project.pbxproj`
+
+Checkpoint:
+
+- Mission Control was not reachable on `localhost:4000`; repo coordination is captured here.
+- Clarification for Joe: "remote" in this repo means backend/Supabase data, distinct from local fixtures or local-only saves.
+- Save question templates now use emoji rating chips for "how much did you like it?" and make restaurant/bar/park "best for?" multi-select; existing tags remain multi-select.
+- Add save success auto-dismisses faster; sync/sign-in-needed messages stay visible a bit longer because they are actionable.
+- Map "Added to your map" / "Updated saved place" messages now clear after 2 seconds instead of sticking in the search message slot.
+- Added Supabase migration `20260609211700_social_graph_rpcs.sql` for `profile_followers`, `profile_following`, and `profile_relationship`.
+- Wired the new graph RPCs through `SupabaseFollowRepository`, `WanderBackend`, and `WanderStore.refreshRemoteSocialGraph`.
+- Profile and graph list screens now refresh backend graph data when opened.
+- Full `xcodebuild test`: passed before packaging.
+- Applied hosted Supabase migration with `npx supabase db push --linked --yes`.
+- Verified local/remote migration list includes `20260609211700`.
+
 ## 2026-06-09 12:58 PDT - Codex - Build 20 Social Reliability Batch
 
 Agent: Codex

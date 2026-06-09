@@ -36,6 +36,10 @@ struct ProfileScreen: View {
                     .environmentObject(auth)
                     .environmentObject(backend)
             }
+            .task(id: auth.isSignedIn) {
+                guard auth.isSignedIn else { return }
+                await store.refreshRemoteSocialGraph(backend: backend)
+            }
         }
     }
 
@@ -406,6 +410,9 @@ private struct GraphListScreen: View {
             .scrollContentBackground(.hidden)
             .wanderScreen()
             .navigationTitle(mode.rawValue.capitalized)
+            .task {
+                await store.refreshRemoteSocialGraph(backend: backend)
+            }
         }
     }
 }
