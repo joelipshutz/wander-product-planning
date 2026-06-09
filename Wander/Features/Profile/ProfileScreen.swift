@@ -240,6 +240,9 @@ struct ProfileDetailView: View {
             } message: {
                 Text("You won't see each other's profiles, places, or search results.")
             }
+            .task(id: profileID) {
+                await refreshRemoteProfile()
+            }
         }
     }
 
@@ -285,6 +288,7 @@ struct ProfileDetailView: View {
                         auth.requireSignIn(for: .followPeople) {
                             Task {
                                 await store.follow(userID: state.shell.id, backend: backend)
+                                await refreshRemoteProfile()
                             }
                         }
                     }
@@ -293,6 +297,7 @@ struct ProfileDetailView: View {
                         auth.requireSignIn(for: .followPeople) {
                             Task {
                                 await store.unfollow(userID: state.shell.id, backend: backend)
+                                await refreshRemoteProfile()
                             }
                         }
                     } label: {
@@ -310,6 +315,10 @@ struct ProfileDetailView: View {
         .padding(WanderTheme.spacing3)
         .background(WanderTheme.surfaceBone.color)
         .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+    }
+
+    private func refreshRemoteProfile() async {
+        await store.refreshRemoteProfileVisiblePlaces(profileID: profileID, backend: backend)
     }
 
     private func initials(for name: String) -> String {

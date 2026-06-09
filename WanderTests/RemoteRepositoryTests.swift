@@ -70,10 +70,51 @@ final class RemoteRepositoryTests: XCTestCase {
         XCTAssertEqual(places.map { $0.place.canonicalName }, ["Griffith Observatory Trail"])
         XCTAssertEqual(places[0].userPlace.status, .been)
         XCTAssertEqual(places[0].userPlace.visibility, .followers)
+        XCTAssertEqual(places[0].attributes.map(\.questionKey), ["strenuousness"])
+        XCTAssertEqual(places[0].attributes[0].valueJSON, "\"easy\"")
         XCTAssertEqual(rpc.calls.map(\.name), ["visible_places_in_view"])
         XCTAssertEqual(rpc.calls[0].body["min_lat"] as? Double, 34)
         XCTAssertEqual(rpc.calls[0].body["max_lng"] as? Double, -118)
         XCTAssertNil(rpc.calls[0].body["owner_scope"] as Any?)
+    }
+
+    func testProfileVisiblePlacesCallsExpectedRPCAndMapsRows() async throws {
+        let rpc = RecordingRPC()
+        rpc.responses["profile_visible_places"] = """
+        [
+          {
+            "user_place_id": "up_2",
+            "place_id": "place_2",
+            "owner_user_id": "user_ryan",
+            "owner_handle": "ryan",
+            "owner_display_name": "Ryan Lee",
+            "canonical_name": "Larchmont Noodles",
+            "category": "restaurant",
+            "latitude": 34.073,
+            "longitude": -118.323,
+            "status": "wanna_go",
+            "visibility": "mutuals",
+            "note": "rainy night",
+            "rating_signal": null,
+            "source_type": "manual",
+            "attributes": []
+          }
+        ]
+        """.data(using: .utf8)
+        let repository = SupabaseUserPlaceRepository(rpc: rpc)
+
+        let places = try await repository.userPlaces(
+            for: "user_ryan",
+            filters: PlaceFilters(statuses: [.wannaGo], categories: ["restaurant"])
+        )
+
+        XCTAssertEqual(places.map { $0.place.canonicalName }, ["Larchmont Noodles"])
+        XCTAssertEqual(places[0].owner.handle, "ryan")
+        XCTAssertEqual(places[0].userPlace.status, .wannaGo)
+        XCTAssertEqual(rpc.calls.map(\.name), ["profile_visible_places"])
+        XCTAssertEqual(rpc.calls[0].body["profile_id"] as? String, "user_ryan")
+        XCTAssertEqual(rpc.calls[0].body["status_filter"] as? [String], ["wanna_go"])
+        XCTAssertEqual(rpc.calls[0].body["category_filter"] as? [String], ["restaurant"])
     }
 
     func testVisiblePlacesRejectUnknownStatus() async throws {

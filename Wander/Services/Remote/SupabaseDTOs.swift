@@ -100,7 +100,13 @@ struct RemoteVisiblePlaceDTO: Codable, Equatable {
             sourceType: sourceType,
             syncState: .synced
         )
-        return VisiblePlace(id: userPlaceID, place: place, userPlace: userPlace, owner: owner)
+        return VisiblePlace(
+            id: userPlaceID,
+            place: place,
+            userPlace: userPlace,
+            owner: owner,
+            attributes: attributes.map { $0.localAttribute(userPlaceID: userPlaceID) }
+        )
     }
 }
 
@@ -121,6 +127,17 @@ struct RemotePlaceAttributeDTO: Codable, Equatable {
         case prompt
         case options
         case isSystem = "is_system"
+    }
+
+    func localAttribute(userPlaceID: String) -> LocalPlaceAttribute {
+        LocalPlaceAttribute(
+            localID: "remote_attr_\(userPlaceID)_\(questionKey)",
+            userPlaceID: userPlaceID,
+            questionKey: questionKey,
+            valueType: valueType,
+            valueJSON: value.encodedJSONString,
+            syncState: .synced
+        )
     }
 }
 
@@ -165,5 +182,15 @@ enum JSONValue: Codable, Equatable {
         case .null:
             try container.encodeNil()
         }
+    }
+
+    var encodedJSONString: String {
+        guard let data = try? JSONEncoder().encode(self),
+              let encoded = String(data: data, encoding: .utf8)
+        else {
+            return "null"
+        }
+
+        return encoded
     }
 }

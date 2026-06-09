@@ -1,5 +1,6 @@
 import PhotosUI
 import SwiftUI
+import UIKit
 
 struct AddScreen: View {
     @EnvironmentObject private var store: WanderStore
@@ -24,6 +25,7 @@ struct AddScreen: View {
     @State private var resolutionMessage: String?
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var isImportingPhoto = false
+    @State private var saveToast: AddSaveToast?
 
     init(resetToken: UUID = UUID()) {
         self.resetToken = resetToken
@@ -70,6 +72,23 @@ struct AddScreen: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .wanderScreen()
+            .overlay(alignment: .bottom) {
+                if let saveToast {
+                    AddSaveToastView(
+                        toast: saveToast,
+                        signInAction: {
+                            auth.presentGate(for: .syncPlace)
+                        },
+                        dismissAction: {
+                            self.saveToast = nil
+                        }
+                    )
+                    .padding(.horizontal, WanderTheme.spacing4)
+                    .padding(.bottom, WanderTheme.spacing8 + WanderTheme.spacing3)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(response: 0.36, dampingFraction: 0.86), value: saveToast)
             .onChange(of: resetToken) { _, _ in
                 reset()
             }
@@ -465,6 +484,45 @@ struct AddScreen: View {
         isResolvingCandidates = false
         selectedPhotoItem = nil
         isImportingPhoto = false
+        saveToast = nil
+    }
+
+    private func resetAfterSave() {
+        step = .source
+        candidates = []
+        selectedCandidateID = nil
+        selectedStatus = .been
+        selectedVisibility = store.defaultVisibility
+        selectedSource = .manual
+        note = ""
+        manualName = ""
+        manualArea = ""
+        manualCategory = "coffee"
+        linkInput = ""
+        selectedAnswers = [:]
+        savedResult = nil
+        draft = nil
+        resolutionMessage = nil
+        isResolvingCandidates = false
+        selectedPhotoItem = nil
+        isImportingPhoto = false
+    }
+
+    private func showSaveToast(for result: SaveResult?) {
+        let toast = AddSaveToast(syncState: result?.syncState ?? .localOnly, canSignIn: !auth.isSignedIn)
+        saveToast = toast
+
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(result?.syncState == .failed ? .warning : .success)
+
+        Task {
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            await MainActor.run {
+                if saveToast?.id == toast.id {
+                    saveToast = nil
+                }
+            }
+        }
     }
 
     private func goBack() {
@@ -555,7 +613,8 @@ struct AddScreen: View {
         if !auth.isSignedIn {
             auth.presentGate(for: .syncPlace)
         }
-        step = .saved
+        showSaveToast(for: savedResult)
+        resetAfterSave()
     }
 
     @MainActor
@@ -773,6 +832,101 @@ private enum AddStep {
         case .source, .saved:
             false
         }
+    }
+}
+
+private struct AddSaveToast: Identifiable, Equatable {
+    let id = UUID()
+    let title: String
+    let message: String
+    let systemImage: String
+    let canSignIn: Bool
+
+    init(syncState: SyncState, canSignIn: Bool) {
+        self.canSignIn = canSignIn
+
+        switch syncState {
+        case .synced:
+            title = "saved to your map"
+            message = "Synced and ready."
+            systemImage = "checkmark"
+        case .failed:
+            title = "saved here"
+            message = "Sync needs a retry, but it is still on this phone."
+            systemImage = "exclamationmark.arrow.triangle.2.circlepath"
+        case .pendingCreate, .pendingUpdate, .pendingDelete:
+            title = "saved here"
+            message = "Sync is queued."
+            systemImage = "arrow.triangle.2.circlepath"
+        case .localOnly:
+            title = "saved here"
+            message = canSignIn ? "Sign in to back it up." : "Kept on this phone."
+            systemImage = "checkmark"
+        case .serverDenied:
+            title = "needs review"
+            message = "Saved locally until this can sync."
+            systemImage = "exclamationmark.triangle"
+        case .tombstoned:
+            title = "removed"
+            message = "This saved place was removed."
+            systemImage = "trash"
+        }
+    }
+}
+
+private struct AddSaveToastView: View {
+    let toast: AddSaveToast
+    let signInAction: () -> Void
+    let dismissAction: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: WanderTheme.spacing3) {
+            HStack(spacing: WanderTheme.spacing3) {
+                Image(systemName: toast.systemImage)
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(WanderTheme.textOnAction.color)
+                    .frame(width: 34, height: 34)
+                    .background(WanderTheme.terracotta.color)
+                    .clipShape(Circle())
+
+                VStack(alignment: .leading, spacing: WanderTheme.spacing1) {
+                    Text(toast.title)
+                        .font(.system(size: 16, weight: .black))
+                        .foregroundStyle(WanderTheme.textInk.color)
+                    Text(toast.message)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(WanderTheme.textMuted.color)
+                }
+
+                Spacer()
+
+                Button(action: dismissAction) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundStyle(WanderTheme.textMuted.color)
+                        .frame(width: 30, height: 30)
+                        .background(WanderTheme.surfaceSand.color)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
+
+            if toast.canSignIn {
+                Button(action: signInAction) {
+                    Text("sign in to sync")
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundStyle(WanderTheme.terracotta.color)
+                        .frame(maxWidth: .infinity, minHeight: 38)
+                        .background(WanderTheme.surfaceSand.color)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(WanderTheme.spacing3)
+        .background(WanderTheme.surfaceBone.color)
+        .clipShape(RoundedRectangle(cornerRadius: WanderTheme.radiusLarge))
+        .shadow(color: Color.black.opacity(0.12), radius: 18, x: 0, y: 10)
     }
 }
 

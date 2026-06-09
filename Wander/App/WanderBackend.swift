@@ -86,6 +86,14 @@ final class WanderBackend: ObservableObject {
         return try await placeRepository.places(in: viewport)
     }
 
+    func userPlaces(for userID: String, filters: PlaceFilters = PlaceFilters()) async throws -> [VisiblePlace] {
+        guard let userPlaceRepository else {
+            throw WanderRemoteError.notConfigured
+        }
+
+        return try await userPlaceRepository.userPlaces(for: userID, filters: filters)
+    }
+
     func follow(userID: String) async throws {
         guard let followRepository else {
             throw WanderRemoteError.notConfigured

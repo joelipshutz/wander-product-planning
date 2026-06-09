@@ -53,6 +53,7 @@ struct VisiblePlace: Identifiable {
     let place: LocalPlace
     let userPlace: LocalUserPlace
     let owner: LocalProfile
+    var attributes: [LocalPlaceAttribute] = []
 }
 
 struct DiscoverResults {

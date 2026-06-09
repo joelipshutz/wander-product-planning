@@ -70,6 +70,12 @@ final class WanderStore: ObservableObject {
     private let analytics: AnalyticsClient
     private let persistence: WanderStorePersistence?
     private var discoverParseCache: [String: DiscoverFilters] = [:]
+    private static let defaultRemoteViewport = MapViewport(
+        minLatitude: 33.95,
+        minLongitude: -118.45,
+        maxLatitude: 34.20,
+        maxLongitude: -118.12
+    )
 
     let smartFilters: [SmartFilter] = [
         SmartFilter(id: "hikes-la", title: "hikes in LA", query: "hikes in LA"),
@@ -199,6 +205,7 @@ final class WanderStore: ObservableObject {
 
     private func remoteVisiblePlaces(filters: PlaceFilters) -> [VisiblePlace] {
         remoteVisiblePlaceCache.filter { visiblePlace in
+            guard !isBlockedBetweenCurrentUser(and: visiblePlace.owner.id) else { return false }
             guard filters.statuses.isEmpty || filters.statuses.contains(visiblePlace.userPlace.status) else { return false }
             guard filters.categories.isEmpty || filters.categories.contains(visiblePlace.place.category) else { return false }
 
@@ -207,10 +214,9 @@ final class WanderStore: ObservableObject {
             let isMine = visiblePlace.owner.id == currentUser.id
             let relationship = relationship(to: visiblePlace.owner.id)
             let isFriend = relationship == .mutual
-            let isFollowing = relationship == .follower || relationship == .mutual
             return (filters.ownerScopes.contains("you") && isMine)
-                || (filters.ownerScopes.contains("friends") && isFriend)
-                || (filters.ownerScopes.contains("following") && isFollowing && !isMine)
+                || (filters.ownerScopes.contains("friends") && !isMine && (isFriend || visiblePlace.userPlace.visibility == .mutuals))
+                || (filters.ownerScopes.contains("following") && !isMine)
                 || (filters.ownerScopes.contains("social") && !isMine)
         }
     }
@@ -715,6 +721,7 @@ final class WanderStore: ObservableObject {
             lastRemoteError = nil
             objectWillChange.send()
             persist()
+            await refreshRemoteVisiblePlaces(backend: backend)
         } catch {
             follow.syncStateRaw = SyncState.failed.rawValue
             follow.lastSyncError = remoteErrorMessage(error)
@@ -748,6 +755,7 @@ final class WanderStore: ObservableObject {
             try await backend.unfollow(userID: userID)
             lastRemoteError = nil
             unfollow(userID: userID)
+            await refreshRemoteVisiblePlaces(backend: backend)
         } catch {
             follow.syncStateRaw = SyncState.failed.rawValue
             follow.lastSyncError = remoteErrorMessage(error)
@@ -797,6 +805,7 @@ final class WanderStore: ObservableObject {
             lastRemoteError = nil
             objectWillChange.send()
             persist()
+            await refreshRemoteVisiblePlaces(backend: backend)
         } catch {
             block.syncStateRaw = SyncState.failed.rawValue
             block.lastSyncError = remoteErrorMessage(error)
@@ -830,6 +839,7 @@ final class WanderStore: ObservableObject {
             try await backend.unblock(userID: userID)
             lastRemoteError = nil
             unblock(userID: userID)
+            await refreshRemoteVisiblePlaces(backend: backend)
         } catch {
             block.syncStateRaw = SyncState.failed.rawValue
             block.lastSyncError = remoteErrorMessage(error)
@@ -845,7 +855,29 @@ final class WanderStore: ObservableObject {
         }
 
         do {
-            remoteVisiblePlaceCache = try await backend.visiblePlaces(in: viewport)
+            let visiblePlaces = try await backend.visiblePlaces(in: viewport)
+            remoteVisiblePlaceCache = visiblePlaces
+            hydrateRemoteVisiblePlaceMetadata(visiblePlaces)
+            lastRemoteError = nil
+        } catch {
+            lastRemoteError = remoteErrorMessage(error)
+        }
+    }
+
+    func refreshRemoteVisiblePlaces(backend: WanderBackend?) async {
+        await refreshRemoteVisiblePlaces(in: Self.defaultRemoteViewport, backend: backend)
+    }
+
+    func refreshRemoteProfileVisiblePlaces(profileID: String, backend: WanderBackend?) async {
+        guard let backend else {
+            return
+        }
+
+        do {
+            let visiblePlaces = try await backend.userPlaces(for: profileID)
+            remoteVisiblePlaceCache.removeAll { $0.owner.id == profileID }
+            remoteVisiblePlaceCache.append(contentsOf: visiblePlaces)
+            hydrateRemoteVisiblePlaceMetadata(visiblePlaces)
             lastRemoteError = nil
         } catch {
             lastRemoteError = remoteErrorMessage(error)
@@ -1100,6 +1132,36 @@ final class WanderStore: ObservableObject {
         }
 
         return (placeID, sourceUserPlaceID)
+    }
+
+    private func hydrateRemoteVisiblePlaceMetadata(_ visiblePlaces: [VisiblePlace]) {
+        let shells = visiblePlaces.map { visiblePlace in
+            ProfileShell(
+                id: visiblePlace.owner.id,
+                handle: visiblePlace.owner.handle,
+                displayName: visiblePlace.owner.displayName,
+                avatarURL: visiblePlace.owner.avatarURL,
+                bio: visiblePlace.owner.bio,
+                relationship: relationship(to: visiblePlace.owner.id)
+            )
+        }
+        upsertRemoteProfileShells(shells)
+        upsertRemoteAttributes(from: visiblePlaces)
+    }
+
+    private func upsertRemoteAttributes(from visiblePlaces: [VisiblePlace]) {
+        let userPlaceIDsWithAttributes = Set(visiblePlaces.filter { !$0.attributes.isEmpty }.map(\.userPlace.id))
+        guard !userPlaceIDsWithAttributes.isEmpty else { return }
+
+        placeAttributes.removeAll { attribute in
+            userPlaceIDsWithAttributes.contains(attribute.userPlaceID)
+                && attribute.localID.hasPrefix("remote_attr_")
+        }
+
+        let attributes = visiblePlaces.flatMap(\.attributes)
+        placeAttributes.append(contentsOf: attributes)
+        objectWillChange.send()
+        persist()
     }
 
     private func upsertRemoteProfileShells(_ shells: [ProfileShell]) {

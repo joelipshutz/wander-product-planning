@@ -2034,6 +2034,41 @@ Completion:
 
 - Commit `a71a909` (`feat: add map save edit flow`) pushed to `origin/main`.
 
+## 2026-06-09 12:58 PDT - Codex - Build 20 Social Reliability Batch
+
+Agent: Codex
+Branch: `main`
+Starting commit: `b15b637`
+Starting status: worktree clean.
+
+Goal: batch the next alpha reliability fixes before the next TestFlight: keep social places refreshed after follow graph mutations, wire profile-specific remote places, hydrate remote answer attributes for richer place sheets, make Add success less like a full-screen dead end, then test/package.
+
+Expected files to touch:
+
+- `Wander/App/WanderBackend.swift`
+- `Wander/Services/DiscoverModels.swift`
+- `Wander/Services/Remote/SupabaseDTOs.swift`
+- `Wander/Services/Remote/SupabaseRepositories.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- `Wander/Features/Add/AddScreen.swift`
+- `Wander/Features/Profile/ProfileScreen.swift`
+- `WanderTests/*`
+- `project.yml`
+- `Wander.xcodeproj/project.pbxproj`
+- `docs/agent-log.md`
+
+Checkpoint:
+
+- Mission Control was not reachable on `localhost:4000`; repo coordination is captured here.
+- Remote visible place DTOs now preserve answer attributes into `VisiblePlace.attributes`.
+- Store refresh now hydrates remote profile shells and answer attributes so place sheets/social saves can read returned answers.
+- Remote social filtering now trusts backend-authorized rows for following/social scopes while still honoring local block state; Friends also admits backend mutuals-only rows.
+- Follow/unfollow/block/unblock now trigger a broad remote place refresh after backend success.
+- `profile_visible_places` is wired through the Supabase user-place repository and Profile detail refreshes on open/after follow changes.
+- Add save now returns to the Add source screen and shows a compact saved/sync-state toast with haptic feedback instead of the old full-screen success page.
+- `git diff --check`: passed.
+- Full `xcodebuild test`: passed.
+
 ## 2026-06-09 12:41 PDT - Codex - Build 19 TestFlight Package
 
 Agent: Codex

@@ -589,6 +589,65 @@ final class WanderStoreTests: XCTestCase {
         XCTAssertNotNil(store.profileState(for: "user_sofia"))
     }
 
+    func testRemoteVisiblePlacesHydrateProfilesAndAttributesWithoutLocalFollow() async {
+        let store = WanderStore(fixtures: WanderFixtures.empty())
+        store.apply(authState: .signedIn(AuthSession(userID: "user_live", displayName: "Joe", handle: "joe")))
+        let remotePlace = VisiblePlace(
+            id: "up_remote_maya_maru",
+            place: LocalPlace(
+                localID: "remote_place_maru",
+                serverID: "place_remote_maru",
+                canonicalName: "Remote Maru",
+                category: "coffee",
+                latitude: 34.045,
+                longitude: -118.235,
+                syncState: .synced
+            ),
+            userPlace: LocalUserPlace(
+                localID: "remote_up_maya_maru",
+                serverID: "up_remote_maya_maru",
+                userID: "user_maya",
+                placeID: "place_remote_maru",
+                status: .been,
+                visibility: .followers,
+                note: "server row",
+                sourceType: "manual",
+                syncState: .synced
+            ),
+            owner: LocalProfile(
+                localID: "remote_profile_maya",
+                serverID: "user_maya",
+                handle: "maya",
+                displayName: "Maya",
+                syncState: .synced
+            ),
+            attributes: [
+                LocalPlaceAttribute(
+                    localID: "remote_attr_up_remote_maya_maru_work_setup",
+                    userPlaceID: "up_remote_maya_maru",
+                    questionKey: "work_setup",
+                    valueType: "single_choice",
+                    valueJSON: "\"yes\"",
+                    syncState: .synced
+                )
+            ]
+        )
+        let placeRepository = FakePlaceRepository(places: [remotePlace])
+        let backend = WanderBackend(placeRepository: placeRepository)
+
+        await store.refreshRemoteVisiblePlaces(
+            in: MapViewport(minLatitude: 34, minLongitude: -119, maxLatitude: 35, maxLongitude: -118),
+            backend: backend
+        )
+
+        let followingPlaces = store.visiblePlaces(filters: PlaceFilters(ownerScopes: ["following"]))
+        XCTAssertEqual(followingPlaces.map { $0.place.canonicalName }, ["Remote Maru"])
+        XCTAssertEqual(placeRepository.viewports.count, 1)
+        XCTAssertNotNil(store.profileState(for: "user_maya"))
+        XCTAssertEqual(store.attributes(for: "up_remote_maya_maru").map(\.questionKey), ["work_setup"])
+        XCTAssertEqual(store.attributes(for: "up_remote_maya_maru")[0].valueJSON, "\"yes\"")
+    }
+
     func testRemoteSocialSaveMarksLocalCopySynced() async {
         let store = makeStore()
         let socialSaveRepository = FakeSocialPlaceSaveRepository(result: SaveResult(userPlaceID: "up_remote_saved", syncState: .synced))
@@ -868,6 +927,29 @@ private final class FakeSocialPlaceSaveRepository: SocialPlaceSaveRepository {
     func saveVisiblePlace(placeID: String, sourceUserPlaceID: String) async throws -> SaveResult {
         requests.append(Request(placeID: placeID, sourceUserPlaceID: sourceUserPlaceID))
         return result
+    }
+}
+
+@MainActor
+private final class FakePlaceRepository: PlaceRepository {
+    private let placesResult: [VisiblePlace]
+    private(set) var viewports: [MapViewport] = []
+
+    init(places: [VisiblePlace]) {
+        self.placesResult = places
+    }
+
+    func places(in viewport: MapViewport) async throws -> [VisiblePlace] {
+        viewports.append(viewport)
+        return placesResult
+    }
+
+    func resolveCurrentLocation() async throws -> [PlaceCandidate] {
+        []
+    }
+
+    func resolveManualEntry(_ input: ManualPlaceInput) async throws -> [PlaceCandidate] {
+        []
     }
 }
 

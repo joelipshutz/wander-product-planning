@@ -119,7 +119,15 @@ struct SupabaseUserPlaceRepository: UserPlaceRepository, SocialPlaceSaveReposito
     }
 
     func userPlaces(for userID: String, filters: PlaceFilters) async throws -> [VisiblePlace] {
-        throw WanderRemoteError.notImplemented("profile_visible_places mapping")
+        let rows: [RemoteVisiblePlaceDTO] = try await rpc.call(
+            "profile_visible_places",
+            params: ProfileVisiblePlacesParams(
+                profileID: userID,
+                statusFilter: filters.statuses.isEmpty ? nil : filters.statuses.map(\.rawValue).sorted(),
+                categoryFilter: filters.categories.isEmpty ? nil : filters.categories.sorted()
+            )
+        )
+        return try rows.map { try $0.visiblePlace() }
     }
 
     func save(_ draft: UserPlaceDraft) async throws -> SaveResult {
@@ -224,6 +232,18 @@ private struct VisiblePlacesParams: Encodable {
         case statusFilter = "status_filter"
         case categoryFilter = "category_filter"
         case ownerScope = "owner_scope"
+    }
+}
+
+private struct ProfileVisiblePlacesParams: Encodable {
+    let profileID: String
+    let statusFilter: [String]?
+    let categoryFilter: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case profileID = "profile_id"
+        case statusFilter = "status_filter"
+        case categoryFilter = "category_filter"
     }
 }
 
