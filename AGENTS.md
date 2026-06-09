@@ -4,7 +4,7 @@ Repo guidance for Codex, Claude Code, OpenClaw, and any developer joining Wander
 
 ## Project Overview
 
-Wander is a native iOS social map for remembering places worth returning to and discovering places through trusted people.
+Rec.me, formerly Wander, is a native iOS social map for remembering places worth returning to and discovering places through trusted people.
 
 North Star: when someone needs a place, Wander shows where trusted people have actually been, what they thought, and whether it fits the moment.
 
@@ -133,6 +133,24 @@ Core rules:
   - deterministic Discover parser
   - local store follow/block/search/save/draft behavior
 - For visual work, also capture simulator screenshots across at least the current iPhone target and one smaller phone target before calling the UI ready.
+
+## TestFlight Release Notes
+
+Whenever an agent uploads a new TestFlight build, attaches it to the public group, or confirms it is available for testing, the agent must also post a short release note to the rec.me Slack feedback channel:
+
+- Slack channel: `#testflight-feedback`
+- Slack channel ID: `C0BAA7DG2AC`
+- Public TestFlight link: `https://testflight.apple.com/join/knEhRa6t`
+
+The Slack note must include:
+
+- App name `rec.me`, the build number, and whether the build is live/approved or still processing.
+- What changed, written for testers rather than engineers.
+- What needs testing, as a concrete checklist.
+- Known issues or intentionally deferred areas.
+- A request to reply in-thread with device, account/email if relevant, screenshots, and exact repro steps.
+
+For broad announcements only, `#all-recme` (`C0B9FU1QNG2`) exists, but TestFlight feedback prompts belong in `#testflight-feedback`.
 
 ## Useful References
 

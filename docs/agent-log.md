@@ -2224,3 +2224,28 @@ Completion:
 - App Store Connect build id: `2964e3eb-fdc7-428a-b7f7-eafefefa182d`.
 - Build `0.1 (23)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
 - Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
+
+## 2026-06-09 17:00 PDT - Codex - Rec.me TestFlight Slack Protocol
+
+Agent: Codex
+Branch: `main`
+Starting commit: `42a517d`
+Starting status: worktree clean.
+
+Goal: make it durable that every future TestFlight build post includes a Slack update in the rec.me feedback channel, and send the Build 23 testing note now.
+
+Expected files to touch:
+
+- `AGENTS.md`
+- `docs/agent-log.md`
+
+Slack channel lookup:
+
+- `#testflight-feedback` (`C0BAA7DG2AC`) is the rec.me TestFlight feedback channel.
+- `#all-recme` (`C0B9FU1QNG2`) exists for broader rec.me announcements, but TestFlight build notes should go to `#testflight-feedback`.
+
+Completion:
+
+- Updated `AGENTS.md` to name Rec.me as the product name, keep Wander as the former/repo name, and require every future TestFlight build to post release notes to `#testflight-feedback`.
+- Slack Build 23 release/testing note posted to `#testflight-feedback`: `https://recmegroup.slack.com/archives/C0BAA7DG2AC/p1781049362472419`.
+- No app tests run; this was documentation plus Slack communication only.
