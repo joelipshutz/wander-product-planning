@@ -1683,3 +1683,52 @@ Completion:
 - Build `0.1 (13)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
 - Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
 - Remaining M6 work: improve Google Maps/short-link robustness after real test results, add photo OCR/Vision, add TikTok/Instagram fallback adapters, add scheduled/background worker run, and finish alpha analytics/privacy/performance.
+
+## 2026-06-08 20:15 PDT - Codex - Map User Location And Search Result Pins
+
+Agent: Codex
+Branch: `main`
+Starting commit: `a80ab94`
+Starting status: local `main` matched `origin/main`; worktree clean before this log entry.
+
+Goal: fix Map behavior from Joe's feedback: show the user's location, add recenter control, allow Map search to surface unsaved MapKit POI results distinctly, hide plus on already-saved own places, and provide an edit/mark-been affordance for saved own places.
+
+Expected files to touch:
+
+- `Wander/Features/Map/MapScreen.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- `WanderTests/*`
+- `docs/*`
+- `project.yml`
+- `Wander.xcodeproj/project.pbxproj`
+
+Decisions:
+
+- MapKit supports POI search via `MKLocalSearch`; use that for explicit Map search result pins.
+- Do not rely on tapping Apple's built-in POI labels in SwiftUI Map for this pass.
+- Search result pins are temporary unsaved candidates and must look different from saved/social pins.
+- Plus appears for unsaved search results and social places not already saved by the current user.
+- Plus is hidden for places already on the current user's map; own saved places get an edit-style action.
+
+Checkpoint:
+
+- Added `UserAnnotation()` to Map and a custom recenter button that uses `.userLocation(fallback:)`.
+- Added `MKLocalSearch` on Map search submit, scoped to the current camera region.
+- Unsaved MapKit search results render as distinct dashed/yellow pins and use a separate sheet with `not saved yet` copy.
+- Search-result `+` saves the candidate to the current user's map as `wanna`.
+- Saved own places no longer show `+`; they show an edit/pencil action.
+- Social places show `+` only when the current user has not already saved that place.
+- Own saved `wanna` places can be marked `been` through the edit action; full edit sheet remains future work.
+- Added `docs/qa/2026-06-08-build-14-map-search-location-checklist.md`.
+- Swift tests passed:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+
+Completion:
+
+- `git diff --check`: passed.
+- Swift tests passed again after bumping to Build 14 and regenerating the project.
+- Build number bumped to `0.1 (14)` and regenerated `Wander.xcodeproj`.
+- Archived and uploaded `/private/tmp/Wander-0.1-build14.xcarchive`.
+- App Store Connect build id: `86743675-f9b9-4d5f-b51b-2efb612df992`.
+- Build `0.1 (14)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
+- Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
