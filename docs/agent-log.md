@@ -1959,3 +1959,22 @@ Checkpoint:
 
 - Added explicit keyboard dismissal on Map search submit and typeahead selection.
 - Full test suite passed with elevated `xcodebuild`.
+
+Completion:
+
+- Commit `b4b6259` (`fix: dismiss map search keyboard on selection`) pushed to `origin/main`.
+
+## 2026-06-09 12:18 PDT - Codex - Build 18 TestFlight Package
+
+Agent: Codex
+Branch: `main`
+Starting commit: `b4b6259`
+Starting status: worktree clean.
+
+Goal: package the durable persistence and Map keyboard fixes into TestFlight build `0.1 (18)` for Joe/friend testing.
+
+Expected files to touch:
+
+- `project.yml`
+- `Wander.xcodeproj/project.pbxproj`
+- `docs/agent-log.md`
