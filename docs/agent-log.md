@@ -2208,3 +2208,19 @@ Checkpoint:
 - Kept selected save notes visible in expanded Map place sheets, attributed the note owner in Map and Discover, and made Map save-summary aggregation use all authorized saves for that place instead of only currently filtered/search-visible rows.
 - Added a focused store test assertion that backend-authorized remote social/following rows keep their notes after hydration.
 - Added `TODOS.md` guidance for the richer place-profile action bar: Directions can be generated from coordinates; Website/Call/Order require real supplied data and should be hidden when absent; Google reviews are not a no-billing alpha dependency.
+
+Completion:
+
+- Scoped `/plan-eng-review` result: this was a narrow bugfix/release batch, not a new architecture change. Website/Call/Order stays in the next richer place-profile data pass and must hide absent actions.
+- Follower visibility investigation: app policy and Supabase RLS already say a follower can read `followers`/Everyone places; the live report is most likely a missing remote follow edge, failed local-only save/sync, stale refresh, or viewport mismatch rather than an intended rule. Added client regression coverage for remote social/following notes.
+- Official Google Places docs put `reviews` in a paid field tier, so Google reviews are not part of the no-billing alpha path.
+- `git diff --check`: passed.
+- Full elevated `xcodebuild test`: passed, 80 tests.
+- Full elevated `xcodebuild test` after build-number regeneration: passed, 80 tests.
+- Commit `7357efe` (`fix: polish place detail map interactions`) pushed to `origin/main`.
+- Commit `704c6a9` (`chore: bump wander build 23`) pushed to `origin/main`.
+- Archived `/private/tmp/Wander-0.1-build23.xcarchive`.
+- Uploaded build `0.1 (23)` to App Store Connect.
+- App Store Connect build id: `2964e3eb-fdc7-428a-b7f7-eafefefa182d`.
+- Build `0.1 (23)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
+- Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
