@@ -1978,3 +1978,15 @@ Expected files to touch:
 - `project.yml`
 - `Wander.xcodeproj/project.pbxproj`
 - `docs/agent-log.md`
+
+Completion:
+
+- Build number bumped to `0.1 (18)`.
+- `xcodegen generate`: passed.
+- Full test suite passed with elevated `xcodebuild`.
+- Commit `a8d309a` (`chore: bump wander build 18`) pushed to `origin/main`.
+- Archived `/private/tmp/Wander-0.1-build18.xcarchive`.
+- Uploaded build `0.1 (18)` to App Store Connect.
+- App Store Connect build id: `66d14c39-ab78-4b66-a05b-488a36f4a6c2`.
+- Build `0.1 (18)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
+- Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
