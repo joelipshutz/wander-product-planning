@@ -656,6 +656,10 @@ final class WanderStoreTests: XCTestCase {
 
         let followingPlaces = store.visiblePlaces(filters: PlaceFilters(ownerScopes: ["following"]))
         XCTAssertEqual(followingPlaces.map { $0.place.canonicalName }, ["Remote Maru"])
+        XCTAssertEqual(followingPlaces.first?.userPlace.note, "server row")
+        let socialPlaces = store.visiblePlaces(filters: PlaceFilters(ownerScopes: ["social"]))
+        XCTAssertEqual(socialPlaces.map { $0.place.canonicalName }, ["Remote Maru"])
+        XCTAssertEqual(socialPlaces.first?.userPlace.note, "server row")
         XCTAssertEqual(placeRepository.viewports.count, 1)
         XCTAssertNotNil(store.profileState(for: "user_maya"))
         XCTAssertEqual(store.attributes(for: "up_remote_maya_maru").map(\.questionKey), ["work_setup"])

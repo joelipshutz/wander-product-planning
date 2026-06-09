@@ -61,7 +61,8 @@ struct DiscoverScreen: View {
                 DiscoverPlaceDetailSheet(
                     visiblePlace: selection.visiblePlace,
                     attributes: attributes(for: selection.visiblePlace),
-                    isSavedByCurrentUser: isSavedByCurrentUser(selection.visiblePlace)
+                    isSavedByCurrentUser: isSavedByCurrentUser(selection.visiblePlace),
+                    currentUserID: store.currentUser.id
                 ) {
                     saveDiscoverPlace(selection.visiblePlace)
                 } openProfile: {
@@ -475,6 +476,7 @@ private struct DiscoverPlaceDetailSheet: View {
     let visiblePlace: VisiblePlace
     let attributes: [LocalPlaceAttribute]
     let isSavedByCurrentUser: Bool
+    let currentUserID: String
     let save: () -> Void
     let openProfile: () -> Void
     @Environment(\.dismiss) private var dismiss
@@ -545,8 +547,8 @@ private struct DiscoverPlaceDetailSheet: View {
                 mapAction
             }
 
-            if let note {
-                Text("\"\(note)\"")
+            if let noteLine {
+                Text(noteLine)
                     .font(.system(size: 15, weight: .medium))
                     .italic()
                     .foregroundStyle(WanderTheme.textMuted.color)
@@ -674,13 +676,16 @@ private struct DiscoverPlaceDetailSheet: View {
         trimmed(visiblePlace.userPlace.note)
     }
 
+    private var noteLine: String? {
+        guard let note else { return nil }
+        let ownerLabel = visiblePlace.owner.id == currentUserID ? "your note" : "\(visiblePlace.owner.displayName)'s note"
+        return "\(ownerLabel): \"\(note)\""
+    }
+
     private var placeFacts: [DiscoverPlaceFact] {
         var facts: [DiscoverPlaceFact] = []
         if let categoryDisplay {
             facts.append(DiscoverPlaceFact(title: categoryDisplay, systemImage: WanderPlaceCategory.symbolName(for: visiblePlace.place.category)))
-        }
-        if let addressLine {
-            facts.append(DiscoverPlaceFact(title: addressLine, systemImage: "mappin.and.ellipse"))
         }
         return facts
     }

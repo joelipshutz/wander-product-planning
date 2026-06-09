@@ -68,6 +68,11 @@ Date: 2026-05-29
   - Why: current share uses a generic Google Maps/search URL only. Product direction is that shared Wander places should open in the app when installed, otherwise open a lightweight web page that shows the place/social context and prompts download.
   - Scope later: universal links, shareable place/profile web page, app-open fallback, install CTA, privacy-aware access rules, and no leakage of private/friends-only content.
 
+- Add richer place-profile external actions when data exists.
+  - Why: the Beli-style place profile should have useful actions, but alpha must not show dead/empty buttons or depend on paid APIs before billing is approved.
+  - Current rule: always support Directions from coordinates; show Website, Call, and Order only when MapKit/provider/user-captured data actually supplies the URL or phone. Hide missing actions.
+  - Google Places reviews should not be used in the no-billing alpha path; official Google Places fields put reviews in a paid field tier.
+
 - Decide whether native Contacts integration ships in v0.1. Done 2026-06-01.
   - Why: contacts are a recommended people-finding affordance, but native Contacts adds permission/privacy and App Store disclosure work.
   - Decision: native Contacts is planned later, not in v0.1. Build the contacts-first UI against `FakeContactProvider` plus username search.

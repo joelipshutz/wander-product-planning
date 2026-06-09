@@ -81,7 +81,8 @@ struct MapScreen: View {
     }
 
     private var selectedPlace: VisiblePlace? {
-        visiblePlaces.first { $0.id == selectedPlaceID } ?? visiblePlaces.first
+        guard let selectedPlaceID else { return nil }
+        return visiblePlaces.first { $0.id == selectedPlaceID }
     }
 
     private var selectedSearchCandidate: PlaceCandidate? {
@@ -106,52 +107,63 @@ struct MapScreen: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Map(position: $position) {
-                UserAnnotation()
+            MapReader { proxy in
+                Map(position: $position) {
+                    UserAnnotation()
 
-                ForEach(visiblePlaces) { visiblePlace in
-                    Annotation(
-                        visiblePlace.place.canonicalName,
-                        coordinate: CLLocationCoordinate2D(latitude: visiblePlace.place.latitude, longitude: visiblePlace.place.longitude)
-                    ) {
-                        Button {
-                            selectedPlaceID = visiblePlace.id
-                            selectedSearchCandidateID = nil
-                            isPlaceSheetExpanded = false
-                        } label: {
-                            MapPlaceMarker(
-                                visiblePlace: visiblePlace,
-                                isCurrentUser: visiblePlace.owner.id == store.currentUser.id,
-                                isSelected: selectedPlaceID == visiblePlace.id
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                ForEach(mappableSearchCandidates) { candidate in
-                    if let latitude = candidate.latitude,
-                       let longitude = candidate.longitude {
+                    ForEach(visiblePlaces) { visiblePlace in
                         Annotation(
-                            candidate.name,
-                            coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+                            visiblePlace.place.canonicalName,
+                            coordinate: CLLocationCoordinate2D(latitude: visiblePlace.place.latitude, longitude: visiblePlace.place.longitude)
                         ) {
                             Button {
-                                selectedSearchCandidateID = candidate.id
-                                selectedPlaceID = nil
+                                selectedPlaceID = visiblePlace.id
+                                selectedSearchCandidateID = nil
                                 isPlaceSheetExpanded = false
                             } label: {
-                                SearchResultMarker(candidate: candidate, isSelected: selectedSearchCandidateID == candidate.id)
+                                MapPlaceMarker(
+                                    visiblePlace: visiblePlace,
+                                    isCurrentUser: visiblePlace.owner.id == store.currentUser.id,
+                                    isSelected: selectedPlaceID == visiblePlace.id
+                                )
                             }
                             .buttonStyle(.plain)
                         }
                     }
+
+                    ForEach(mappableSearchCandidates) { candidate in
+                        if let latitude = candidate.latitude,
+                           let longitude = candidate.longitude {
+                            Annotation(
+                                candidate.name,
+                                coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+                            ) {
+                                Button {
+                                    selectedSearchCandidateID = candidate.id
+                                    selectedPlaceID = nil
+                                    isPlaceSheetExpanded = false
+                                } label: {
+                                    SearchResultMarker(candidate: candidate, isSelected: selectedSearchCandidateID == candidate.id)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
                 }
-            }
-            .mapStyle(.standard(elevation: .flat, emphasis: .muted))
-            .ignoresSafeArea()
-            .onMapCameraChange(frequency: .onEnd) { context in
-                currentSearchRegion = context.region
+                .mapStyle(.standard(elevation: .flat, emphasis: .muted))
+                .ignoresSafeArea()
+                .onTapGesture(coordinateSpace: .local) { point in
+                    guard selectedPlaceID != nil || selectedSearchCandidateID != nil else { return }
+                    guard let coordinate = proxy.convert(point, from: .local) else {
+                        clearMapSelection()
+                        return
+                    }
+                    guard !isTapNearSelectableMarker(coordinate) else { return }
+                    clearMapSelection()
+                }
+                .onMapCameraChange(frequency: .onEnd) { context in
+                    currentSearchRegion = context.region
+                }
             }
 
             VStack(spacing: 0) {
@@ -241,7 +253,7 @@ struct MapScreen: View {
         }
         .onChange(of: visiblePlaceIDs) { _, ids in
             if let current = selectedPlaceID, !ids.contains(current) {
-                selectedPlaceID = ids.first
+                selectedPlaceID = nil
                 isPlaceSheetExpanded = false
             }
         }
@@ -272,6 +284,29 @@ struct MapScreen: View {
         }
     }
 
+    private func clearMapSelection() {
+        selectedPlaceID = nil
+        selectedSearchCandidateID = nil
+        isPlaceSheetExpanded = false
+    }
+
+    private func isTapNearSelectableMarker(_ coordinate: CLLocationCoordinate2D) -> Bool {
+        let tapLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+
+        let savedPlaceCoordinates = visiblePlaces.map { visiblePlace in
+            CLLocationCoordinate2D(latitude: visiblePlace.place.latitude, longitude: visiblePlace.place.longitude)
+        }
+        let searchCandidateCoordinates = mappableSearchCandidates.compactMap { candidate -> CLLocationCoordinate2D? in
+            guard let latitude = candidate.latitude, let longitude = candidate.longitude else { return nil }
+            return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        }
+
+        return (savedPlaceCoordinates + searchCandidateCoordinates).contains { markerCoordinate in
+            let markerLocation = CLLocation(latitude: markerCoordinate.latitude, longitude: markerCoordinate.longitude)
+            return tapLocation.distance(from: markerLocation) <= 120
+        }
+    }
+
     private func resolveInitialSelection() {
         guard selectedPlaceID == nil else { return }
 
@@ -295,7 +330,7 @@ struct MapScreen: View {
 
     private func saveSummaries(for selectedPlace: VisiblePlace) -> [PlaceSaveSummary] {
         var seen = Set<String>()
-        let summaries = visiblePlaces
+        let summaries = store.visiblePlaces()
             .filter { $0.place.id == selectedPlace.place.id }
             .filter { visiblePlace in
                 guard !seen.contains(visiblePlace.userPlace.id) else { return false }
@@ -1834,8 +1869,8 @@ private struct PlaceSheet: View {
                             .foregroundStyle(WanderTheme.textMuted.color)
                             .lineLimit(1)
                     }
-                    if let note = visiblePlace.userPlace.note {
-                        Text("\"\(note)\"")
+                    if let noteLine = selectedNoteLine {
+                        Text(noteLine)
                             .font(.system(size: 13))
                             .italic()
                             .foregroundStyle(WanderTheme.textMuted.color)
@@ -1871,7 +1906,7 @@ private struct PlaceSheet: View {
 
             if !friendSaves.isEmpty {
                 VStack(alignment: .leading, spacing: WanderTheme.spacing2) {
-                    sectionTitle("friends' thoughts")
+                    sectionTitle("friends' notes")
                     ForEach(friendSaves) { summary in
                         SaveReviewCard(summary: summary, currentUserID: currentUserID, emphasis: false)
                     }
@@ -1899,6 +1934,15 @@ private struct PlaceSheet: View {
                 }
 
                 StatusBadge(status: visiblePlace.userPlace.status)
+
+                if let noteLine = selectedNoteLine {
+                    Text(noteLine)
+                        .font(.system(size: 13, weight: .medium))
+                        .italic()
+                        .foregroundStyle(WanderTheme.textMuted.color)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             Spacer(minLength: WanderTheme.spacing2)
             VStack(spacing: WanderTheme.spacing2) {
@@ -1988,13 +2032,20 @@ private struct PlaceSheet: View {
         return category == "place" ? nil : category
     }
 
+    private var selectedNote: String? {
+        trimmed(visiblePlace.userPlace.note)
+    }
+
+    private var selectedNoteLine: String? {
+        guard let selectedNote else { return nil }
+        let ownerLabel = visiblePlace.owner.id == currentUserID ? "your note" : "\(visiblePlace.owner.displayName)'s note"
+        return "\(ownerLabel): \"\(selectedNote)\""
+    }
+
     private var placeFacts: [PlaceFact] {
         var facts: [PlaceFact] = []
         if let categoryDisplay {
             facts.append(PlaceFact(title: categoryDisplay, systemImage: WanderPlaceCategory.symbolName(for: visiblePlace.place.category)))
-        }
-        if let addressLine {
-            facts.append(PlaceFact(title: addressLine, systemImage: "mappin.and.ellipse"))
         }
         return facts
     }
@@ -2144,9 +2195,10 @@ private struct SaveReviewCard: View {
             }
 
             if let note {
-                Text(note)
+                Text("\"\(note)\"")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(WanderTheme.textInk.color)
+                    .italic()
+                    .foregroundStyle(WanderTheme.textMuted.color)
                     .fixedSize(horizontal: false, vertical: true)
             }
 

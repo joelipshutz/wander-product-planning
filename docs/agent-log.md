@@ -2177,3 +2177,34 @@ Completion:
 - App Store Connect build id: `00f928e3-bdc7-4327-92a5-dde06e148334`.
 - Build `0.1 (22)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
 - Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
+
+## 2026-06-09 16:24 PDT - Codex - Build 23 Map Detail Fixes
+
+Agent: Codex
+Branch: `main`
+Starting commit: `4d3bf63`
+Starting status: worktree clean.
+
+Goal: ship the pre-place-profile fixes Joe requested: tap empty map to clear selection, remove address chips from place facts, keep selected save notes visible in expanded place cards, and investigate the followers-visible place report before changing the richer profile design.
+
+Expected files to touch:
+
+- `Wander/Features/Map/MapScreen.swift`
+- `Wander/Features/Discover/DiscoverScreen.swift`
+- `WanderTests/*` if a focused regression test is practical
+- `docs/agent-log.md`
+
+Scoped plan-eng-review notes:
+
+- No design doc found for this branch; skipped /office-hours because this is a narrow bugfix batch and Joe explicitly asked to do these fixes before the larger place-profile change.
+- Step 0 scope: keep website/order/Google reviews out of this patch. Official Google Places docs put reviews in paid Places API field tiers, so no-billing alpha should not depend on Google reviews.
+- Existing code reused: `PlaceSheet`, `DiscoverPlaceDetailSheet`, `VisiblePlace.note`, `saveSummaries(for:)`, `PlaceExternalLinks`, MapKit-backed candidates, and Supabase visible-place RPCs.
+- NOT in scope: Beli-style rich place profile, website/call/order fields, Google reviews, and new paid Places integration.
+
+Checkpoint:
+
+- Removed address from place fact chips in Map and Discover place detail sheets while keeping address/locality in subtitle text.
+- Changed Map empty-tap behavior so tapping away from selected pins/candidates clears the selected sheet instead of leaving stale selection active.
+- Kept selected save notes visible in expanded Map place sheets, attributed the note owner in Map and Discover, and made Map save-summary aggregation use all authorized saves for that place instead of only currently filtered/search-visible rows.
+- Added a focused store test assertion that backend-authorized remote social/following rows keep their notes after hydration.
+- Added `TODOS.md` guidance for the richer place-profile action bar: Directions can be generated from coordinates; Website/Call/Order require real supplied data and should be hidden when absent; Google reviews are not a no-billing alpha dependency.
