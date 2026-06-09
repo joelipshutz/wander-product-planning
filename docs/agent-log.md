@@ -2017,3 +2017,22 @@ Checkpoint:
 - The flow updates saved places through `WanderStore.saveCandidate`, so persistence/sync state paths remain shared.
 - `xcodegen generate`: passed.
 - Full test suite passed with elevated `xcodebuild`.
+
+Completion:
+
+- Commit `a71a909` (`feat: add map save edit flow`) pushed to `origin/main`.
+
+## 2026-06-09 12:41 PDT - Codex - Build 19 TestFlight Package
+
+Agent: Codex
+Branch: `main`
+Starting commit: `a71a909`
+Starting status: worktree clean.
+
+Goal: package persistence, Map keyboard dismissal, and Map save/edit flow into TestFlight build `0.1 (19)`.
+
+Expected files to touch:
+
+- `project.yml`
+- `Wander.xcodeproj/project.pbxproj`
+- `docs/agent-log.md`
