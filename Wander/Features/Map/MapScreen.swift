@@ -1,5 +1,6 @@
 import MapKit
 import SwiftUI
+import UIKit
 
 struct MapScreen: View {
     @EnvironmentObject private var store: WanderStore
@@ -318,6 +319,7 @@ struct MapScreen: View {
     }
 
     private func submitMapSearch() {
+        dismissKeyboard()
         suppressedTypeaheadQuery = Self.normalized(mapQuery)
         typeaheadTask?.cancel()
         typeaheadSuggestions = []
@@ -558,6 +560,7 @@ struct MapScreen: View {
     }
 
     private func selectTypeaheadSuggestion(_ suggestion: MapSearchSuggestion) {
+        dismissKeyboard()
         typeaheadTask?.cancel()
         isLoadingTypeahead = false
         typeaheadSuggestions = []
@@ -578,6 +581,10 @@ struct MapScreen: View {
             center(on: candidate)
             mapSearchMessage = "Map result. Tap + to add it."
         }
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
     private func center(on candidate: PlaceCandidate) {

@@ -1935,3 +1935,27 @@ Checkpoint:
 - Initial sandboxed test run failed from CoreSimulator/SwiftPM cache permissions only.
 - Focused `WanderStoreTests`: passed with elevated `xcodebuild`.
 - Full test suite: passed with elevated `xcodebuild`.
+
+Completion:
+
+- Commit `e15da72` (`fix: persist local wander state`) pushed to `origin/main`.
+- Next restart point: map typeahead keyboard dismissal, then Add-style plus/edit flow.
+
+## 2026-06-09 12:14 PDT - Codex - Map Typeahead Keyboard Dismissal
+
+Agent: Codex
+Branch: `main`
+Starting commit: `e15da72`
+Starting status: worktree clean.
+
+Goal: fix the small Map UX issue where selecting a typeahead result leaves the keyboard up over the selected place/result sheet.
+
+Expected files to touch:
+
+- `Wander/Features/Map/MapScreen.swift`
+- `docs/agent-log.md`
+
+Checkpoint:
+
+- Added explicit keyboard dismissal on Map search submit and typeahead selection.
+- Full test suite passed with elevated `xcodebuild`.
