@@ -18,11 +18,11 @@ These are the known unresolved questions and risks. Some are intentionally defer
 |---|---|---|
 | Where does profile mirroring happen? | Resolved: backend webhook from Clerk/Svix into Supabase `profiles`. | Edge Function `clerk-profile-webhook` handles `user.created`, `user.updated`, and `user.deleted`. Real create/delete webhook path verified on 2026-06-02. |
 | How are Supabase RLS policies tested going forward? | Keep repo SQL tests and run them through standard Supabase CLI once Docker is installed. Until then, use hosted Postgres plus a temporary `pg` runner. | Current hosted SQL tests passed: 29 pgTAP assertions, 0 failures. |
-| Do we create Supabase migrations in this repo? | Yes. | New Supabase project exists and is linked; migrations `20260602131500`, `20260602140304`, `20260602143000`, `20260602210000`, and `20260604185000` are applied remotely. |
+| Do we create Supabase migrations in this repo? | Yes. | New Supabase project exists and is linked; migrations through `20260609211700_social_graph_rpcs.sql` are applied remotely. |
 | Do hosted Supabase auth settings need review before alpha? | Yes. | `npx supabase config push` pushed generated local auth defaults plus Clerk config to the new dev project. Fine for M3, but review before alpha. |
 | Does Clerk's default iOS token work for Supabase RLS? | Resolved: use native Clerk third-party auth, no deprecated JWT template. | 2026-06-04 API smoke passed after adding the Clerk provider connection in Supabase Dashboard with domain `https://growing-pheasant-22.clerk.accounts.dev`. Default Clerk session tokens are accepted by Supabase and authenticated RPCs passed for profile search, follow, visible places, social save, block, unblock, and unfollow. |
-| How should remote row attributes hydrate local UI? | Defer to the next remote data slice. | Current remote `attributes` decode but are not upserted into `placeAttributes`, so expanded map sheets/social-save copies may omit backend answers until hydration is implemented. |
-| How should remote relationship/filter metadata hydrate local UI? | Push filters to RPC and/or return viewer relationship in DTO. | Current remote visible-place cache still applies some local relationship filtering, which can hide backend-authorized rows if local follow cache is stale. |
+| How should remote row attributes hydrate local UI? | Resolved: hydrate backend `attributes` into local `placeAttributes` on remote place refresh. | Implemented in Build 20. |
+| How should remote relationship/filter metadata hydrate local UI? | Resolved for alpha: backend graph RPCs return followers/following/relationship and the iOS store hydrates remote follow edges. | Implemented in Build 21. |
 | Which analytics provider? | Keep vendor-neutral interface; choose provider later. | PostHog is likely but not locked. |
 
 ## Rich Place Profile Follow-Ups
@@ -31,7 +31,7 @@ These are the known unresolved questions and risks. Some are intentionally defer
 |---|---|---|
 | Should Wander store website, phone, hours, cuisine, order, menu, or reservation metadata? | Add optional, source-provenanced fields later only when populated by a free/source-owned path. | Do not show placeholders or blank rows. No paid place metadata provider is selected. |
 | How should private notes work? | Add a separate private-note model field later if product decides it is needed. | Current `LocalUserPlace.note` is a single note field, so UI should label it as the user's note rather than pretending public/private notes both exist. |
-| How do remote attributes reach expanded place profiles? | Hydrate `RemotePlaceAttributeDTO` into local `placeAttributes` or pass attributes through `VisiblePlace`. | Until this is done, expanded profiles may show full local answer chips but omit answer chips for remote-only social rows. |
+| How do remote attributes reach expanded place profiles? | Resolved: `RemotePlaceAttributeDTO` passes through `VisiblePlace.attributes` and is upserted into local `placeAttributes`. | Implemented in Build 20; future work is richer question-definition metadata for custom questions. |
 
 ## Needs Answer Before M5
 

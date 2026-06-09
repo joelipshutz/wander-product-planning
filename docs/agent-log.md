@@ -2071,6 +2071,18 @@ Checkpoint:
 - Applied hosted Supabase migration with `npx supabase db push --linked --yes`.
 - Verified local/remote migration list includes `20260609211700`.
 
+Completion:
+
+- Bumped `CURRENT_PROJECT_VERSION` to `21` in `project.yml`.
+- Regenerated `Wander.xcodeproj` with `xcodegen generate`.
+- Full `xcodebuild test`: passed again after project generation.
+- Commit `ffa678d` (`feat: hydrate social graph`) pushed to `origin/main`.
+- Archived `/private/tmp/Wander-0.1-build21.xcarchive`.
+- Uploaded build `0.1 (21)` to App Store Connect.
+- App Store Connect build id: `a98d8c29-2156-4971-befd-fda8c2bb1bc8`.
+- Build `0.1 (21)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
+- Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
+
 ## 2026-06-09 12:58 PDT - Codex - Build 20 Social Reliability Batch
 
 Agent: Codex

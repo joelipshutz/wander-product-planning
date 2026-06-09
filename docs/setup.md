@@ -197,7 +197,7 @@ Current status as of 2026-06-09:
 
 - Signed archive succeeds locally for `com.grayline.wander`.
 - App Store Connect app record exists for bundle id `com.grayline.wander`.
-- Builds `0.1 (1)` through `0.1 (20)` uploaded successfully and began App Store Connect processing. Build `0.1 (20)` adds social-place refresh reliability, profile-specific remote places, remote answer hydration, and Add save toast polish.
+- Builds `0.1 (1)` through `0.1 (21)` uploaded successfully and began App Store Connect processing. Build `0.1 (21)` adds social graph follower/following/relationship hydration, emoji rating chips, multi-select best-for answers, and quieter save messages.
 - Public TestFlight group `Wander Alpha` exists with public link enabled and no custom tester cap: `https://testflight.apple.com/join/knEhRa6t`.
 - Build `0.1 (5)` is attached to the public group. Export compliance is set to `usesNonExemptEncryption=false`.
 - Build `0.1 (5)` passed external TestFlight review.
@@ -210,6 +210,7 @@ Current status as of 2026-06-09:
 - Build `0.1 (15)` is attached to `Wander Alpha`, export compliance is set to `usesNonExemptEncryption=false`, and external TestFlight review is `APPROVED`.
 - Build `0.1 (16)` is attached to `Wander Alpha`, export compliance is set to `usesNonExemptEncryption=false`, and external TestFlight review is `APPROVED`.
 - Build `0.1 (20)` is attached to `Wander Alpha`, export compliance is set to `usesNonExemptEncryption=false`, and external TestFlight review is `APPROVED`.
+- Build `0.1 (21)` is attached to `Wander Alpha`, export compliance is set to `usesNonExemptEncryption=false`, and external TestFlight review is `APPROVED`.
 - Increment `CURRENT_PROJECT_VERSION` in `project.yml` before each additional TestFlight upload, then run `xcodegen generate`.
 - If Xcode Accounts cannot be used for upload, pass the local App Store Connect API key to `xcodebuild -exportArchive` with `-authenticationKeyPath`, `-authenticationKeyID`, and `-authenticationKeyIssuerID`.
 
