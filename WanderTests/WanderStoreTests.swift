@@ -276,6 +276,61 @@ final class WanderStoreTests: XCTestCase {
         XCTAssertEqual(store.extractionJobs.count, 1)
     }
 
+    func testSignedInUnresolvedDraftEnqueuesRemoteExtractionJob() async {
+        let store = WanderStore(fixtures: WanderFixtures.empty())
+        store.apply(authState: .signedIn(AuthSession(userID: "user_live", displayName: "Joe", handle: "joe")))
+        let extractionRepository = FakeExtractionRepository(
+            result: ExtractionJobEnqueueResult(
+                sourceArtifactID: "source_remote",
+                extractionJobID: "job_remote",
+                status: .pending,
+                attemptCount: 0
+            )
+        )
+        let backend = WanderBackend(extractionRepository: extractionRepository)
+
+        let draft = await store.createUnresolvedDraft(
+            sourceType: .link,
+            originalInput: "https://maps.app.goo.gl/example",
+            backend: backend
+        )
+
+        XCTAssertEqual(draft.sourceArtifactID, "source_remote")
+        XCTAssertEqual(draft.extractionJobID, "job_remote")
+        XCTAssertEqual(extractionRepository.drafts.count, 1)
+        XCTAssertEqual(extractionRepository.drafts[0].sourceArtifact.type, "url")
+        XCTAssertEqual(extractionRepository.drafts[0].sourceType, "link")
+        XCTAssertEqual(store.sourceArtifacts.first?.serverID, "source_remote")
+        XCTAssertEqual(store.sourceArtifacts.first?.syncStateRaw, SyncState.synced.rawValue)
+        XCTAssertEqual(store.extractionJobs.first?.serverID, "job_remote")
+        XCTAssertEqual(store.extractionJobs.first?.sourceArtifactID, "source_remote")
+        XCTAssertEqual(store.extractionJobs.first?.syncStateRaw, SyncState.synced.rawValue)
+        XCTAssertNil(store.lastRemoteError)
+    }
+
+    func testExtractionEnqueueFailureLeavesDraftRetryable() async {
+        let store = WanderStore(fixtures: WanderFixtures.empty())
+        store.apply(authState: .signedIn(AuthSession(userID: "user_live", displayName: "Joe", handle: "joe")))
+        let extractionRepository = FakeExtractionRepository(error: WanderRemoteError.invalidResponse("network down"))
+        let backend = WanderBackend(extractionRepository: extractionRepository)
+
+        let draft = await store.createUnresolvedDraft(
+            sourceType: .photo,
+            originalInput: "photo import · 42 bytes",
+            localAssetRef: "photos_picker:test",
+            backend: backend
+        )
+
+        XCTAssertEqual(draft.sourceArtifactID, store.sourceArtifacts.first?.localID)
+        XCTAssertEqual(draft.extractionJobID, store.extractionJobs.first?.localID)
+        XCTAssertEqual(extractionRepository.drafts.count, 1)
+        XCTAssertEqual(store.sourceArtifacts.first?.syncStateRaw, SyncState.failed.rawValue)
+        XCTAssertEqual(store.extractionJobs.first?.status, .failed)
+        XCTAssertEqual(store.extractionJobs.first?.syncStateRaw, SyncState.failed.rawValue)
+        XCTAssertNotNil(store.extractionJobs.first?.lastSyncError)
+        XCTAssertNotNil(store.lastRemoteError)
+    }
+
     func testUsernameSearchIsNearExactAndHidesBlockedUsers() {
         let store = makeStore()
 
@@ -682,6 +737,31 @@ private final class FakeUserPlaceRepository: UserPlaceRepository {
     func updateVisibility(userPlaceID: String, visibility: PlaceVisibility) async throws {}
 
     func delete(userPlaceID: String) async throws {}
+}
+
+@MainActor
+private final class FakeExtractionRepository: ExtractionRepository {
+    private let result: ExtractionJobEnqueueResult?
+    private let error: Error?
+    private(set) var drafts: [ExtractionJobDraft] = []
+
+    init(result: ExtractionJobEnqueueResult? = nil, error: Error? = nil) {
+        self.result = result
+        self.error = error
+    }
+
+    func enqueue(_ draft: ExtractionJobDraft) async throws -> ExtractionJobEnqueueResult {
+        drafts.append(draft)
+        if let error {
+            throw error
+        }
+        return result ?? ExtractionJobEnqueueResult(
+            sourceArtifactID: "source_fake",
+            extractionJobID: "job_fake",
+            status: .pending,
+            attemptCount: 0
+        )
+    }
 }
 
 @MainActor

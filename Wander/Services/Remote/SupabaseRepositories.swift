@@ -147,6 +147,22 @@ struct SupabaseUserPlaceRepository: UserPlaceRepository, SocialPlaceSaveReposito
     }
 }
 
+struct SupabaseExtractionRepository: ExtractionRepository {
+    private let rpc: RemoteProcedureCalling
+
+    init(rpc: RemoteProcedureCalling) {
+        self.rpc = rpc
+    }
+
+    func enqueue(_ draft: ExtractionJobDraft) async throws -> ExtractionJobEnqueueResult {
+        let response: EnqueueExtractionJobResponse = try await rpc.call(
+            "enqueue_extraction_job",
+            params: EnqueueExtractionJobParams(draft: draft)
+        )
+        return try response.result()
+    }
+}
+
 private struct SearchProfilesParams: Encodable {
     let query: String
 }
@@ -204,6 +220,93 @@ private struct SaveVisiblePlaceResponse: Decodable {
 
     enum CodingKeys: String, CodingKey {
         case userPlaceID = "user_place_id"
+    }
+}
+
+private struct EnqueueExtractionJobParams: Encodable {
+    let inputSourceArtifact: EnqueueSourceArtifactParams
+    let inputJob: EnqueueJobParams
+
+    init(draft: ExtractionJobDraft) {
+        self.inputSourceArtifact = EnqueueSourceArtifactParams(sourceArtifact: draft.sourceArtifact)
+        self.inputJob = EnqueueJobParams(draft: draft)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case inputSourceArtifact = "input_source_artifact"
+        case inputJob = "input_job"
+    }
+}
+
+private struct EnqueueSourceArtifactParams: Encodable {
+    let type: String
+    let originalInput: String
+    let normalizedInput: String
+    let normalizedSourceHash: String
+    let localAssetRef: String?
+    let remoteAssetRef: String?
+
+    init(sourceArtifact: SourceArtifactDraft) {
+        self.type = sourceArtifact.type
+        self.originalInput = sourceArtifact.originalInput
+        self.normalizedInput = sourceArtifact.normalizedInput
+        self.normalizedSourceHash = sourceArtifact.normalizedSourceHash
+        self.localAssetRef = sourceArtifact.localAssetRef
+        self.remoteAssetRef = sourceArtifact.remoteAssetRef
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case originalInput = "original_input"
+        case normalizedInput = "normalized_input"
+        case normalizedSourceHash = "normalized_source_hash"
+        case localAssetRef = "local_asset_ref"
+        case remoteAssetRef = "remote_asset_ref"
+    }
+}
+
+private struct EnqueueJobParams: Encodable {
+    let sourceType: String
+    let normalizedSourceHash: String
+    let providerStepsJSON: [String]
+
+    init(draft: ExtractionJobDraft) {
+        self.sourceType = draft.sourceType
+        self.normalizedSourceHash = draft.normalizedSourceHash
+        self.providerStepsJSON = draft.providerSteps
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case sourceType = "source_type"
+        case normalizedSourceHash = "normalized_source_hash"
+        case providerStepsJSON = "provider_steps_json"
+    }
+}
+
+private struct EnqueueExtractionJobResponse: Decodable {
+    let sourceArtifactID: String
+    let extractionJobID: String
+    let status: String
+    let attemptCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case sourceArtifactID = "source_artifact_id"
+        case extractionJobID = "extraction_job_id"
+        case status
+        case attemptCount = "attempt_count"
+    }
+
+    func result() throws -> ExtractionJobEnqueueResult {
+        guard let extractionStatus = ExtractionStatus(rawValue: status) else {
+            throw WanderRemoteError.invalidResponse("Unknown extraction status: \(status)")
+        }
+
+        return ExtractionJobEnqueueResult(
+            sourceArtifactID: sourceArtifactID,
+            extractionJobID: extractionJobID,
+            status: extractionStatus,
+            attemptCount: attemptCount
+        )
     }
 }
 

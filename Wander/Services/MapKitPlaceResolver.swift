@@ -37,15 +37,24 @@ final class MapKitPlaceResolver: PlaceCandidateResolving {
 
     func resolveCurrentLocation() async throws -> [PlaceCandidate] {
         let location = try await locationProvider.currentLocation()
-        let request = MKLocalPointsOfInterestRequest(center: location.coordinate, radius: 700)
-        request.pointOfInterestFilter = .includingAll
 
-        let response = try await MKLocalSearch(request: request).start()
-        let candidates = mapItems(response.mapItems, fallbackCategory: nil, limit: 8)
-        guard !candidates.isEmpty else {
-            throw PlaceResolutionError.noCandidates
+        for radius in [CLLocationDistance(250), CLLocationDistance(700)] {
+            let request = MKLocalPointsOfInterestRequest(center: location.coordinate, radius: radius)
+            request.pointOfInterestFilter = .includingAll
+
+            let response = try await MKLocalSearch(request: request).start()
+            let candidates = mapItems(
+                response.mapItems,
+                fallbackCategory: nil,
+                origin: location,
+                limit: 8
+            )
+            if !candidates.isEmpty {
+                return candidates
+            }
         }
-        return candidates
+
+        throw PlaceResolutionError.noCandidates
     }
 
     func resolveManualEntry(_ input: ManualPlaceInput) async throws -> [PlaceCandidate] {
@@ -116,11 +125,11 @@ final class MapKitPlaceResolver: PlaceCandidateResolving {
         return expandedURL.absoluteString
     }
 
-    private func mapItems(_ items: [MKMapItem], fallbackCategory: String?, limit: Int) -> [PlaceCandidate] {
+    private func mapItems(_ items: [MKMapItem], fallbackCategory: String?, origin: CLLocation? = nil, limit: Int) -> [PlaceCandidate] {
         var seen = Set<String>()
         var candidates: [PlaceCandidate] = []
 
-        for item in items {
+        for item in rankedMapItems(items, origin: origin, fallbackCategory: fallbackCategory) {
             guard let name = item.name?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !name.isEmpty,
                   CLLocationCoordinate2DIsValid(item.placemark.coordinate)
@@ -145,7 +154,7 @@ final class MapKitPlaceResolver: PlaceCandidateResolving {
                     longitude: item.placemark.coordinate.longitude,
                     sourceProvider: "mapkit",
                     sourceProviderPlaceID: sourceID,
-                    confidence: confidence(for: item, fallbackCategory: fallbackCategory)
+                    confidence: confidence(for: item, fallbackCategory: fallbackCategory, origin: origin)
                 )
             )
 
@@ -153,6 +162,52 @@ final class MapKitPlaceResolver: PlaceCandidateResolving {
         }
 
         return candidates
+    }
+
+    private func rankedMapItems(_ items: [MKMapItem], origin: CLLocation?, fallbackCategory: String?) -> [MKMapItem] {
+        items.sorted { lhs, rhs in
+            rankingScore(for: lhs, origin: origin, fallbackCategory: fallbackCategory)
+                > rankingScore(for: rhs, origin: origin, fallbackCategory: fallbackCategory)
+        }
+    }
+
+    private func rankingScore(for item: MKMapItem, origin: CLLocation?, fallbackCategory: String?) -> Double {
+        var score = 0.0
+
+        if item.pointOfInterestCategory != nil {
+            score += 500
+        }
+
+        if primaryWanderCategory(for: item.pointOfInterestCategory) != nil {
+            score += 120
+        }
+
+        if fallbackCategory?.isEmpty == false {
+            score += 40
+        }
+
+        if let origin {
+            let itemLocation = CLLocation(
+                latitude: item.placemark.coordinate.latitude,
+                longitude: item.placemark.coordinate.longitude
+            )
+            let distance = itemLocation.distance(from: origin)
+
+            switch distance {
+            case ...50:
+                score += 300
+            case ...100:
+                score += 230
+            case ...200:
+                score += 150
+            case ...350:
+                score += 70
+            default:
+                score -= min(distance, 2_000) / 10
+            }
+        }
+
+        return score
     }
 
     private func category(for item: MKMapItem, fallbackCategory: String?) -> String {
@@ -163,30 +218,61 @@ final class MapKitPlaceResolver: PlaceCandidateResolving {
             return fallback
         }
 
+        return primaryWanderCategory(for: pointCategory)
+            ?? (fallback?.isEmpty == false ? fallback ?? "place" : "place")
+    }
+
+    private func primaryWanderCategory(for pointCategory: MKPointOfInterestCategory?) -> String? {
         switch pointCategory {
         case .cafe, .bakery:
-            return "coffee"
+            "coffee"
         case .restaurant, .foodMarket:
-            return "restaurant"
+            "restaurant"
         case .brewery, .winery, .nightlife:
-            return "bar"
+            "bar"
         case .park, .nationalPark:
-            return "park"
+            "park"
         default:
-            return fallback?.isEmpty == false ? fallback ?? "place" : "place"
+            nil
         }
     }
 
-    private func confidence(for item: MKMapItem, fallbackCategory: String?) -> Double {
-        if item.pointOfInterestCategory != nil {
-            return 0.9
+    private func confidence(for item: MKMapItem, fallbackCategory: String?, origin: CLLocation?) -> Double {
+        guard let origin else {
+            if item.pointOfInterestCategory != nil {
+                return 0.9
+            }
+
+            if fallbackCategory?.isEmpty == false {
+                return 0.74
+            }
+
+            return 0.66
         }
 
-        if fallbackCategory?.isEmpty == false {
-            return 0.74
+        let categoryBoost = item.pointOfInterestCategory != nil ? 0.12 : 0
+        let fallbackBoost = fallbackCategory?.isEmpty == false ? 0.06 : 0
+        let distanceBoost: Double
+
+        let itemLocation = CLLocation(
+            latitude: item.placemark.coordinate.latitude,
+            longitude: item.placemark.coordinate.longitude
+        )
+        let distance = itemLocation.distance(from: origin)
+        switch distance {
+        case ...50:
+            distanceBoost = 0.16
+        case ...100:
+            distanceBoost = 0.12
+        case ...200:
+            distanceBoost = 0.08
+        case ...350:
+            distanceBoost = 0.04
+        default:
+            distanceBoost = 0
         }
 
-        return 0.66
+        return min(0.96, 0.66 + categoryBoost + fallbackBoost + distanceBoost)
     }
 
     private func address(for placemark: MKPlacemark) -> String? {

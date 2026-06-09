@@ -506,6 +506,37 @@ final class WanderStore: ObservableObject {
         return draft
     }
 
+    @discardableResult
+    func createUnresolvedDraft(
+        sourceType: AddSourceType,
+        originalInput: String? = nil,
+        localAssetRef: String? = nil,
+        backend: WanderBackend?
+    ) async -> UnresolvedDraft {
+        let draft = createUnresolvedDraft(
+            sourceType: sourceType,
+            originalInput: originalInput,
+            localAssetRef: localAssetRef
+        )
+
+        guard let backend else { return draft }
+        await enqueueExtractionJob(for: draft, backend: backend)
+        return updatedDraft(draft)
+    }
+
+    func enqueuePendingExtractionJobs(backend: WanderBackend) async {
+        let pendingDrafts = unresolvedDrafts.filter { draft in
+            guard let jobID = draft.extractionJobID,
+                  let job = extractionJob(matching: jobID)
+            else { return false }
+            return job.serverID == nil || SyncState(rawValue: job.syncStateRaw) != .synced
+        }
+
+        for draft in pendingDrafts {
+            await enqueueExtractionJob(for: draft, backend: backend)
+        }
+    }
+
     func saveVisiblePlace(_ visiblePlace: VisiblePlace, status: PlaceStatus = .wannaGo) -> SaveResult {
         let copiedAttributes = attributes(for: visiblePlace.userPlace.id).map { attribute in
             PlaceAttributeDraft(questionKey: attribute.questionKey, valueType: attribute.valueType, valueJSON: attribute.valueJSON)
@@ -1086,6 +1117,144 @@ final class WanderStore: ObservableObject {
             )
         )
         return job
+    }
+
+    private func enqueueExtractionJob(for draft: UnresolvedDraft, backend: WanderBackend) async {
+        guard let artifactID = draft.sourceArtifactID,
+              let jobID = draft.extractionJobID,
+              let artifact = sourceArtifact(matching: artifactID),
+              let job = extractionJob(matching: jobID)
+        else { return }
+
+        do {
+            let result = try await backend.enqueueExtractionJob(
+                ExtractionJobDraft(
+                    sourceArtifact: SourceArtifactDraft(
+                        type: artifact.type,
+                        originalInput: artifact.originalInput,
+                        normalizedInput: artifact.normalizedInput,
+                        normalizedSourceHash: artifact.normalizedSourceHash,
+                        localAssetRef: artifact.localAssetRef,
+                        remoteAssetRef: artifact.remoteAssetRef
+                    ),
+                    sourceType: job.sourceType,
+                    normalizedSourceHash: job.normalizedSourceHash,
+                    providerSteps: providerSteps(from: job.providerStepsJSON)
+                )
+            )
+
+            markSourceArtifact(
+                artifact,
+                serverID: result.sourceArtifactID,
+                syncState: .synced,
+                error: nil
+            )
+            markExtractionJob(
+                job,
+                serverID: result.extractionJobID,
+                sourceArtifactID: result.sourceArtifactID,
+                status: result.status,
+                attemptCount: result.attemptCount,
+                syncState: .synced,
+                error: nil
+            )
+            updateDraft(
+                draftID: draft.id,
+                sourceArtifactID: result.sourceArtifactID,
+                extractionJobID: result.extractionJobID
+            )
+            lastRemoteError = nil
+        } catch {
+            let message = remoteErrorMessage(error)
+            markSourceArtifact(artifact, serverID: nil, syncState: .failed, error: message)
+            markExtractionJob(
+                job,
+                serverID: nil,
+                sourceArtifactID: artifact.serverID ?? artifact.localID,
+                status: .failed,
+                attemptCount: job.attemptCount,
+                syncState: .failed,
+                error: message
+            )
+            lastRemoteError = message
+        }
+    }
+
+    private func sourceArtifact(matching id: String) -> LocalSourceArtifact? {
+        sourceArtifacts.first { artifact in
+            artifact.localID == id || artifact.serverID == id
+        }
+    }
+
+    private func extractionJob(matching id: String) -> LocalExtractionJob? {
+        extractionJobs.first { job in
+            job.localID == id || job.serverID == id
+        }
+    }
+
+    private func updatedDraft(_ draft: UnresolvedDraft) -> UnresolvedDraft {
+        guard let index = unresolvedDrafts.firstIndex(where: { $0.id == draft.id }) else {
+            return draft
+        }
+        return unresolvedDrafts[index]
+    }
+
+    private func updateDraft(draftID: String, sourceArtifactID: String, extractionJobID: String) {
+        guard let index = unresolvedDrafts.firstIndex(where: { $0.id == draftID }) else { return }
+        let existing = unresolvedDrafts[index]
+        unresolvedDrafts[index] = UnresolvedDraft(
+            id: existing.id,
+            sourceType: existing.sourceType,
+            title: existing.title,
+            message: existing.message,
+            sourceArtifactID: sourceArtifactID,
+            extractionJobID: extractionJobID,
+            createdAt: existing.createdAt
+        )
+    }
+
+    private func markSourceArtifact(_ artifact: LocalSourceArtifact, serverID: String?, syncState: SyncState, error: String?) {
+        if let serverID {
+            artifact.serverID = serverID
+        }
+        artifact.syncStateRaw = syncState.rawValue
+        artifact.lastSyncError = error
+        artifact.serverUpdatedAt = syncState == .synced ? .now : artifact.serverUpdatedAt
+        artifact.localUpdatedAt = .now
+    }
+
+    private func markExtractionJob(
+        _ job: LocalExtractionJob,
+        serverID: String?,
+        sourceArtifactID: String,
+        status: ExtractionStatus,
+        attemptCount: Int,
+        syncState: SyncState,
+        error: String?
+    ) {
+        if let serverID {
+            job.serverID = serverID
+        }
+        job.sourceArtifactID = sourceArtifactID
+        job.statusRaw = status.rawValue
+        job.attemptCount = attemptCount
+        job.syncStateRaw = syncState.rawValue
+        job.lastSyncError = error
+        job.errorCode = error == nil ? nil : "enqueue_failed"
+        job.errorMessage = error
+        job.serverUpdatedAt = syncState == .synced ? .now : job.serverUpdatedAt
+        job.localUpdatedAt = .now
+        job.updatedAt = .now
+    }
+
+    private func providerSteps(from json: String) -> [String] {
+        guard let data = json.data(using: .utf8),
+              let steps = try? JSONDecoder().decode([String].self, from: data)
+        else {
+            return ["queued_for_backend_extraction"]
+        }
+
+        return steps.isEmpty ? ["queued_for_backend_extraction"] : steps
     }
 
     private func replaceAttributes(for userPlaceID: String, with drafts: [PlaceAttributeDraft], syncState: SyncState) {

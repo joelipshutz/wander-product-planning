@@ -1,6 +1,6 @@
 # M3 Supabase Foundation
 
-Last updated: 2026-06-02
+Last updated: 2026-06-08
 
 This is the backend contract started for M3. It should be reviewed and run before wiring Clerk UI or live Supabase calls into the iOS app.
 
@@ -11,9 +11,12 @@ This is the backend contract started for M3. It should be reviewed and run befor
   - `supabase/migrations/20260602140304_clerk_profile_mirroring.sql`
   - `supabase/migrations/20260602143000_public_clerk_profile_mirror_rpc.sql`
   - `supabase/migrations/20260602210000_public_app_rpc_wrappers.sql`
+  - `supabase/migrations/20260608174400_enqueue_extraction_job.sql`
+  - `supabase/migrations/20260608175500_fix_enqueue_extraction_job_variable.sql`
 - Tests:
   - `supabase/tests/rls_visibility.sql`
   - `supabase/tests/clerk_profile_mirroring.sql`
+  - `supabase/tests/extraction_jobs.sql`
 - Edge Function: `supabase/functions/clerk-profile-webhook/index.ts`
 - Source plan: `docs/plans/2026-06-01-wander-ios-eng-plan.md`
 - Contract lock: `docs/plans/2026-06-01-wander-m1-5-contract-lock.md`
@@ -53,7 +56,8 @@ Backend test status:
 - Result:
   - `supabase/tests/rls_visibility.sql`: 15 assertions, 0 failures.
   - `supabase/tests/clerk_profile_mirroring.sql`: 14 assertions, 0 failures.
-  - Total: 29 assertions, 0 failures.
+  - `supabase/tests/extraction_jobs.sql`: 9 assertions, 0 failures.
+  - Total: 38 assertions, 0 failures.
 - Direct signed webhook POST passed: Svix-style signature verification, Edge Function, PostgREST RPC, and profile lookup.
 - Real Clerk create/delete passed: disposable Clerk dev user mirrored through Clerk -> Svix -> Supabase and then soft-deleted on `user.deleted`.
 
@@ -204,6 +208,7 @@ Implemented in the migration:
 - `app.unblock_user(profile_id)`
 - `app.save_visible_place(input_place_id, input_source_user_place_id)`
 - `app.claim_guest_records(local_records)`
+- `app.enqueue_extraction_job(input_source_artifact, input_job)`
 - `public.visible_places_in_view(...)` authenticated PostgREST wrapper
 - `public.search_profiles_by_handle(query)` authenticated PostgREST wrapper
 - `public.profile_visible_places(...)` authenticated PostgREST wrapper
@@ -213,6 +218,7 @@ Implemented in the migration:
 - `public.unblock_user(profile_id)` authenticated PostgREST wrapper
 - `public.save_visible_place(input_place_id, input_source_user_place_id)` authenticated PostgREST wrapper returning `{ "user_place_id": ... }` for iOS
 - `public.claim_guest_records(local_records)` authenticated PostgREST wrapper
+- `public.enqueue_extraction_job(input_source_artifact, input_job)` authenticated PostgREST wrapper returning `{ "source_artifact_id", "extraction_job_id", "status", "attempt_count" }` for iOS
 
 Notes:
 
@@ -221,6 +227,7 @@ Notes:
 - `save_visible_place` copies the visible source place into the caller's map as `wanna_go`, including source attribution and attached attributes.
 - `claim_guest_records` is a stub until the sync worker/merge path is designed.
 - `block_user` is a guarded `security definer` so it can remove both directions of the follow edge when a hard block is created.
+- `enqueue_extraction_job` is an M6 foundation RPC. It idempotently upserts `source_artifacts` and `extraction_jobs` for the authenticated user. It queues work only; separate backend workers still need to execute provider/OCR/LLM extraction.
 
 ## Test Coverage Draft
 
@@ -245,6 +252,13 @@ Notes:
 - stale update after delete
 - delete-before-create ordering
 - public PostgREST wrapper write-through
+
+`supabase/tests/extraction_jobs.sql` covers:
+
+- Authenticated enqueue returns an extraction job id.
+- First enqueue creates one source artifact and one extraction job.
+- Duplicate enqueue returns the existing job and does not duplicate rows.
+- Retrying a failed job resets status to `pending`, increments attempt count, and clears the error code.
 
 Still needed:
 

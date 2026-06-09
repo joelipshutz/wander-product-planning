@@ -9,6 +9,7 @@ final class WanderBackend: ObservableObject {
     let placeRepository: (any PlaceRepository)?
     let userPlaceRepository: (any UserPlaceRepository)?
     let socialPlaceSaveRepository: (any SocialPlaceSaveRepository)?
+    let extractionRepository: (any ExtractionRepository)?
 
     init(configuration: WanderBackendConfiguration, authSession: any AuthSessionProviding) {
         self.configuration = configuration
@@ -22,6 +23,7 @@ final class WanderBackend: ObservableObject {
             let userPlaceRepository = SupabaseUserPlaceRepository(rpc: client)
             self.userPlaceRepository = userPlaceRepository
             self.socialPlaceSaveRepository = userPlaceRepository
+            self.extractionRepository = SupabaseExtractionRepository(rpc: client)
         } else {
             self.profileRepository = nil
             self.followRepository = nil
@@ -29,6 +31,7 @@ final class WanderBackend: ObservableObject {
             self.placeRepository = nil
             self.userPlaceRepository = nil
             self.socialPlaceSaveRepository = nil
+            self.extractionRepository = nil
         }
     }
 
@@ -44,7 +47,8 @@ final class WanderBackend: ObservableObject {
         blockRepository: (any BlockRepository)? = nil,
         placeRepository: (any PlaceRepository)? = nil,
         userPlaceRepository: (any UserPlaceRepository)? = nil,
-        socialPlaceSaveRepository: (any SocialPlaceSaveRepository)? = nil
+        socialPlaceSaveRepository: (any SocialPlaceSaveRepository)? = nil,
+        extractionRepository: (any ExtractionRepository)? = nil
     ) {
         self.configuration = configuration
         self.profileRepository = profileRepository
@@ -53,6 +57,7 @@ final class WanderBackend: ObservableObject {
         self.placeRepository = placeRepository
         self.userPlaceRepository = userPlaceRepository
         self.socialPlaceSaveRepository = socialPlaceSaveRepository
+        self.extractionRepository = extractionRepository
     }
 
     var canUseRemoteData: Bool {
@@ -62,6 +67,7 @@ final class WanderBackend: ObservableObject {
             || placeRepository != nil
             || userPlaceRepository != nil
             || socialPlaceSaveRepository != nil
+            || extractionRepository != nil
     }
 
     func searchProfiles(handleQuery: String) async throws -> [ProfileShell] {
@@ -129,5 +135,13 @@ final class WanderBackend: ObservableObject {
         }
 
         return try await userPlaceRepository.save(draft)
+    }
+
+    func enqueueExtractionJob(_ draft: ExtractionJobDraft) async throws -> ExtractionJobEnqueueResult {
+        guard let extractionRepository else {
+            throw WanderRemoteError.notConfigured
+        }
+
+        return try await extractionRepository.enqueue(draft)
     }
 }

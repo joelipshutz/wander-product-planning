@@ -192,6 +192,55 @@ final class RemoteRepositoryTests: XCTestCase {
         XCTAssertEqual(rpc.calls.map(\.name), ["unblock_user"])
         XCTAssertEqual(rpc.calls[0].body["profile_id"] as? String, "user_ryan")
     }
+
+    func testExtractionEnqueueCallsExpectedRPCWithArtifactAndJob() async throws {
+        let rpc = RecordingRPC()
+        rpc.responses["enqueue_extraction_job"] = """
+        {
+          "source_artifact_id": "source_remote",
+          "extraction_job_id": "job_remote",
+          "status": "pending",
+          "attempt_count": 0
+        }
+        """.data(using: .utf8)
+        let repository = SupabaseExtractionRepository(rpc: rpc)
+
+        let result = try await repository.enqueue(
+            ExtractionJobDraft(
+                sourceArtifact: SourceArtifactDraft(
+                    type: "url",
+                    originalInput: "https://maps.app.goo.gl/example",
+                    normalizedInput: "https://maps.app.goo.gl/example",
+                    normalizedSourceHash: "hash_maps_example",
+                    localAssetRef: nil,
+                    remoteAssetRef: nil
+                ),
+                sourceType: "link",
+                normalizedSourceHash: "hash_maps_example",
+                providerSteps: ["queued_for_backend_extraction"]
+            )
+        )
+
+        XCTAssertEqual(
+            result,
+            ExtractionJobEnqueueResult(
+                sourceArtifactID: "source_remote",
+                extractionJobID: "job_remote",
+                status: .pending,
+                attemptCount: 0
+            )
+        )
+        XCTAssertEqual(rpc.calls.map(\.name), ["enqueue_extraction_job"])
+
+        let body = rpc.rawBodies[0]
+        let artifact = body["input_source_artifact"] as? [String: Any]
+        XCTAssertEqual(artifact?["type"] as? String, "url")
+        XCTAssertEqual(artifact?["normalized_source_hash"] as? String, "hash_maps_example")
+
+        let job = body["input_job"] as? [String: Any]
+        XCTAssertEqual(job?["source_type"] as? String, "link")
+        XCTAssertEqual(job?["provider_steps_json"] as? [String], ["queued_for_backend_extraction"])
+    }
 }
 
 @MainActor

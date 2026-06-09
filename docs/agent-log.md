@@ -1563,3 +1563,57 @@ Checkpoint:
   `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
 - Result: passed.
 - No separate TestFlight upload for this micro-cleanup yet; include it in the next M6/TestFlight build unless Joe asks for an immediate build.
+
+## 2026-06-08 17:44 PDT - Codex - M6 Extraction Job Enqueue And Nearby Ranking
+
+Agent: Codex
+Branch: `main`
+Starting commit: `a39e3ed`
+Starting status: local `main` matched `origin/main`; worktree clean before this log entry.
+
+Goal: start M6 by making extraction drafts enqueue real remote jobs when signed in, and fix the current-location candidate quality issue Joe saw in TestFlight.
+
+Expected files to touch:
+
+- `Wander/Services/MapKitPlaceResolver.swift`
+- `Wander/Services/RepositoryProtocols.swift`
+- `Wander/App/WanderBackend.swift`
+- `Wander/Services/Remote/SupabaseRepositories.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- `Wander/Features/Add/AddScreen.swift`
+- `supabase/migrations/*`
+- `supabase/tests/*`
+- `WanderTests/*`
+- `docs/*`
+
+Plan:
+
+- Add a Supabase RPC to idempotently upsert `source_artifacts` and `extraction_jobs`.
+- Add an iOS extraction repository around that RPC.
+- Keep link/photo drafts local-first, then mark artifact/job synced or failed after remote enqueue.
+- Improve current-location candidate ranking with closer radius first and distance/category-aware sorting.
+- Keep extraction execution itself queued/pending; do not fake AI extraction or auto-save low confidence.
+
+Checkpoint:
+
+- Mission Control task creation failed because `http://localhost:4000` was unreachable from this session. Continuing with `docs/agent-log.md` as the coordination surface.
+- Added `supabase/migrations/20260608174400_enqueue_extraction_job.sql` for the public/app `enqueue_extraction_job` RPC.
+- Hosted pgTAP caught an ambiguous PL/pgSQL variable/column reference in the first function body.
+- Added `supabase/migrations/20260608175500_fix_enqueue_extraction_job_variable.sql` with `v_` variable names and repushed.
+- Added `supabase/tests/extraction_jobs.sql`; hosted pgTAP now passes `15 + 14 + 9 = 38` assertions across RLS, Clerk mirroring, and extraction enqueue tests.
+- Added iOS `ExtractionRepository` contract plus `SupabaseExtractionRepository`.
+- Signed-in link/photo unresolved drafts now enqueue remote extraction jobs and mark local source/job rows synced or failed.
+- Improved `I'm here now` MapKit candidate ranking by searching a tight radius first and sorting by POI/category/distance.
+- Important scope note: extraction job execution is still not implemented. Build 12 queues jobs only.
+
+Completion:
+
+- `git diff --check`: passed.
+- Swift tests passed before and after XcodeGen/build bump:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Build number bumped to `0.1 (12)` in `project.yml` and regenerated `Wander.xcodeproj`.
+- Archived and uploaded `/private/tmp/Wander-0.1-build12.xcarchive`.
+- App Store Connect build id: `b2ae0178-8d35-40a8-a4be-80c31cd1ce3b`.
+- Build `0.1 (12)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
+- Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
+- Next M6 work: implement the backend worker/provider adapters that consume queued `extraction_jobs` and write candidate results without auto-saving low-confidence places.

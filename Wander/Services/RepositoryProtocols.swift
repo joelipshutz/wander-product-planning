@@ -128,6 +128,29 @@ struct SaveResult: Equatable {
     }
 }
 
+struct SourceArtifactDraft: Equatable {
+    let type: String
+    let originalInput: String
+    let normalizedInput: String
+    let normalizedSourceHash: String
+    let localAssetRef: String?
+    let remoteAssetRef: String?
+}
+
+struct ExtractionJobDraft: Equatable {
+    let sourceArtifact: SourceArtifactDraft
+    let sourceType: String
+    let normalizedSourceHash: String
+    let providerSteps: [String]
+}
+
+struct ExtractionJobEnqueueResult: Equatable {
+    let sourceArtifactID: String
+    let extractionJobID: String
+    let status: ExtractionStatus
+    let attemptCount: Int
+}
+
 @MainActor
 protocol ProfileRepository {
     func currentProfile() async throws -> LocalProfile?
@@ -177,6 +200,11 @@ protocol UserPlaceRepository {
 @MainActor
 protocol SocialPlaceSaveRepository {
     func saveVisiblePlace(placeID: String, sourceUserPlaceID: String) async throws -> SaveResult
+}
+
+@MainActor
+protocol ExtractionRepository {
+    func enqueue(_ draft: ExtractionJobDraft) async throws -> ExtractionJobEnqueueResult
 }
 
 @MainActor

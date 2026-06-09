@@ -632,9 +632,20 @@ struct AddScreen: View {
     }
 
     private func saveLinkDraft() {
+        Task {
+            await saveLinkDraftAsync()
+        }
+    }
+
+    @MainActor
+    private func saveLinkDraftAsync() async {
         selectedSource = .link
         resolutionMessage = nil
-        draft = store.createUnresolvedDraft(sourceType: .link, originalInput: linkInput)
+        draft = await store.createUnresolvedDraft(
+            sourceType: .link,
+            originalInput: linkInput,
+            backend: auth.isSignedIn ? backend : nil
+        )
         step = .draft
     }
 
@@ -652,10 +663,11 @@ struct AddScreen: View {
             let data = try await item.loadTransferable(type: Data.self)
             let byteCount = data?.count ?? 0
             let assetRef = item.itemIdentifier.map { "photos_picker:\($0)" } ?? "photos_picker:imported_photo_\(byteCount)"
-            draft = store.createUnresolvedDraft(
+            draft = await store.createUnresolvedDraft(
                 sourceType: .photo,
                 originalInput: "photo import · \(byteCount) bytes",
-                localAssetRef: assetRef
+                localAssetRef: assetRef,
+                backend: auth.isSignedIn ? backend : nil
             )
             step = .draft
         } catch {
