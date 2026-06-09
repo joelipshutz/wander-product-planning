@@ -409,11 +409,6 @@ private struct DiscoverPlaceRow: View {
     }
 
     private var icon: String {
-        switch visiblePlace.place.category {
-        case "coffee": "cup.and.saucer.fill"
-        case "hike": "figure.hiking"
-        case "restaurant": "fork.knife"
-        default: "mappin"
-        }
+        WanderPlaceCategory.symbolName(for: visiblePlace.place.category)
     }
 }

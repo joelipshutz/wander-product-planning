@@ -1732,3 +1732,53 @@ Completion:
 - App Store Connect build id: `86743675-f9b9-4d5f-b51b-2efb612df992`.
 - Build `0.1 (14)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
 - Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
+
+## 2026-06-08 20:37 PDT - Codex - Map Recenter Zoom And Park Category Fix
+
+Agent: Codex
+Branch: `main`
+Starting commit: `43664d5`
+Starting status: worktree clean before this log entry. Mission Control localhost task create failed because `localhost:4000` was not reachable.
+
+Goal: apply Joe's map feedback after Build 14: make the recenter control blue and bottom-right, recenter with a useful zoom around the user's current coordinate, make unsaved search result pins blue, and fix MapKit parks being categorized as hikes.
+
+Expected files to touch:
+
+- `Wander/Features/Map/MapScreen.swift`
+- `Wander/Features/Add/AddScreen.swift`
+- `Wander/Features/Discover/DiscoverScreen.swift`
+- `Wander/Features/Profile/ProfileScreen.swift`
+- `Wander/Services/MapKitPlaceResolver.swift`
+- `Wander/Services/WanderPlaceCategory.swift`
+- `WanderTests/WanderPlaceCategoryTests.swift`
+- `docs/qa/2026-06-08-build-15-map-recenter-park-checklist.md`
+- `docs/agent-log.md`
+- `docs/setup.md`
+- `project.yml`
+- `Wander.xcodeproj/project.pbxproj`
+
+Decision:
+
+- Preserve MapKit `.park` and `.nationalPark` as Wander category `park`; the previous Map-screen search-only switch incorrectly collapsed parks into `hike`.
+- Centralize MapKit-to-Wander category/icon mapping in `WanderPlaceCategory` so Map search, current-location add, manual add, Discover, and Profile stay aligned.
+- Recenter uses an explicit current CoreLocation lookup and a fixed camera distance instead of `MapCameraPosition.userLocation`, because `userLocation` does not expose a stable app-defined zoom level.
+
+Checkpoint:
+
+- Added `WanderPlaceCategory` helper and park regression tests.
+- Moved recenter control to the lower-right map chrome above the selected sheet.
+- Changed recenter control and unsaved search-result pins to use the existing sky/pin-social blue.
+- Added recenter zoom to a fixed 1.5km camera distance when current location is available, with a zoomed LA fallback.
+
+Completion:
+
+- `xcodegen generate`: passed.
+- First Swift test run caught one stale reference to the removed private category mapper in current-location ranking; replaced it with `WanderPlaceCategory.primary(for:)`.
+- `git diff --check`: passed.
+- Swift tests passed:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Build number bumped to `0.1 (15)` and regenerated `Wander.xcodeproj`.
+- Archived and uploaded `/private/tmp/Wander-0.1-build15.xcarchive`.
+- App Store Connect build id: `2043c8e6-4972-4cbf-9de2-6e71d25af235`.
+- Build `0.1 (15)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
+- Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.

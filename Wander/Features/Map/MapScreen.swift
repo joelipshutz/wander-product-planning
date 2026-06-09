@@ -15,11 +15,13 @@ struct MapScreen: View {
     @State private var selectedFilters: Set<MapFilter> = [.you, .social, .been, .wanna]
     @State private var currentSearchRegion = Self.defaultRegion
     @State private var position: MapCameraPosition = .region(Self.defaultRegion)
+    @State private var isRecenteringOnUser = false
 
     private static let defaultRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 34.075, longitude: -118.285),
         span: MKCoordinateSpan(latitudeDelta: 0.12, longitudeDelta: 0.14)
     )
+    private static let recenterCameraDistance: CLLocationDistance = 1_500
 
     private let initialPlaceQuery: String?
 
@@ -164,18 +166,16 @@ struct MapScreen: View {
                 }
                 .padding(.top, WanderTheme.spacing2)
 
+                Spacer()
+
                 HStack {
                     Spacer()
-                    RecenterButton {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                            position = .userLocation(fallback: .region(Self.defaultRegion))
-                        }
+                    RecenterButton(isLoading: isRecenteringOnUser) {
+                        recenterOnUser()
                     }
                     .padding(.trailing, WanderTheme.spacing3)
-                    .padding(.top, WanderTheme.spacing1)
+                    .padding(.bottom, WanderTheme.spacing2)
                 }
-
-                Spacer()
 
                 if let selectedSearchCandidate {
                     SearchCandidateSheet(candidate: selectedSearchCandidate) {
@@ -439,6 +439,53 @@ struct MapScreen: View {
         )
     }
 
+    private func recenterOnUser() {
+        guard !isRecenteringOnUser else { return }
+
+        isRecenteringOnUser = true
+        Task {
+            let coordinate = await currentUserCoordinate()
+            await MainActor.run {
+                isRecenteringOnUser = false
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                    if let coordinate {
+                        let center = CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude)
+                        position = .camera(
+                            MapCamera(
+                                centerCoordinate: center,
+                                distance: Self.recenterCameraDistance,
+                                heading: 0,
+                                pitch: 0
+                            )
+                        )
+                        currentSearchRegion = MKCoordinateRegion(
+                            center: center,
+                            latitudinalMeters: Self.recenterCameraDistance * 2,
+                            longitudinalMeters: Self.recenterCameraDistance * 2
+                        )
+                    } else {
+                        position = .region(
+                            MKCoordinateRegion(
+                                center: Self.defaultRegion.center,
+                                latitudinalMeters: Self.recenterCameraDistance * 2,
+                                longitudinalMeters: Self.recenterCameraDistance * 2
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private func currentUserCoordinate() async -> (latitude: Double, longitude: Double)? {
+        do {
+            let location = try await CoreLocationProvider().currentLocation()
+            return (location.coordinate.latitude, location.coordinate.longitude)
+        } catch {
+            return nil
+        }
+    }
+
     private func mapKitSourceID(for item: MKMapItem, name: String) -> String {
         let latitude = Int((item.placemark.coordinate.latitude * 100_000).rounded())
         let longitude = Int((item.placemark.coordinate.longitude * 100_000).rounded())
@@ -450,18 +497,7 @@ struct MapScreen: View {
     }
 
     private func category(for item: MKMapItem) -> String {
-        switch item.pointOfInterestCategory {
-        case .cafe, .bakery:
-            "coffee"
-        case .restaurant, .foodMarket:
-            "restaurant"
-        case .brewery, .winery, .nightlife:
-            "bar"
-        case .park, .nationalPark:
-            "hike"
-        default:
-            "place"
-        }
+        WanderPlaceCategory.primary(for: item.pointOfInterestCategory) ?? "place"
     }
 
     private func address(for placemark: MKPlacemark) -> String? {
@@ -577,19 +613,21 @@ private struct MapSearchMessage: View {
 }
 
 private struct RecenterButton: View {
+    let isLoading: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: "location.fill")
+            Image(systemName: isLoading ? "location.circle.fill" : "location.fill")
                 .font(.system(size: 16, weight: .black))
-                .frame(width: 42, height: 42)
-                .background(WanderTheme.surfaceRaised.color)
-                .foregroundStyle(WanderTheme.terracotta.color)
+                .frame(width: 44, height: 44)
+                .background(WanderTheme.skyTint.color)
+                .foregroundStyle(WanderTheme.pinSocial.color)
                 .clipShape(Circle())
-                .overlay(Circle().stroke(WanderTheme.borderHairline.color))
-                .shadow(color: WanderTheme.textInk.color.opacity(0.12), radius: 10, x: 0, y: 5)
+                .overlay(Circle().stroke(WanderTheme.pinSocial.color, lineWidth: 2))
+                .shadow(color: WanderTheme.textInk.color.opacity(0.14), radius: 10, x: 0, y: 5)
         }
+        .disabled(isLoading)
         .accessibilityLabel("Center on my location")
     }
 }
@@ -633,8 +671,8 @@ private struct SearchResultMarker: View {
         Image(systemName: symbol)
             .font(.system(size: isSelected ? 17 : 15, weight: .black))
             .frame(width: isSelected ? 42 : 38, height: isSelected ? 42 : 38)
-            .background(WanderTheme.sunTint.color.opacity(0.96))
-            .foregroundStyle(WanderTheme.textInk.color)
+            .background(WanderTheme.pinSocial.color)
+            .foregroundStyle(WanderTheme.surfaceRaised.color)
             .clipShape(Circle())
             .overlay(
                 Circle()
@@ -642,7 +680,7 @@ private struct SearchResultMarker: View {
             )
             .overlay(
                 Circle()
-                    .stroke(WanderTheme.textInk.color.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [4, 4]))
+                    .stroke(WanderTheme.pinSocial.color, style: StrokeStyle(lineWidth: 2, dash: [4, 4]))
                     .padding(-5)
             )
             .shadow(color: WanderTheme.textInk.color.opacity(0.18), radius: isSelected ? 9 : 6, x: 0, y: 2)
@@ -652,13 +690,7 @@ private struct SearchResultMarker: View {
     }
 
     private var symbol: String {
-        switch candidate.category {
-        case "coffee": "cup.and.saucer.fill"
-        case "hike": "figure.hiking"
-        case "restaurant": "fork.knife"
-        case "bar": "wineglass.fill"
-        default: "mappin"
-        }
+        WanderPlaceCategory.symbolName(for: candidate.category)
     }
 }
 
@@ -710,13 +742,7 @@ private struct WanderMapPin: View {
     }
 
     private var symbol: String {
-        switch visiblePlace.place.category {
-        case "coffee": "cup.and.saucer.fill"
-        case "hike": "figure.hiking"
-        case "restaurant": "fork.knife"
-        case "bar": "wineglass.fill"
-        default: "mappin"
-        }
+        WanderPlaceCategory.symbolName(for: visiblePlace.place.category)
     }
 }
 
@@ -1094,13 +1120,7 @@ private struct CategoryThumb: View {
     }
 
     private var imageName: String {
-        switch category {
-        case "coffee": "cup.and.saucer.fill"
-        case "hike": "figure.hiking"
-        case "restaurant": "fork.knife"
-        case "bar": "wineglass.fill"
-        default: "mappin"
-        }
+        WanderPlaceCategory.symbolName(for: category)
     }
 }
 

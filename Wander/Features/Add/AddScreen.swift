@@ -1286,12 +1286,6 @@ private struct CategoryIcon: View {
     }
 
     private var imageName: String {
-        switch category {
-        case "coffee": "cup.and.saucer.fill"
-        case "hike": "figure.hiking"
-        case "restaurant": "fork.knife"
-        case "bar": "wineglass.fill"
-        default: "mappin"
-        }
+        WanderPlaceCategory.symbolName(for: category)
     }
 }

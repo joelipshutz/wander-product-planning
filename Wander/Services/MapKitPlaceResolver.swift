@@ -178,7 +178,7 @@ final class MapKitPlaceResolver: PlaceCandidateResolving {
             score += 500
         }
 
-        if primaryWanderCategory(for: item.pointOfInterestCategory) != nil {
+        if WanderPlaceCategory.primary(for: item.pointOfInterestCategory) != nil {
             score += 120
         }
 
@@ -218,23 +218,8 @@ final class MapKitPlaceResolver: PlaceCandidateResolving {
             return fallback
         }
 
-        return primaryWanderCategory(for: pointCategory)
+        return WanderPlaceCategory.primary(for: pointCategory)
             ?? (fallback?.isEmpty == false ? fallback ?? "place" : "place")
-    }
-
-    private func primaryWanderCategory(for pointCategory: MKPointOfInterestCategory?) -> String? {
-        switch pointCategory {
-        case .cafe, .bakery:
-            "coffee"
-        case .restaurant, .foodMarket:
-            "restaurant"
-        case .brewery, .winery, .nightlife:
-            "bar"
-        case .park, .nationalPark:
-            "park"
-        default:
-            nil
-        }
     }
 
     private func confidence(for item: MKMapItem, fallbackCategory: String?, origin: CLLocation?) -> Double {
