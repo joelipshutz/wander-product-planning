@@ -4,6 +4,17 @@ Date: 2026-05-29
 
 ## P1
 
+- Build 17 TestFlight feedback batch.
+  - Why: Joe/friend testing found alpha-blocking issues in persistence, follow visibility, save completion, and map add/edit semantics.
+  - Persistence: replace in-memory preview-only app state with real local persistence/hydration so saved places survive killing/relaunching the app.
+  - Following/social visibility: verify follow/unfollow RPC success, relationship refresh, remote visible places refresh, and social rows appearing for followed users.
+  - Add sync: debug `sync failed` after Add-tab save when the place still appears locally; local-first behavior is correct, but healthy signed-in remote save should not fail silently.
+  - Map typeahead: selecting a typeahead result should dismiss the keyboard.
+  - Map plus flow: plus on an unsaved/search/social place should route into a lightweight Add confirmation/details flow with status, visibility, category questions, and note, rather than direct-save with no details.
+  - Edit saved place: pencil/edit should open a real saved-place edit/details flow, including marking `wanna` as `been`, visibility, note, and answer edits.
+  - Save completion: replace the Add full-screen saved state with a lightweight celebratory confirmation/toast, haptic, "place saved", and "add another" option before returning to the standard Add tab.
+  - Map user location: live current-location dot should read as native Apple Maps blue; keep separate from Wander saved-place pin colors unless product decides own saved pins should also change.
+
 - Integrate onboarding spec before eng plan review. Done 2026-05-31.
   - Why: onboarding decides how privacy defaults, first place capture, and first follow are introduced.
   - Result: main spec now references `research/screensdesign/2026-05-30-social-map-onboarding/` and adopts map-first guest onboarding with auth at save intent.
@@ -52,6 +63,10 @@ Date: 2026-05-29
 - Decide whether share extension ships in v0.1. Done 2026-06-01.
   - Why: share-sheet capture may be a major activation path, but can slow first implementation.
   - Decision: defer. Track as a later TODO after in-app add, map, and social loop work.
+
+- Build richer share/deep-link surface later.
+  - Why: current share uses a generic Google Maps/search URL only. Product direction is that shared Wander places should open in the app when installed, otherwise open a lightweight web page that shows the place/social context and prompts download.
+  - Scope later: universal links, shareable place/profile web page, app-open fallback, install CTA, privacy-aware access rules, and no leakage of private/friends-only content.
 
 - Decide whether native Contacts integration ships in v0.1. Done 2026-06-01.
   - Why: contacts are a recommended people-finding affordance, but native Contacts adds permission/privacy and App Store disclosure work.

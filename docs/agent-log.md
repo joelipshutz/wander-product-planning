@@ -1870,3 +1870,21 @@ Completion:
 - Build `0.1 (17)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external TestFlight review is `APPROVED`.
 - Public TestFlight link remains `https://testflight.apple.com/join/knEhRa6t`.
 - Remaining follow-up: remote visible-place attributes still need hydration into the expanded profile; local saves and fixture-backed social saves show their answer chips now.
+
+## 2026-06-09 12:02 PDT - Codex - Build 17 Feedback Triage
+
+Agent: Codex
+Branch: `main`
+Starting commit: `d35b0fc`
+Starting status: worktree clean.
+
+Goal: triage Joe/friend Build 17 feedback before implementation: user location dot color, typeahead keyboard behavior, plus/edit flow semantics, sync failed after Add, follow graph visibility, in-memory persistence, celebratory save completion, and future share/deep-link/web landing behavior.
+
+Findings:
+
+- Persistence loss after app kill is expected in the current implementation but not acceptable for alpha: `WanderApp` still injects `WanderModelContainer.preview`, whose `ModelConfiguration` is `isStoredInMemoryOnly: true`, and `WanderStore` is currently array-backed rather than hydrated from SwiftData on launch.
+- Follow/unfollow RPCs exist, but relationship reads/followers/following joined profile reads are still partly local or not implemented. Following can appear broken because local follow state is not reliably rehydrated, remote relationship metadata is not fully returned to the UI, and remote visible places may not refresh with relationship context after follow.
+- Add-tab save can show `sync failed` while the place still appears on the map because the app performs local-first save, then marks remote sync failed if `save_own_place` rejects/fails. That is a bug to debug if the network/auth path is healthy.
+- Typeahead selection does not explicitly dismiss keyboard today.
+- Map plus on unsaved/social places saves directly as `wanna` with default visibility; it does not currently route through the Add confirmation/details/questions flow.
+- The edit pencil mostly marks `wanna` as `been` or shows "editing saved places is coming next"; full edit/details is not implemented.
