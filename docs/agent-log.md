@@ -2493,3 +2493,36 @@ Completion:
 - Early Slack note that was posted before archive/upload: https://recmegroup.slack.com/archives/C0BAA7DG2AC/p1781076415347879
 - Correct live TestFlight Slack note posted after archive/upload/approval: https://recmegroup.slack.com/archives/C0BAA7DG2AC/p1781077613871259
 - Updated `docs/setup.md` to include build 24 in the current TestFlight status.
+
+## 2026-06-10 00:37 PDT - Codex - Current Location Dot Blue
+
+Agent: Codex
+Branch: `codex-current-location-blue`
+Starting commit: `d9d1a02`
+Starting status: clean worktree in `/private/tmp/recme-current-location-blue`. Branch uses a hyphen instead of `codex/<task>` because the sandbox blocked creating nested refs under `.git/refs/heads/codex/`.
+
+Goal: implement Joe's clarified TestFlight feedback that the live current-location indicator on the map should be blue like Apple Maps; do not change saved-place ownership pin colors.
+
+Expected files to touch:
+
+- `Wander/Features/Map/MapScreen.swift`
+- `docs/agent-log.md`
+
+Initial notes:
+
+- Joe clarified that "my pin" means the live current-location indicator, not saved places.
+- Current-user saved place markers should remain terracotta; only the map's own current-location indicator should move to blue.
+
+Completion:
+
+- Scoped a blue tint to the `Map` view so the live current-location indicator uses Apple-style blue while custom saved-place pins keep their existing terracotta/social colors.
+- Did not change saved-place ownership colors or other map markers.
+- Commit: `1fcc82d`
+- PR: https://github.com/joelipshutz/wander/pull/2
+- Tests: `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Result: app/test build succeeded and the suite ran, but the run finished red on one pre-existing failing test case with three assertions in `BoundaryImportTests.testClerkAndSupabaseImportsStayBehindBoundaries()`:
+  - `Unexpected Clerk import in /privateWander/Features/Auth/AuthGateSheet.swift`
+  - `Unexpected Clerk import in /privateWander/Services/Auth/ClerkAuthService.swift`
+  - `Unexpected Supabase import in /privateWander/Services/Remote/WanderSupabaseClient.swift`
+- No screenshot pass captured in this run; this fix is a one-line tint override targeted at the current-location indicator only.
+- Next step: review PR #2, verify the live blue location dot on device/simulator, and decide separately whether to clean up the pre-existing boundary-import test failures.
