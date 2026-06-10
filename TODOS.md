@@ -4,6 +4,12 @@ Date: 2026-05-29
 
 ## P1
 
+- Build 23 Map tap hit-testing regression.
+  - Report: Ryan saw tap-to-select and tap-away get flaky when zoomed out; sometimes selecting or unselecting requires two taps.
+  - Likely cause: Build 23 tap-away logic uses a fixed geographic radius (`120m`) to protect marker taps, which is not stable across zoom levels.
+  - Recommended fix: replace meter-based marker proximity with screen-space hit testing using MapKit/`MapReader` projection and a visual target radius around the marker.
+  - Review need: scoped engineering review only; no design review unless the interaction model changes.
+
 - Build 17 TestFlight feedback batch.
   - Why: Joe/friend testing found alpha-blocking issues in persistence, follow visibility, save completion, and map add/edit semantics.
   - Persistence: replace in-memory preview-only app state with real local persistence/hydration so saved places survive killing/relaunching the app.

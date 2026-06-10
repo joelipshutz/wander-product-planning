@@ -2250,6 +2250,22 @@ Completion:
 - Slack Build 23 release/testing note posted to `#testflight-feedback`: `https://recmegroup.slack.com/archives/C0BAA7DG2AC/p1781049362472419`.
 - No app tests run; this was documentation plus Slack communication only.
 
+Follow-up:
+
+- Joe asked for recurring polling of `#testflight-feedback` for bugs/issues, with `:airplane_departure:` when triage starts and `:white_check_mark:` when done, plus scoped `plan-eng-review` / `plan-design-review` in a standalone/new-chat context when necessary.
+- Attempted to create an hourly Codex automation, but the app returned `No handler registered for tool: automation_update`; recurring job was not saved from this session.
+- Updated `AGENTS.md` with the full manual/automation protocol so future agents can execute it and create the automation once the handler is available.
+
+Immediate poll:
+
+- Found Ryan's Build 23 feedback in `#testflight-feedback`: `https://recmegroup.slack.com/archives/C0BAA7DG2AC/p1781051088761659`.
+- Report: "The tap in and tap away is a little buggy. When I zoom out, sometimes i have to tap twice to select or unselect the pin"
+- Added `:airplane_departure:` reaction before triage.
+- Initial classification: engineering bug/regression in MapKit tap hit-testing/selection clearing, not a design review issue unless the fix changes the interaction model.
+- Triage recommendation posted in-thread: `https://recmegroup.slack.com/archives/C0BAA7DG2AC/p1781074371972679?thread_ts=1781051088.761659&cid=C0BAA7DG2AC`.
+- Added `:white_check_mark:` reaction after triage.
+- Added the issue to `TODOS.md` as a P1 Build 23 Map tap hit-testing regression.
+
 ## 2026-06-09 17:08 PDT - Codex - Collaboration PR Workflow
 
 Agent: Codex
