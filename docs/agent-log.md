@@ -2598,3 +2598,32 @@ Completion:
 - Posted the required tester-facing Slack note to `#testflight-feedback` marking build `25` as uploaded and processing, with the public link and tester checklist.
 - Updated `docs/setup.md` to include build `0.1 (25)` in the current TestFlight status.
 - Next step: once App Store Connect indexes build `25`, attach it to `Wander Alpha`, confirm export compliance/external review state, and then update the log with the final live status if needed.
+
+## 2026-06-10 02:44 PDT - Codex Automation - PR Sweep And Build 25 TestFlight Finalize
+
+Agent: Codex automation `rec-me-pr-review-merge-and-testflight-release`
+Branch: detached `origin/main` at `9c33e22`
+Starting status: clean worktree.
+
+Goal: hourly sweep for ready PRs targeting `main`; if no PRs need work, finish any pending TestFlight release state from the prior run.
+
+Outcome:
+
+- Ran `git fetch origin`; local detached `HEAD` and `origin/main` were both `9c33e22`.
+- Queried open GitHub PRs targeting `main`; result was empty (`[]`), so there were no eligible PRs to review, comment on, merge, or package into a new build.
+- Confirmed `project.yml` remains at marketing version `0.1` and build `25`.
+- Ran `node scripts/testflight-release.mjs --build-number 25 --timeout-attempts 3 --poll-seconds 10`.
+- Build `0.1 (25)` is now visible in App Store Connect as `VALID`.
+- Set export compliance to `usesNonExemptEncryption=false`.
+- Attached build `25` to `Wander Alpha`.
+- Submitted build `25` for external TestFlight review; returned state was `APPROVED`.
+- Posted the required approved/live tester-facing Slack note to `#testflight-feedback`: https://recmegroup.slack.com/archives/C0BAA7DG2AC/p1781084677677189
+
+Tests:
+
+- No app build/test run in this sweep because no PR was merged and no source/build-number changes were made.
+- The App Store Connect/TestFlight helper completed successfully after the initial sandboxed network fetch failed and was rerun with approved network access.
+
+Known issues:
+
+- The pre-existing boundary-import unit test failure from the build 25 upload entry remains unrelated to this TestFlight finalization.
