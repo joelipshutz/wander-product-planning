@@ -780,6 +780,64 @@ final class WanderStoreTests: XCTestCase {
         XCTAssertEqual(store.attributes(for: "up_remote_maru").map(\.questionKey), ["rating_signal"])
     }
 
+    func testRemoteOwnPlaceSaveRefreshesVisiblePlaceCache() async {
+        let store = WanderStore(fixtures: WanderFixtures.empty())
+        store.apply(authState: .signedIn(AuthSession(userID: "user_live", displayName: "Joe", handle: "joe")))
+        let userPlaceRepository = FakeUserPlaceRepository(result: SaveResult(userPlaceID: "up_remote_maru", syncState: .synced, placeID: "place_remote_maru"))
+        let remotePlace = VisiblePlace(
+            id: "up_remote_maru",
+            place: LocalPlace(
+                localID: "place_remote_maru",
+                serverID: "place_remote_maru",
+                canonicalName: "Maru Coffee",
+                category: "coffee",
+                latitude: 34.045,
+                longitude: -118.235,
+                syncState: .synced
+            ),
+            userPlace: LocalUserPlace(
+                localID: "up_remote_maru",
+                serverID: "up_remote_maru",
+                userID: "user_live",
+                placeID: "place_remote_maru",
+                status: .been,
+                visibility: .followers,
+                note: "window table",
+                sourceType: "manual",
+                syncState: .synced
+            ),
+            owner: LocalProfile(
+                localID: "user_live",
+                serverID: "user_live",
+                handle: "joe",
+                displayName: "Joe",
+                syncState: .synced
+            )
+        )
+        let placeRepository = FakePlaceRepository(places: [remotePlace])
+        let backend = WanderBackend(placeRepository: placeRepository, userPlaceRepository: userPlaceRepository)
+
+        _ = await store.saveCandidate(
+            PlaceCandidate(
+                id: "mk_maru",
+                name: "Maru Coffee",
+                category: "coffee",
+                latitude: 34.045,
+                longitude: -118.235,
+                confidence: 0.92
+            ),
+            status: .been,
+            visibility: .followers,
+            note: "window table",
+            sourceType: .manual,
+            backend: backend
+        )
+
+        XCTAssertEqual(placeRepository.viewports.count, 1)
+        XCTAssertEqual(store.visiblePlaces().map { $0.place.canonicalName }, ["Maru Coffee"])
+        XCTAssertNil(store.lastRemoteError)
+    }
+
     func testRemoteOwnPlaceSaveFailureLeavesFailedLocalRows() async {
         let store = WanderStore(fixtures: WanderFixtures.empty())
         store.apply(authState: .signedIn(AuthSession(userID: "user_live", displayName: "Joe", handle: "joe")))
