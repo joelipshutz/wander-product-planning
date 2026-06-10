@@ -2384,3 +2384,10 @@ Checkpoint:
 - Added tests for map hit-testing, extraction candidate gating, and remote visible-place refresh after signed-in saves.
 - Ran `xcodegen generate` to include new test files in `Wander.xcodeproj/project.pbxproj`.
 - Tests: `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO` passed, 86 tests, 0 failures. Initial sandboxed run failed due CoreSimulator/cache sandbox access; elevated rerun passed.
+
+Completion:
+
+- Implementation commit: `6581581`.
+- PR: https://github.com/joelipshutz/wander/pull/1
+- Branch is ready for review/merge. No TestFlight build number was bumped yet; do that on/after merge when this is being packaged into the next uploaded build.
+- Known follow-ups: realtime social refresh is still later, richer Instagram/TikTok/photo extraction providers are still later, and the original Add sync-failed report still needs signed-in device QA against Supabase.
