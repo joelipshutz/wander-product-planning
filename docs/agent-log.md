@@ -2249,3 +2249,24 @@ Completion:
 - Updated `AGENTS.md` to name Rec.me as the product name, keep Wander as the former/repo name, and require every future TestFlight build to post release notes to `#testflight-feedback`.
 - Slack Build 23 release/testing note posted to `#testflight-feedback`: `https://recmegroup.slack.com/archives/C0BAA7DG2AC/p1781049362472419`.
 - No app tests run; this was documentation plus Slack communication only.
+
+## 2026-06-09 17:08 PDT - Codex - Collaboration PR Workflow
+
+Agent: Codex
+Branch: `main`
+Starting commit: `c7a6c75`
+Starting status: worktree clean.
+
+Goal: update repo agent instructions so Joe, Ryan, and agents coordinate through short-lived branches, worktrees when useful, and PR handoffs.
+
+Expected files to touch:
+
+- `AGENTS.md`
+- `docs/agent-log.md`
+
+Completion:
+
+- Added `Collaboration And Git Workflow` guidance to `AGENTS.md`.
+- Documented branch prefixes for Joe, Ryan, Codex, Claude, and OpenClaw.
+- Added explicit instruction that Ryan-owned feature/fix/change sessions should push `ryan/<short-task>` branches and open or update a draft/ready PR before stopping, unless Ryan explicitly says not to push or open a PR.
+- No app tests run; this was documentation/process only.

@@ -36,6 +36,44 @@ At handoff or completion:
 
 This log is coordination infrastructure. Treat it as part of the deliverable.
 
+## Collaboration And Git Workflow
+
+`main` is the integration branch. Do not do non-trivial feature, fix, or release work directly on `main`; use a short-lived branch and open a PR back to `main`.
+
+Branch prefixes:
+
+- `joe/<short-task>` for Joe
+- `ryan/<short-task>` for Ryan
+- `codex/<short-task>` for Codex
+- `claude/<short-task>` for Claude
+- `openclaw/<short-task>` for OpenClaw
+
+Prefer a separate worktree for agent implementation when Joe, Ryan, or another agent may also be working locally:
+
+```bash
+git worktree add ../Wander-worktrees/<short-task> -b codex/<short-task> origin/main
+```
+
+Before editing, agents must run `git fetch origin`, check `git status --short --branch`, and read the latest `docs/agent-log.md` entries. If there are uncommitted or untracked files, assume they belong to Joe, Ryan, or another agent. Do not edit overlapping files without calling out the overlap first.
+
+Avoid parallel edits to high-conflict files unless explicitly coordinated:
+
+- `Wander.xcodeproj/project.pbxproj`
+- `project.yml`
+- `Wander/Features/Map/MapScreen.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- `docs/agent-log.md`
+- Supabase migrations
+
+For non-trivial feature, fix, refactor, release, or docs/process changes, agents must end the session by either:
+
+- Opening or updating a ready PR if the work is complete.
+- Opening or updating a draft PR if the work is incomplete.
+
+This applies especially to Ryan-owned work on `ryan/<short-task>` branches. Ryan's agent should push its branch and open or update the PR before stopping without waiting for a separate human prompt, unless Ryan explicitly says not to push or not to open a PR.
+
+Before merging to `main`, update the branch from latest `origin/main`, resolve conflicts, inspect the PR diff for unrelated files or generated junk, run the relevant build/tests, and update `docs/agent-log.md` with outcome, tests, known issues, and next steps. Prefer squash merging PRs into `main`, then delete the branch.
+
 ## Tech Stack
 
 - Native iOS, iPhone-first.
