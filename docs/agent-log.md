@@ -2305,3 +2305,23 @@ Completion:
 
 - Updated `AGENTS.md` triage rules: use `:airplane_departure:` and `:white_check_mark:` reactions only, do not post Slack triage replies by default, and surface analysis/questions/recommendations in Codex.
 - No app tests run; this was documentation/process only.
+
+## 2026-06-10 00:00 PDT - Codex - App Store Build Increment Rule
+
+Agent: Codex
+Branch: `main`
+Starting commit: `a199184`
+Starting status: worktree clean.
+
+Goal: make the App Store/TestFlight build-number bump rule durable for all agents working in rec.me.
+
+Expected files to touch:
+
+- `AGENTS.md`
+- `docs/agent-log.md`
+
+Completion:
+
+- Added `AGENTS.md` instructions requiring any `main` update intended for App Store Connect/TestFlight to increment `CURRENT_PROJECT_VERSION` in `project.yml`, run `xcodegen generate`, commit `project.yml` plus `Wander.xcodeproj/project.pbxproj`, and log the build number/upload status.
+- Clarified that docs-only/process-only commits do not need a build bump unless they are being packaged into a new TestFlight/App Store build.
+- No app tests run; this was documentation/process only.

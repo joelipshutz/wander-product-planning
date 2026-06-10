@@ -172,6 +172,22 @@ Core rules:
   - local store follow/block/search/save/draft behavior
 - For visual work, also capture simulator screenshots across at least the current iPhone target and one smaller phone target before calling the UI ready.
 
+## App Store Build Numbers
+
+Any `main` update that is intended to ship to App Store Connect or TestFlight must increment the App Store build number before upload. Do not reuse a build number for the same marketing version; App Store Connect requires monotonically increasing build numbers.
+
+Required release workflow:
+
+- Increment `CURRENT_PROJECT_VERSION` in `project.yml`.
+- Run `xcodegen generate` so `Wander.xcodeproj/project.pbxproj` reflects the new build number.
+- Commit both `project.yml` and `Wander.xcodeproj/project.pbxproj`.
+- Run the relevant `xcodebuild` build/test command after regenerating the project.
+- Upload the archive with that incremented build number.
+- Update `docs/agent-log.md` with the build number, commit hash, tests run, upload status, and known issues.
+- If the build is attached to TestFlight or confirmed available, follow the Slack release-note rules below.
+
+Docs-only or process-only commits to `main` do not need a build-number bump unless they are being packaged into a new TestFlight/App Store build. If an agent intentionally skips the bump for a `main` update, note that in `docs/agent-log.md`.
+
 ## TestFlight Release Notes
 
 Whenever an agent uploads a new TestFlight build, attaches it to the public group, or confirms it is available for testing, the agent must also post a short release note to the rec.me Slack feedback channel:
