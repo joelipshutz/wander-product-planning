@@ -2325,3 +2325,23 @@ Completion:
 - Added `AGENTS.md` instructions requiring any `main` update intended for App Store Connect/TestFlight to increment `CURRENT_PROJECT_VERSION` in `project.yml`, run `xcodegen generate`, commit `project.yml` plus `Wander.xcodeproj/project.pbxproj`, and log the build number/upload status.
 - Clarified that docs-only/process-only commits do not need a build bump unless they are being packaged into a new TestFlight/App Store build.
 - No app tests run; this was documentation/process only.
+
+## 2026-06-10 00:03 PDT - Codex - Remove Manual Feedback Polling
+
+Agent: Codex
+Branch: `main`
+Starting commit: `b4fc05b`
+Starting status: worktree clean.
+
+Goal: remove manual Slack feedback polling instructions from `AGENTS.md`; TestFlight feedback triage should be handled by a recurring automation instead of every agent polling the channel.
+
+Expected files to touch:
+
+- `AGENTS.md`
+- `docs/agent-log.md`
+
+Completion:
+
+- Removed the `TestFlight Feedback Triage` section from `AGENTS.md`.
+- Kept the TestFlight release-note rule for actual build uploads/availability confirmations.
+- No app tests run; this was documentation/process only.

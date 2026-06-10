@@ -206,27 +206,6 @@ The Slack note must include:
 
 For broad announcements only, `#all-recme` (`C0B9FU1QNG2`) exists, but TestFlight feedback prompts belong in `#testflight-feedback`.
 
-## TestFlight Feedback Triage
-
-Agents should poll `#testflight-feedback` for tester bugs/issues when starting rec.me work, after shipping a TestFlight build, and during any active QA window. When recurring Codex automations are available, set up an hourly standalone poller for this channel.
-
-Polling rules:
-
-- Read `#testflight-feedback` (`C0BAA7DG2AC`) and treat unhandled tester bug reports, regressions, confusing UX reports, and reproducible screenshots as actionable.
-- Before triage starts on an actionable Slack message, add the `:airplane_departure:` reaction.
-- When triage is complete, add the `:white_check_mark:` reaction.
-- Use message reactions as state where possible; do not re-triage messages already completed with `:white_check_mark:`.
-- Do not reply in Slack during triage unless Joe explicitly asks. Outside the original TestFlight release-note post, Slack interaction should be reactions only.
-- Do all triage analysis in Codex, preferably in a fresh thread/standalone run. If more tester detail is needed, surface the exact missing detail to Joe in Codex: account/email, build number, device, screenshots, expected behavior, actual behavior, and repro steps.
-
-Planning-review rules:
-
-- Run `plan-eng-review` for issues that touch architecture, backend, data model, sync, extraction, auth, privacy, visibility, persistence, or risk of regressions.
-- Run `plan-design-review` for issues that touch visual hierarchy, UX flow, interaction model, copy, affordance clarity, accessibility, or screen composition.
-- Run both when the issue is cross-cutting, such as a social visibility bug that also changes place-card UX.
-- Treat these as standalone/new-chat reviews when possible. Keep the review scoped to the Slack issue and surface recommended answers/options for any questions.
-- Do not implement, push, upload a new build, or post analysis back to Slack from triage unless Joe explicitly asks. Default output is a concise Codex recommendation: severity, likely cause, suggested fix path, test plan, and open questions with recommended answers.
-
 ## Useful References
 
 - Product spec: `docs/specs/wander-ios-product-spec.md`
