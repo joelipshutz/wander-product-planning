@@ -2286,3 +2286,22 @@ Completion:
 - Documented branch prefixes for Joe, Ryan, Codex, Claude, and OpenClaw.
 - Added explicit instruction that Ryan-owned feature/fix/change sessions should push `ryan/<short-task>` branches and open or update a draft/ready PR before stopping, unless Ryan explicitly says not to push or open a PR.
 - No app tests run; this was documentation/process only.
+
+## 2026-06-09 17:24 PDT - Codex - Slack Triage Reply Correction
+
+Agent: Codex
+Branch: `main`
+Starting commit: `7993c13`
+Starting status: worktree clean.
+
+Goal: correct the TestFlight feedback triage protocol so agents do not reply in Slack during triage; Slack should only get reactions unless Joe explicitly asks otherwise. Triage analysis and recommendations should happen in Codex/new standalone threads.
+
+Expected files to touch:
+
+- `AGENTS.md`
+- `docs/agent-log.md`
+
+Completion:
+
+- Updated `AGENTS.md` triage rules: use `:airplane_departure:` and `:white_check_mark:` reactions only, do not post Slack triage replies by default, and surface analysis/questions/recommendations in Codex.
+- No app tests run; this was documentation/process only.

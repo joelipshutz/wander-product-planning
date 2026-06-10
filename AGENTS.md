@@ -200,7 +200,8 @@ Polling rules:
 - Before triage starts on an actionable Slack message, add the `:airplane_departure:` reaction.
 - When triage is complete, add the `:white_check_mark:` reaction.
 - Use message reactions as state where possible; do not re-triage messages already completed with `:white_check_mark:`.
-- If more tester detail is needed, reply in-thread with the exact missing detail: account/email, build number, device, screenshots, expected behavior, actual behavior, and repro steps.
+- Do not reply in Slack during triage unless Joe explicitly asks. Outside the original TestFlight release-note post, Slack interaction should be reactions only.
+- Do all triage analysis in Codex, preferably in a fresh thread/standalone run. If more tester detail is needed, surface the exact missing detail to Joe in Codex: account/email, build number, device, screenshots, expected behavior, actual behavior, and repro steps.
 
 Planning-review rules:
 
@@ -208,7 +209,7 @@ Planning-review rules:
 - Run `plan-design-review` for issues that touch visual hierarchy, UX flow, interaction model, copy, affordance clarity, accessibility, or screen composition.
 - Run both when the issue is cross-cutting, such as a social visibility bug that also changes place-card UX.
 - Treat these as standalone/new-chat reviews when possible. Keep the review scoped to the Slack issue and surface recommended answers/options for any questions.
-- Do not implement, push, or upload a new build from triage unless Joe explicitly asks. Default output is a concise recommendation: severity, likely cause, suggested fix path, test plan, and open questions with recommended answers.
+- Do not implement, push, upload a new build, or post analysis back to Slack from triage unless Joe explicitly asks. Default output is a concise Codex recommendation: severity, likely cause, suggested fix path, test plan, and open questions with recommended answers.
 
 ## Useful References
 
