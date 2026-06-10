@@ -2526,3 +2526,36 @@ Completion:
   - `Unexpected Supabase import in /privateWander/Services/Remote/WanderSupabaseClient.swift`
 - No screenshot pass captured in this run; this fix is a one-line tint override targeted at the current-location indicator only.
 - Next step: review PR #2, verify the live blue location dot on device/simulator, and decide separately whether to clean up the pre-existing boundary-import test failures.
+
+## 2026-06-10 00:49 PDT - Codex - Promote TestFlight Helper Script
+
+Agent: Codex
+Branch: `codex/testflight-helper-script`
+Starting commit: `5a930bc`
+Starting status: worktree clean after branch creation.
+
+Goal: turn the temporary App Store Connect/TestFlight helper into a tracked repo script and point `AGENTS.md` at it so agents stop hand-rolling the build attach/export-compliance/review steps.
+
+Expected files to touch:
+
+- `scripts/testflight-release.mjs`
+- `AGENTS.md`
+- `docs/setup.md`
+- `docs/agent-log.md`
+
+Initial notes:
+
+- The current release helper lives only at `/private/tmp/wander-build23-testflight.mjs` and hardcodes build `23`.
+- The tracked script should read the current build number from `project.yml` by default, accept overrides for build/app/group, avoid committing secrets, and read App Store Connect credentials from environment or the local private env file.
+
+Completion:
+
+- Added tracked helper `scripts/testflight-release.mjs`.
+- The helper reads `CURRENT_PROJECT_VERSION` from `project.yml` by default, supports `--build-number`, `--dry-run`, `--timeout-attempts`, and `--poll-seconds`, loads App Store Connect credentials from environment or `/Users/joelipshutz/.openclaw/workspace/.env.keys`, waits for the uploaded build to become `VALID`, sets export compliance, attaches to `Wander Alpha`, submits external beta review, and prints a JSON summary.
+- Updated `AGENTS.md` release workflow to require running `node scripts/testflight-release.mjs` after `xcodebuild -exportArchive` upload succeeds.
+- Updated `docs/setup.md` with the helper command.
+- Verification:
+  - `node --check scripts/testflight-release.mjs`
+  - `node scripts/testflight-release.mjs --dry-run`
+- Implementation commit: `9305482`.
+- PR: https://github.com/joelipshutz/wander/pull/3

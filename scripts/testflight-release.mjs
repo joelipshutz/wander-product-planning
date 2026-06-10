@@ -1,0 +1,430 @@
+#!/usr/bin/env node
+
+import crypto from "node:crypto";
+import fs from "node:fs";
+
+const DEFAULTS = {
+  apiBase: "https://api.appstoreconnect.apple.com/v1",
+  appId: "6776850787",
+  bundleId: "com.grayline.wander",
+  envPath: "/Users/joelipshutz/.openclaw/workspace/.env.keys",
+  groupName: "Wander Alpha",
+  pollSeconds: 30,
+  projectPath: "project.yml",
+  publicLink: "https://testflight.apple.com/join/knEhRa6t",
+  timeoutAttempts: 30,
+};
+
+function printUsage() {
+  console.log(`Usage:
+  node scripts/testflight-release.mjs [options]
+
+Options:
+  --build-number <n>      Build number to process. Defaults to CURRENT_PROJECT_VERSION in project.yml.
+  --project <path>        Project YAML path. Default: project.yml.
+  --app-id <id>           App Store Connect app id. Default: ${DEFAULTS.appId}.
+  --group <name>          TestFlight beta group name. Default: ${DEFAULTS.groupName}.
+  --env <path>            Local env file with ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_PATH.
+                           Default: ${DEFAULTS.envPath}
+  --timeout-attempts <n>  Poll attempts before failing. Default: ${DEFAULTS.timeoutAttempts}.
+  --poll-seconds <n>      Seconds between App Store Connect polls. Default: ${DEFAULTS.pollSeconds}.
+  --dry-run               Print resolved config without calling App Store Connect.
+  --help                  Show this help.
+
+This script assumes xcodebuild archive/export upload already succeeded. It waits for the
+uploaded build to become VALID, sets export compliance to usesNonExemptEncryption=false,
+attaches the build to the public TestFlight group, and submits external beta review.`);
+}
+
+function parseArgs(argv) {
+  const options = {
+    appId: DEFAULTS.appId,
+    buildNumber: null,
+    dryRun: false,
+    envPath: DEFAULTS.envPath,
+    groupName: DEFAULTS.groupName,
+    pollSeconds: DEFAULTS.pollSeconds,
+    projectPath: DEFAULTS.projectPath,
+    publicLink: DEFAULTS.publicLink,
+    timeoutAttempts: DEFAULTS.timeoutAttempts,
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    const next = () => {
+      index += 1;
+      if (index >= argv.length) throw new Error(`Missing value after ${arg}`);
+      return argv[index];
+    };
+
+    switch (arg) {
+      case "--app-id":
+        options.appId = next();
+        break;
+      case "--build-number":
+        options.buildNumber = next();
+        break;
+      case "--dry-run":
+        options.dryRun = true;
+        break;
+      case "--env":
+        options.envPath = next();
+        break;
+      case "--group":
+        options.groupName = next();
+        break;
+      case "--help":
+      case "-h":
+        options.help = true;
+        break;
+      case "--poll-seconds":
+        options.pollSeconds = Number.parseInt(next(), 10);
+        break;
+      case "--project":
+        options.projectPath = next();
+        break;
+      case "--public-link":
+        options.publicLink = next();
+        break;
+      case "--timeout-attempts":
+        options.timeoutAttempts = Number.parseInt(next(), 10);
+        break;
+      default:
+        throw new Error(`Unknown option: ${arg}`);
+    }
+  }
+
+  if (!Number.isInteger(options.pollSeconds) || options.pollSeconds < 1) {
+    throw new Error("--poll-seconds must be a positive integer");
+  }
+  if (!Number.isInteger(options.timeoutAttempts) || options.timeoutAttempts < 1) {
+    throw new Error("--timeout-attempts must be a positive integer");
+  }
+
+  return options;
+}
+
+function loadEnv(path) {
+  if (!path || !fs.existsSync(path)) return;
+  const text = fs.readFileSync(path, "utf8");
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#") || !line.includes("=")) continue;
+    const index = line.indexOf("=");
+    const key = line.slice(0, index).trim();
+    let value = line.slice(index + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (!process.env[key]) process.env[key] = value;
+  }
+}
+
+function readBuildNumber(projectPath) {
+  const text = fs.readFileSync(projectPath, "utf8");
+  const match = text.match(/CURRENT_PROJECT_VERSION:\s*["']?([^"'\n]+)["']?/);
+  if (!match) throw new Error(`Could not find CURRENT_PROJECT_VERSION in ${projectPath}`);
+  return match[1].trim();
+}
+
+function base64url(input) {
+  return Buffer.from(input)
+    .toString("base64")
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
+}
+
+function derToJose(signature, keySize = 32) {
+  let offset = 0;
+  if (signature[offset] !== 0x30) throw new Error("Invalid DER signature");
+  offset += 1;
+
+  let sequenceLength = signature[offset];
+  offset += 1;
+  if (sequenceLength & 0x80) {
+    const bytes = sequenceLength & 0x7f;
+    sequenceLength = 0;
+    for (let i = 0; i < bytes; i += 1) {
+      sequenceLength = (sequenceLength << 8) | signature[offset];
+      offset += 1;
+    }
+  }
+
+  if (signature[offset] !== 0x02) throw new Error("Invalid DER r");
+  offset += 1;
+  const rLength = signature[offset];
+  offset += 1;
+  let r = signature.subarray(offset, offset + rLength);
+  offset += rLength;
+
+  if (signature[offset] !== 0x02) throw new Error("Invalid DER s");
+  offset += 1;
+  const sLength = signature[offset];
+  offset += 1;
+  let s = signature.subarray(offset, offset + sLength);
+
+  const normalize = (part) => {
+    while (part.length > keySize && part[0] === 0) part = part.subarray(1);
+    if (part.length > keySize) throw new Error("Invalid ECDSA integer length");
+    if (part.length === keySize) return part;
+    return Buffer.concat([Buffer.alloc(keySize - part.length), part]);
+  };
+
+  return Buffer.concat([normalize(r), normalize(s)]);
+}
+
+function createToken() {
+  const keyId = process.env.ASC_KEY_ID;
+  const issuerId = process.env.ASC_ISSUER_ID;
+  const keyPath = process.env.ASC_KEY_PATH;
+  if (!keyId || !issuerId || !keyPath) {
+    throw new Error("Missing ASC_KEY_ID, ASC_ISSUER_ID, or ASC_KEY_PATH");
+  }
+
+  const header = { alg: "ES256", kid: keyId, typ: "JWT" };
+  const now = Math.floor(Date.now() / 1000);
+  const payload = { iss: issuerId, iat: now, exp: now + 20 * 60, aud: "appstoreconnect-v1" };
+  const signingInput = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(payload))}`;
+  const privateKey = fs.readFileSync(keyPath, "utf8");
+  const derSignature = crypto.createSign("SHA256").update(signingInput).sign(privateKey);
+  return `${signingInput}.${base64url(derToJose(derSignature))}`;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function createClient(apiBase, token) {
+  return async function api(path, options = {}) {
+    const response = await fetch(`${apiBase}${path}`, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        ...(options.headers ?? {}),
+      },
+    });
+
+    const text = await response.text();
+    let body = null;
+    if (text) {
+      try {
+        body = JSON.parse(text);
+      } catch {
+        body = { raw: text };
+      }
+    }
+
+    if (!response.ok) {
+      const error = new Error(`ASC ${response.status} ${response.statusText} for ${path}`);
+      error.status = response.status;
+      error.body = body;
+      throw error;
+    }
+    return body;
+  };
+}
+
+async function getLatestBuild(api, appId, buildNumber) {
+  const params = new URLSearchParams({
+    "filter[app]": appId,
+    "filter[version]": buildNumber,
+    sort: "-uploadedDate",
+    limit: "1",
+    "fields[builds]": "version,processingState,usesNonExemptEncryption,uploadedDate,expired",
+    include: "preReleaseVersion",
+    "fields[preReleaseVersions]": "version",
+  });
+  const body = await api(`/builds?${params.toString()}`);
+  const build = body.data?.[0] ?? null;
+  if (!build) return null;
+  const preRelease = body.included?.find((item) => item.type === "preReleaseVersions");
+  build.marketingVersion = preRelease?.attributes?.version;
+  return build;
+}
+
+async function waitForBuild(api, options) {
+  for (let attempt = 1; attempt <= options.timeoutAttempts; attempt += 1) {
+    const build = await getLatestBuild(api, options.appId, options.buildNumber);
+    if (!build) {
+      console.log(
+        `Build (${options.buildNumber}) not visible yet; waiting... ${attempt}/${options.timeoutAttempts}`,
+      );
+      await sleep(options.pollSeconds * 1000);
+      continue;
+    }
+
+    const attrs = build.attributes ?? {};
+    const version = build.marketingVersion ? `${build.marketingVersion} ` : "";
+    console.log(`Build ${version}(${attrs.version ?? options.buildNumber}) id=${build.id} processing=${attrs.processingState}`);
+    if (attrs.processingState === "VALID") return build;
+    await sleep(options.pollSeconds * 1000);
+  }
+  throw new Error(`Build (${options.buildNumber}) did not become VALID in time.`);
+}
+
+async function setExportCompliance(api, build) {
+  if (build.attributes?.usesNonExemptEncryption === false) {
+    console.log("Export compliance already set to usesNonExemptEncryption=false.");
+    return;
+  }
+
+  try {
+    await api(`/builds/${build.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        data: {
+          type: "builds",
+          id: build.id,
+          attributes: { usesNonExemptEncryption: false },
+        },
+      }),
+    });
+    console.log("Set export compliance to usesNonExemptEncryption=false.");
+  } catch (error) {
+    if (error.status === 409 || error.status === 422) {
+      console.log(`Export compliance patch skipped: ${JSON.stringify(error.body?.errors?.[0] ?? error.body)}`);
+      return;
+    }
+    throw error;
+  }
+}
+
+async function getBetaGroup(api, appId, groupName) {
+  const params = new URLSearchParams({
+    "filter[app]": appId,
+    "filter[name]": groupName,
+    limit: "1",
+  });
+  const body = await api(`/betaGroups?${params.toString()}`);
+  const group = body.data?.[0];
+  if (!group) throw new Error(`Missing beta group: ${groupName}`);
+  console.log(`Beta group ${groupName} id=${group.id}`);
+  return group;
+}
+
+async function attachBuildToGroup(api, build, group, groupName) {
+  try {
+    await api(`/betaGroups/${group.id}/relationships/builds`, {
+      method: "POST",
+      body: JSON.stringify({
+        data: [{ type: "builds", id: build.id }],
+      }),
+    });
+    console.log(`Attached build ${build.attributes?.version ?? build.id} to ${groupName}.`);
+  } catch (error) {
+    const code = error.body?.errors?.[0]?.code;
+    if (error.status === 409 || code === "ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE") {
+      console.log(`Build ${build.attributes?.version ?? build.id} is already attached to ${groupName}.`);
+      return;
+    }
+    throw error;
+  }
+}
+
+async function submitForReview(api, build) {
+  try {
+    await api("/betaAppReviewSubmissions", {
+      method: "POST",
+      body: JSON.stringify({
+        data: {
+          type: "betaAppReviewSubmissions",
+          relationships: {
+            build: { data: { type: "builds", id: build.id } },
+          },
+        },
+      }),
+    });
+    console.log(`Submitted build ${build.attributes?.version ?? build.id} for external TestFlight review.`);
+  } catch (error) {
+    const code = error.body?.errors?.[0]?.code;
+    if (error.status === 409 || error.status === 422 || code?.includes("DUPLICATE")) {
+      console.log(`Review submission skipped: ${JSON.stringify(error.body?.errors?.[0] ?? error.body)}`);
+      return;
+    }
+    throw error;
+  }
+}
+
+async function getBuildSummary(api, buildId) {
+  const params = new URLSearchParams({
+    "fields[builds]": "version,processingState,usesNonExemptEncryption,uploadedDate,expired",
+    include: "preReleaseVersion",
+    "fields[preReleaseVersions]": "version",
+  });
+  return api(`/builds/${buildId}?${params.toString()}`);
+}
+
+async function getReviewSubmission(api, buildId) {
+  try {
+    const body = await api(`/builds/${buildId}/betaAppReviewSubmission`);
+    return body.data ?? null;
+  } catch (error) {
+    if (error.status === 404) return null;
+    throw error;
+  }
+}
+
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+  if (options.help) {
+    printUsage();
+    return;
+  }
+
+  if (!options.buildNumber) {
+    options.buildNumber = readBuildNumber(options.projectPath);
+  }
+
+  loadEnv(options.envPath);
+
+  const resolved = {
+    appId: options.appId,
+    buildNumber: options.buildNumber,
+    envPath: options.envPath,
+    groupName: options.groupName,
+    pollSeconds: options.pollSeconds,
+    projectPath: options.projectPath,
+    publicLink: options.publicLink,
+    timeoutAttempts: options.timeoutAttempts,
+  };
+
+  if (options.dryRun) {
+    console.log(JSON.stringify({ dryRun: true, resolved }, null, 2));
+    return;
+  }
+
+  const token = createToken();
+  const api = createClient(DEFAULTS.apiBase, token);
+
+  const build = await waitForBuild(api, options);
+  await setExportCompliance(api, build);
+  const group = await getBetaGroup(api, options.appId, options.groupName);
+  await attachBuildToGroup(api, build, group, options.groupName);
+  await submitForReview(api, build);
+
+  const summary = await getBuildSummary(api, build.id);
+  const reviewSubmission = await getReviewSubmission(api, build.id);
+  console.log(JSON.stringify({
+    buildId: build.id,
+    attributes: summary.data?.attributes,
+    marketingVersion: summary.included?.find((item) => item.type === "preReleaseVersions")?.attributes?.version,
+    publicLink: options.publicLink,
+    review: reviewSubmission ? {
+      id: reviewSubmission.id,
+      state: reviewSubmission.attributes?.betaReviewState,
+    } : null,
+  }, null, 2));
+}
+
+main().catch((error) => {
+  console.error(error.message);
+  if (error.body) console.error(JSON.stringify(error.body, null, 2));
+  process.exitCode = 1;
+});

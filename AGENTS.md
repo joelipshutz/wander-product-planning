@@ -186,7 +186,7 @@ Required release workflow:
 - Commit and push both `project.yml` and `Wander.xcodeproj/project.pbxproj` to `main`.
 - Run the relevant `xcodebuild` build/test command after regenerating the project.
 - Archive and upload the binary with that incremented build number.
-- Set/confirm export compliance and attach the uploaded build to the public TestFlight group when applicable.
+- Set/confirm export compliance and attach the uploaded build to the public TestFlight group by running `node scripts/testflight-release.mjs` after upload succeeds.
 - Update `docs/agent-log.md` with the build number, commit hash, tests run, archive path, upload status, TestFlight status, and known issues.
 - Only after archive/upload has completed should an agent post a tester-facing Slack note. If the binary is still processing or not yet externally approved, the Slack note must say that plainly.
 - If the build is attached to TestFlight or confirmed available, follow the Slack release-note rules below and state the live/approved status.
@@ -210,6 +210,22 @@ The Slack note must include:
 - A request to reply in-thread with device, account/email if relevant, screenshots, and exact repro steps.
 
 For broad announcements only, `#all-recme` (`C0B9FU1QNG2`) exists, but TestFlight feedback prompts belong in `#testflight-feedback`.
+
+## TestFlight Helper
+
+Use `scripts/testflight-release.mjs` after a successful `xcodebuild -exportArchive` upload. The helper reads `CURRENT_PROJECT_VERSION` from `project.yml` by default, waits for the uploaded build to become `VALID`, sets `usesNonExemptEncryption=false`, attaches the build to `Wander Alpha`, submits external beta review, and prints the App Store Connect/TestFlight summary.
+
+```bash
+node scripts/testflight-release.mjs
+```
+
+Useful overrides:
+
+- `--build-number <n>` to process a specific build instead of the current `project.yml` value.
+- `--dry-run` to verify the resolved app id, group, and build number without calling App Store Connect.
+- `--timeout-attempts <n>` and `--poll-seconds <n>` if App Store Connect indexing is slow.
+
+The script reads App Store Connect credentials from env vars or `/Users/joelipshutz/.openclaw/workspace/.env.keys`: `ASC_KEY_ID`, `ASC_ISSUER_ID`, and `ASC_KEY_PATH`. Never commit the `.p8` key or local env file.
 
 ## Useful References
 
