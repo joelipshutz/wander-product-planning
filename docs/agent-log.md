@@ -2391,3 +2391,25 @@ Completion:
 - PR: https://github.com/joelipshutz/wander/pull/1
 - Branch is ready for review/merge. No TestFlight build number was bumped yet; do that on/after merge when this is being packaged into the next uploaded build.
 - Known follow-ups: realtime social refresh is still later, richer Instagram/TikTok/photo extraction providers are still later, and the original Add sync-failed report still needs signed-in device QA against Supabase.
+
+## 2026-06-10 00:25 PDT - Codex - Build 24 TestFlight Prep
+
+Agent: Codex
+Branch: `main`
+Starting commit: `555563b`
+Starting status: worktree clean.
+
+Goal: follow up the roadmap merge with the required TestFlight build-number bump and tester-facing Slack note.
+
+Expected files to touch:
+
+- `project.yml`
+- `Wander.xcodeproj/project.pbxproj`
+- `docs/agent-log.md`
+
+Completion:
+
+- Incremented `CURRENT_PROJECT_VERSION` from `23` to `24` in `project.yml`.
+- Ran `xcodegen generate`, which updated `Wander.xcodeproj/project.pbxproj`.
+- Posted a Slack note to `#testflight-feedback` explaining that main is prepared for build 24 but a binary upload is still pending: https://recmegroup.slack.com/archives/C0BAA7DG2AC/p1781076415347879
+- No tests run for this build-number-only commit; prior roadmap merge test run passed 86 tests, 0 failures.
