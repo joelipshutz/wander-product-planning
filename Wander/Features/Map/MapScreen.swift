@@ -28,6 +28,7 @@ struct MapScreen: View {
         span: MKCoordinateSpan(latitudeDelta: 0.12, longitudeDelta: 0.14)
     )
     private static let recenterCameraDistance: CLLocationDistance = 1_500
+    private static let currentLocationTint = Color(uiColor: .systemBlue)
 
     private let initialPlaceQuery: String?
 
@@ -151,6 +152,7 @@ struct MapScreen: View {
                     }
                 }
                 .mapStyle(.standard(elevation: .flat, emphasis: .muted))
+                .tint(Self.currentLocationTint)
                 .ignoresSafeArea()
                 .onTapGesture(coordinateSpace: .local) { point in
                     guard selectedPlaceID != nil || selectedSearchCandidateID != nil else { return }
