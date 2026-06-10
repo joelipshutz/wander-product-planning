@@ -43,7 +43,14 @@ struct DiscoverScreen: View {
             .wanderScreen()
             .task {
                 contacts = await store.contactMatches()
+                await refreshRemotePlacesIfNeeded()
                 await refresh()
+            }
+            .onChange(of: auth.isSignedIn) { _, _ in
+                Task {
+                    await refreshRemotePlacesIfNeeded()
+                    await refresh()
+                }
             }
             .onChange(of: query) { _, _ in
                 Task { await refresh() }
@@ -252,6 +259,11 @@ struct DiscoverScreen: View {
     private func refresh() async {
         results = await store.discover(query: query, scope: selectedScope, backend: backend)
         parsedChips = store.lastDiscoverFilters.chips
+    }
+
+    private func refreshRemotePlacesIfNeeded() async {
+        guard auth.isSignedIn else { return }
+        await store.refreshRemoteVisiblePlaces(backend: backend)
     }
 }
 

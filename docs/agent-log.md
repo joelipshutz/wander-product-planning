@@ -2345,3 +2345,42 @@ Completion:
 - Removed the `TestFlight Feedback Triage` section from `AGENTS.md`.
 - Kept the TestFlight release-note rule for actual build uploads/availability confirmations.
 - No app tests run; this was documentation/process only.
+
+## 2026-06-10 00:08 PDT - Codex - Roadmap Steps 1-4
+
+Agent: Codex
+Branch: `codex/roadmap-1-4`
+Starting commit: `ea352b9`
+Starting status: worktree clean after branch creation.
+
+Goal: execute roadmap steps 1-4: fix Build 23 map tap hit-testing, verify/fix social visibility, polish save/add semantics, and harden the current M6 extraction path.
+
+Expected files to touch:
+
+- `Wander/Features/Map/MapScreen.swift`
+- `Wander/Features/Add/AddScreen.swift`
+- `Wander/Services/WanderLocalStore.swift`
+- `Wander/Services/Remote/SupabaseRepositories.swift`
+- `Wander/Services/Remote/SupabaseDTOs.swift`
+- `Wander/Services/MapKitPlaceResolver.swift`
+- `Wander/Services/LinkPlaceParser.swift`
+- `WanderTests/`
+- `TODOS.md`
+- `docs/agent-log.md`
+
+Initial notes:
+
+- P1 map hit-testing is likely caused by fixed meter-radius tap protection at zoomed-out map scales.
+- Social visibility and add sync need verification against the current remote repository and local-first store behavior before changing contracts.
+- Add/save polish should route unsaved map results through confirmation/details instead of direct-save, and keep saved places on edit/pencil semantics.
+
+Checkpoint:
+
+- Replaced Map tap-away protection with screen-space marker hit testing using `MapReader` projection, so zoom level no longer changes whether a tap clears a selected place.
+- Verified follower-visible social rows are already covered by Supabase/RLS; fixed client freshness by refreshing visible remote places after signed-in own/social saves and when Discover opens or sign-in state changes.
+- Confirmed map typeahead dismissal, map plus save flow, edit flow, and Add saved toast already exist in the current implementation.
+- Hardened link add fallback: if local link parsing cannot resolve a place and the user is signed in, the Add flow now enqueues/processes a backend extraction job and only confirms candidates with coordinates and sufficient confidence.
+- Tightened current-location suggestions with smaller search radii, stronger distance ranking, and MapKit category precedence so parks stay parks instead of text-fallback hikes.
+- Added tests for map hit-testing, extraction candidate gating, and remote visible-place refresh after signed-in saves.
+- Ran `xcodegen generate` to include new test files in `Wander.xcodeproj/project.pbxproj`.
+- Tests: `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO` passed, 86 tests, 0 failures. Initial sandboxed run failed due CoreSimulator/cache sandbox access; elevated rerun passed.

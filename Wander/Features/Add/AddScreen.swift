@@ -684,6 +684,19 @@ struct AddScreen: View {
             }
             step = .confirm
         } catch {
+            if auth.isSignedIn {
+                let draft = await store.createUnresolvedDraft(
+                    sourceType: .link,
+                    originalInput: linkInput,
+                    backend: backend
+                )
+
+                if let result = await store.processExtractionJob(for: draft, backend: backend),
+                   applyExtractionResult(result, source: .link) {
+                    return
+                }
+            }
+
             candidates = []
             selectedCandidateID = nil
             resolutionMessage = resolutionCopy(for: error)
@@ -752,11 +765,8 @@ struct AddScreen: View {
 
     @MainActor
     private func applyExtractionResult(_ result: ExtractionJobResult, source: AddSourceType) -> Bool {
-        let resolvedCandidates = result.candidates.filter { candidate in
-            candidate.latitude != nil && candidate.longitude != nil
-        }
-        guard !resolvedCandidates.isEmpty,
-              result.status == .needsConfirmation || result.status == .complete
+        let resolvedCandidates = ExtractionCandidateFilter.confirmableCandidates(from: result)
+        guard !resolvedCandidates.isEmpty
         else {
             return false
         }
@@ -799,6 +809,24 @@ struct AddScreen: View {
     private func orderedSelections(for block: AddQuestionBlock) -> [String] {
         let values = selectedAnswers[block.key] ?? Set(block.defaultValues)
         return block.options.filter { values.contains($0) }
+    }
+}
+
+enum ExtractionCandidateFilter {
+    static let minimumConfidence = 0.70
+
+    static func confirmableCandidates(from result: ExtractionJobResult) -> [PlaceCandidate] {
+        guard result.status == .needsConfirmation || result.status == .complete,
+              result.confidence >= minimumConfidence
+        else {
+            return []
+        }
+
+        return result.candidates.filter { candidate in
+            candidate.latitude != nil
+                && candidate.longitude != nil
+                && candidate.confidence >= minimumConfidence
+        }
     }
 }
 

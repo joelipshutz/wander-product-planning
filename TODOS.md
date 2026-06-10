@@ -8,18 +8,26 @@ Date: 2026-05-29
   - Report: Ryan saw tap-to-select and tap-away get flaky when zoomed out; sometimes selecting or unselecting requires two taps.
   - Likely cause: Build 23 tap-away logic uses a fixed geographic radius (`120m`) to protect marker taps, which is not stable across zoom levels.
   - Recommended fix: replace meter-based marker proximity with screen-space hit testing using MapKit/`MapReader` projection and a visual target radius around the marker.
+  - Status 2026-06-10: fixed on `codex/roadmap-1-4` with screen-space marker hit testing and unit coverage.
   - Review need: scoped engineering review only; no design review unless the interaction model changes.
 
 - Build 17 TestFlight feedback batch.
   - Why: Joe/friend testing found alpha-blocking issues in persistence, follow visibility, save completion, and map add/edit semantics.
   - Persistence: replace in-memory preview-only app state with real local persistence/hydration so saved places survive killing/relaunching the app.
   - Following/social visibility: verify follow/unfollow RPC success, relationship refresh, remote visible places refresh, and social rows appearing for followed users.
+    - Status 2026-06-10: RLS already covers one-way follower visibility; client now refreshes remote visible-place cache after signed-in own/social saves and when Discover opens or sign-in state changes. Realtime push refresh is still later.
   - Add sync: debug `sync failed` after Add-tab save when the place still appears locally; local-first behavior is correct, but healthy signed-in remote save should not fail silently.
+    - Status 2026-06-10: store now refreshes remote visible places after successful remote save, improving post-save consistency. Still needs real-device signed-in QA against Supabase to confirm the original sync-failed report is gone.
   - Map typeahead: selecting a typeahead result should dismiss the keyboard.
+    - Status 2026-06-10: already implemented before this pass; keep in QA checklist.
   - Map plus flow: plus on an unsaved/search/social place should route into a lightweight Add confirmation/details flow with status, visibility, category questions, and note, rather than direct-save with no details.
+    - Status 2026-06-10: already routed through `MapPlaceSaveFlowSheet`; keep in QA checklist for unsaved search/social results.
   - Edit saved place: pencil/edit should open a real saved-place edit/details flow, including marking `wanna` as `been`, visibility, note, and answer edits.
+    - Status 2026-06-10: map saved-place edit already uses the save flow; keep in QA checklist for `wanna` to `been` and answer edits.
   - Save completion: replace the Add full-screen saved state with a lightweight celebratory confirmation/toast, haptic, "place saved", and "add another" option before returning to the standard Add tab.
+    - Status 2026-06-10: lightweight toast behavior already exists; old full-screen saved state is no longer the primary path.
   - Map user location: live current-location dot should read as native Apple Maps blue; keep separate from Wander saved-place pin colors unless product decides own saved pins should also change.
+    - Status 2026-06-10: already implemented before this pass; keep in visual QA.
 
 - Integrate onboarding spec before eng plan review. Done 2026-05-31.
   - Why: onboarding decides how privacy defaults, first place capture, and first follow are introduced.
@@ -65,6 +73,7 @@ Date: 2026-05-29
 - Evaluate Slate extraction code against Wander requirements.
   - Why: Slate has useful extraction pieces, but Instagram and location extraction are known weak spots.
   - Decision so far: backend extraction jobs are the alpha direction; detailed provider/job architecture still needs a focused pass before real social alpha.
+  - Status 2026-06-10: in-app link fallback now attempts the backend extraction job path when local link parsing cannot find a place, gated by confidence and coordinates. Richer providers for Instagram/TikTok/photo OCR remain later work.
 
 - Decide whether share extension ships in v0.1. Done 2026-06-01.
   - Why: share-sheet capture may be a major activation path, but can slow first implementation.

@@ -510,6 +510,7 @@ final class WanderStore: ObservableObject {
             }
             markUserPlace(localOrServerID: localResult.userPlaceID, serverID: remoteResult.userPlaceID, syncState: .synced)
             lastRemoteError = nil
+            await refreshRemoteVisiblePlaces(backend: backend)
             return remoteResult
         } catch {
             let message = remoteErrorMessage(error)
@@ -674,6 +675,7 @@ final class WanderStore: ObservableObject {
             )
             markUserPlace(localOrServerID: localResult.userPlaceID, serverID: remoteResult.userPlaceID, syncState: .synced)
             lastRemoteError = nil
+            await refreshRemoteVisiblePlaces(backend: backend)
             return remoteResult
         } catch {
             let message = remoteErrorMessage(error)

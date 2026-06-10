@@ -154,11 +154,7 @@ struct MapScreen: View {
                 .ignoresSafeArea()
                 .onTapGesture(coordinateSpace: .local) { point in
                     guard selectedPlaceID != nil || selectedSearchCandidateID != nil else { return }
-                    guard let coordinate = proxy.convert(point, from: .local) else {
-                        clearMapSelection()
-                        return
-                    }
-                    guard !isTapNearSelectableMarker(coordinate) else { return }
+                    guard !isTapNearSelectableMarker(point, proxy: proxy) else { return }
                     clearMapSelection()
                 }
                 .onMapCameraChange(frequency: .onEnd) { context in
@@ -290,9 +286,7 @@ struct MapScreen: View {
         isPlaceSheetExpanded = false
     }
 
-    private func isTapNearSelectableMarker(_ coordinate: CLLocationCoordinate2D) -> Bool {
-        let tapLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-
+    private func isTapNearSelectableMarker(_ point: CGPoint, proxy: MapProxy) -> Bool {
         let savedPlaceCoordinates = visiblePlaces.map { visiblePlace in
             CLLocationCoordinate2D(latitude: visiblePlace.place.latitude, longitude: visiblePlace.place.longitude)
         }
@@ -301,10 +295,11 @@ struct MapScreen: View {
             return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
         }
 
-        return (savedPlaceCoordinates + searchCandidateCoordinates).contains { markerCoordinate in
-            let markerLocation = CLLocation(latitude: markerCoordinate.latitude, longitude: markerCoordinate.longitude)
-            return tapLocation.distance(from: markerLocation) <= 120
+        let markerPoints = (savedPlaceCoordinates + searchCandidateCoordinates).compactMap { markerCoordinate in
+            proxy.convert(markerCoordinate, to: .local)
         }
+
+        return MapHitTesting.isScreenPoint(point, nearAny: markerPoints)
     }
 
     private func resolveInitialSelection() {
@@ -766,6 +761,16 @@ struct MapScreen: View {
 
     private static func normalized(_ value: String) -> String {
         value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+}
+
+enum MapHitTesting {
+    static let markerTapRadius: CGFloat = 34
+
+    static func isScreenPoint(_ point: CGPoint, nearAny markerPoints: [CGPoint], radius: CGFloat = markerTapRadius) -> Bool {
+        markerPoints.contains { markerPoint in
+            hypot(markerPoint.x - point.x, markerPoint.y - point.y) <= radius
+        }
     }
 }
 
