@@ -2413,3 +2413,23 @@ Completion:
 - Ran `xcodegen generate`, which updated `Wander.xcodeproj/project.pbxproj`.
 - Posted a Slack note to `#testflight-feedback` explaining that main is prepared for build 24 but a binary upload is still pending: https://recmegroup.slack.com/archives/C0BAA7DG2AC/p1781076415347879
 - No tests run for this build-number-only commit; prior roadmap merge test run passed 86 tests, 0 failures.
+
+## 2026-06-10 00:32 PDT - Codex - Tighten Merge-To-TestFlight Rule
+
+Agent: Codex
+Branch: `main`
+Starting commit: `ed4382d`
+Starting status: worktree clean.
+
+Goal: clarify that app-code merges to `main` should immediately get a TestFlight build-number bump before any tester-facing Slack note.
+
+Expected files to touch:
+
+- `AGENTS.md`
+- `docs/agent-log.md`
+
+Completion:
+
+- Updated `AGENTS.md` so every app-code/UI/schema/testable behavior merge to `main` is treated as a TestFlight candidate by default unless Joe explicitly says otherwise.
+- Required ordering is now explicit: merge implementation, bump `CURRENT_PROJECT_VERSION`, run `xcodegen generate`, commit/push `project.yml` plus `Wander.xcodeproj/project.pbxproj`, then post Slack. If the binary is not uploaded/available yet, the Slack note must say so plainly.
+- No build bump for this docs-only process correction; it does not change the app binary.
