@@ -2559,3 +2559,42 @@ Completion:
   - `node scripts/testflight-release.mjs --dry-run`
 - Implementation commit: `9305482`.
 - PR: https://github.com/joelipshutz/wander/pull/3
+
+## 2026-06-10 00:52 PDT - Codex - Build 25 TestFlight Release
+
+Agent: Codex
+Branch: `main`
+Starting commit: `ca9b531`
+Starting status: clean `main` after squash-merging PR #2 (`fix: make current location dot blue (#2)`).
+
+Goal: follow the required post-merge TestFlight workflow for the current-location-dot change: bump the build number, regenerate the project, run build/tests, archive/upload build `0.1 (25)`, confirm TestFlight status, and post the tester-facing Slack note only after upload.
+
+Expected files to touch:
+
+- `project.yml`
+- `Wander.xcodeproj/project.pbxproj`
+- `docs/agent-log.md`
+- `docs/setup.md`
+
+Completion:
+
+- Reviewed PR #2 (`fix: make current location dot blue`) against `origin/main`, `DESIGN.md`, and the repo review constraints; no blocking issues found, and the diff stayed scoped to the live current-location indicator plus agent-log bookkeeping.
+- PR #2 originally went stale after `origin/main` advanced and hit a `docs/agent-log.md` conflict. Resolved that conflict by preserving both the newer release-sequence notes already on `main` and the PR's current-location-dot entry, then pushed the refreshed head and squash-merged PR #2 into `main`.
+- Merge commit on `main`: `ca9b531`
+- Bumped `CURRENT_PROJECT_VERSION` from `24` to `25` in `project.yml`, ran `xcodegen generate`, restored the ignored `LocalAuth.xcconfig` project references that `xcodegen` dropped in this temp worktree, and committed only the intended build-number changes in `Wander.xcodeproj/project.pbxproj`.
+- Build bump commit on `main`: `8859e53` (`chore: bump testflight build 25`)
+- Build verification passed:
+  - `xcodebuild build -project Wander.xcodeproj -scheme Wander -destination 'generic/platform=iOS Simulator' -derivedDataPath DerivedData-build25 CODE_SIGNING_ALLOWED=NO`
+- Full test run still finishes red on a pre-existing boundary test that also fails on `main` before this PR:
+  - `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData-test25 CODE_SIGNING_ALLOWED=NO`
+  - Failing test: `BoundaryImportTests.testClerkAndSupabaseImportsStayBehindBoundaries()`
+  - Assertions:
+    - `Unexpected Clerk import in /privateWander/Features/Auth/AuthGateSheet.swift`
+    - `Unexpected Clerk import in /privateWander/Services/Auth/ClerkAuthService.swift`
+    - `Unexpected Supabase import in /privateWander/Services/Remote/WanderSupabaseClient.swift`
+- Archived build `0.1 (25)` at `/private/tmp/Wander-0.1-build25.xcarchive`.
+- Uploaded build `0.1 (25)` with `xcodebuild -exportArchive`; Xcode output ended with `Uploaded Wander`.
+- Immediate App Store Connect follow-up via `scripts/testflight-release.mjs` could not yet find build `25` as a visible `VALID` build within the short poll window, so export-compliance/attach/review submission are still pending Apple indexing rather than blocked by local signing or upload.
+- Posted the required tester-facing Slack note to `#testflight-feedback` marking build `25` as uploaded and processing, with the public link and tester checklist.
+- Updated `docs/setup.md` to include build `0.1 (25)` in the current TestFlight status.
+- Next step: once App Store Connect indexes build `25`, attach it to `Wander Alpha`, confirm export compliance/external review state, and then update the log with the final live status if needed.
