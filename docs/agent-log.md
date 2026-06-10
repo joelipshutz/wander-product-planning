@@ -2457,9 +2457,12 @@ Completion:
 
 - Scoped a blue tint to the `Map` view so the live current-location indicator uses Apple-style blue while custom saved-place pins keep their existing terracotta/social colors.
 - Did not change saved-place ownership colors or other map markers.
+- Commit: `1fcc82d`
+- PR: https://github.com/joelipshutz/wander/pull/2
 - Tests: `xcodebuild test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
 - Result: app/test build succeeded and the suite ran, but the run finished red on one pre-existing failing test case with three assertions in `BoundaryImportTests.testClerkAndSupabaseImportsStayBehindBoundaries()`:
   - `Unexpected Clerk import in /privateWander/Features/Auth/AuthGateSheet.swift`
   - `Unexpected Clerk import in /privateWander/Services/Auth/ClerkAuthService.swift`
   - `Unexpected Supabase import in /privateWander/Services/Remote/WanderSupabaseClient.swift`
 - No screenshot pass captured in this run; this fix is a one-line tint override targeted at the current-location indicator only.
+- Next step: review PR #2, verify the live blue location dot on device/simulator, and decide separately whether to clean up the pre-existing boundary-import test failures.
