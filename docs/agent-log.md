@@ -2434,6 +2434,66 @@ Completion:
 - Required ordering is now explicit: merge implementation, bump `CURRENT_PROJECT_VERSION`, run `xcodegen generate`, commit/push `project.yml` plus `Wander.xcodeproj/project.pbxproj`, then post Slack. If the binary is not uploaded/available yet, the Slack note must say so plainly.
 - No build bump for this docs-only process correction; it does not change the app binary.
 
+## 2026-06-10 00:30 PDT - Codex - TestFlight Feedback Triage (Pin Color)
+
+Agent: Codex
+Branch: `main`
+Starting commit: `d9d1a02`
+Starting status: dirty worktree on `AGENTS.md` only; treated as pre-existing local work and not modified.
+
+Goal: triage new actionable feedback in `#testflight-feedback` for "My pin is still orange. Should be blue like Apple Maps methinks (on the map)" without replying in Slack.
+
+Expected files to touch:
+
+- `docs/agent-log.md`
+
+Investigation:
+
+- Read latest `#testflight-feedback` messages and skipped already-closed tap-hit-testing feedback plus release-announcement posts.
+- Added `:airplane_departure:` to Slack message `1781074469.991469` and read the full thread; no replies/thread context were present.
+- Inspected map pin styling in `Wander/Features/Map/MapScreen.swift` and theme tokens in `Wander/DesignSystem/WanderTheme.swift`.
+- Confirmed current-user saved place pins intentionally use `WanderTheme.pinYou` terracotta while visible social pins use `WanderTheme.pinSocial` blue.
+- Confirmed `DESIGN.md` and `docs/specs/wander-ios-product-spec.md` currently support terracotta for user pins and blue for social pins, so changing "my pin" to blue is a design-direction change unless the feedback was actually about the current-location indicator.
+
+Outcome:
+
+- Classified as `P3`, app area `Map`, decision `approval-needed`.
+- Did not implement because the report is subjective/ambiguous and conflicts with the current design baseline.
+- Recommended default path: keep saved-place ownership colors as-is unless Joe explicitly wants to revise the map color system; if the complaint is about the current-location dot instead of saved-place markers, capture a screenshot/repro and fix that specific mismatch.
+- No app tests run; triage only.
+
+## 2026-06-10 00:41 PDT - Codex - Correct Release Sequence And Upload Build 24
+
+Agent: Codex
+Branch: `main`
+Starting commit: `d9d1a02`
+Starting status: dirty worktree on `docs/agent-log.md` from a pre-existing TestFlight feedback triage entry; preserving it and appending this work after it.
+
+Goal: correct the durable release-order rule and finish the actual build 24 TestFlight archive/upload sequence. Joe clarified the required order: merge, bump/push build number, archive/upload, then Slack note.
+
+Expected files to touch:
+
+- `AGENTS.md`
+- `docs/agent-log.md`
+
+Initial notes:
+
+- Build 24 has already been pushed to `main` in commit `ed4382d`, but the binary has not yet been archived/uploaded.
+- A Slack note was posted too early saying build 24 was prepared but upload pending. The corrected rule should prevent this sequence error going forward.
+
+Completion:
+
+- Updated `AGENTS.md` so the required order is explicit: merge, bump/push build number, run tests, archive/upload, set/confirm TestFlight status, then post Slack.
+- Full release test command passed:
+  `xcodebuild -quiet test -project Wander.xcodeproj -scheme Wander -destination 'platform=iOS Simulator,name=iPhone 16 Plus,OS=18.6' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO`
+- Archived build `0.1 (24)` at `/private/tmp/Wander-0.1-build24.xcarchive`.
+- Uploaded build `0.1 (24)` with `xcodebuild -exportArchive`; Xcode output ended with `Uploaded Wander`.
+- App Store Connect build id: `c9c7803f-6797-4b3f-9d29-df7e77a3773a`.
+- Build `0.1 (24)` is `VALID`, export compliance is `usesNonExemptEncryption=false`, attached to `Wander Alpha`, and external beta review state is `APPROVED`.
+- Early Slack note that was posted before archive/upload: https://recmegroup.slack.com/archives/C0BAA7DG2AC/p1781076415347879
+- Correct live TestFlight Slack note posted after archive/upload/approval: https://recmegroup.slack.com/archives/C0BAA7DG2AC/p1781077613871259
+- Updated `docs/setup.md` to include build 24 in the current TestFlight status.
+
 ## 2026-06-10 00:37 PDT - Codex - Current Location Dot Blue
 
 Agent: Codex

@@ -193,11 +193,11 @@ Current known visual failure:
 
 ## TestFlight
 
-Current status as of 2026-06-09:
+Current status as of 2026-06-10:
 
 - Signed archive succeeds locally for `com.grayline.wander`.
 - App Store Connect app record exists for bundle id `com.grayline.wander`.
-- Builds `0.1 (1)` through `0.1 (23)` uploaded successfully and began App Store Connect processing. Build `0.1 (23)` fixes Map empty-tap clearing, removes address fact chips, and keeps attributed notes visible in place detail sheets.
+- Builds `0.1 (1)` through `0.1 (24)` uploaded successfully and began App Store Connect processing. Build `0.1 (24)` fixes Map tap hit-testing, improves current-location candidate ranking/category handling, refreshes visible social places after signed-in saves/Discover entry, and routes unresolved signed-in link adds through backend extraction.
 - Public TestFlight group `Wander Alpha` exists with public link enabled and no custom tester cap: `https://testflight.apple.com/join/knEhRa6t`.
 - Build `0.1 (5)` is attached to the public group. Export compliance is set to `usesNonExemptEncryption=false`.
 - Build `0.1 (5)` passed external TestFlight review.
@@ -213,6 +213,7 @@ Current status as of 2026-06-09:
 - Build `0.1 (21)` is attached to `Wander Alpha`, export compliance is set to `usesNonExemptEncryption=false`, and external TestFlight review is `APPROVED`.
 - Build `0.1 (22)` is attached to `Wander Alpha`, export compliance is set to `usesNonExemptEncryption=false`, and external TestFlight review is `APPROVED`.
 - Build `0.1 (23)` is attached to `Wander Alpha`, export compliance is set to `usesNonExemptEncryption=false`, and external TestFlight review is `APPROVED`.
+- Build `0.1 (24)` is attached to `Wander Alpha`, export compliance is set to `usesNonExemptEncryption=false`, and external TestFlight review is `APPROVED`.
 - Increment `CURRENT_PROJECT_VERSION` in `project.yml` before each additional TestFlight upload, then run `xcodegen generate`.
 - If Xcode Accounts cannot be used for upload, pass the local App Store Connect API key to `xcodebuild -exportArchive` with `-authenticationKeyPath`, `-authenticationKeyID`, and `-authenticationKeyIssuerID`.
 

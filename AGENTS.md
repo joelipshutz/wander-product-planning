@@ -174,7 +174,7 @@ Core rules:
 
 ## App Store Build Numbers
 
-Default assumption: every app-code merge to `main` is a TestFlight candidate unless Joe explicitly says it is not. After merging app-code, UI, schema, testable behavior, or QA-relevant changes into `main`, immediately create a follow-up build-number commit before any tester-facing Slack note. Do not wait for a separate reminder.
+Default assumption: every app-code merge to `main` is a TestFlight candidate unless Joe explicitly says it is not. After merging app-code, UI, schema, testable behavior, or QA-relevant changes into `main`, immediately create a follow-up build-number commit, archive/upload that build, and only then post a tester-facing Slack note. Do not wait for a separate reminder.
 
 Any `main` update that is intended to ship to App Store Connect or TestFlight must increment the App Store build number before upload. Do not reuse a build number for the same marketing version; App Store Connect requires monotonically increasing build numbers.
 
@@ -185,9 +185,10 @@ Required release workflow:
 - Run `xcodegen generate` so `Wander.xcodeproj/project.pbxproj` reflects the new build number.
 - Commit and push both `project.yml` and `Wander.xcodeproj/project.pbxproj` to `main`.
 - Run the relevant `xcodebuild` build/test command after regenerating the project.
-- Upload the archive with that incremented build number.
-- Update `docs/agent-log.md` with the build number, commit hash, tests run, upload status, and known issues.
-- Only after the build-number commit is pushed should an agent post a tester-facing Slack note. If the binary is not uploaded/available yet, the Slack note must say that plainly.
+- Archive and upload the binary with that incremented build number.
+- Set/confirm export compliance and attach the uploaded build to the public TestFlight group when applicable.
+- Update `docs/agent-log.md` with the build number, commit hash, tests run, archive path, upload status, TestFlight status, and known issues.
+- Only after archive/upload has completed should an agent post a tester-facing Slack note. If the binary is still processing or not yet externally approved, the Slack note must say that plainly.
 - If the build is attached to TestFlight or confirmed available, follow the Slack release-note rules below and state the live/approved status.
 
 Docs-only or process-only commits to `main` do not need a build-number bump unless they are being packaged into a new TestFlight/App Store build. If an agent intentionally skips the bump for a `main` update, note that in `docs/agent-log.md`.
