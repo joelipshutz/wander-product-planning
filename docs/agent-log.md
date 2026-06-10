@@ -2524,3 +2524,5 @@ Completion:
 - Verification:
   - `node --check scripts/testflight-release.mjs`
   - `node scripts/testflight-release.mjs --dry-run`
+- Implementation commit: `9305482`.
+- PR: https://github.com/joelipshutz/wander/pull/3
